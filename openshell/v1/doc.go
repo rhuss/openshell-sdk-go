@@ -21,15 +21,16 @@
 //
 // # Sandbox Lifecycle
 //
-//	sandbox, err := client.Sandboxes().Create(ctx, v1.SandboxSpec{
-//	    Image:       "python:3.12",
+//	sandbox, err := client.Sandboxes().Create(ctx, "my-sandbox", &v1.SandboxSpec{
+//	    Template: &v1.SandboxTemplate{Image: "python:3.12"},
 //	    Environment: map[string]string{"LANG": "en_US.UTF-8"},
-//	}, v1.CreateOptions{})
+//	}, nil)
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
 //
-//	if err := client.Sandboxes().WaitReady(ctx, sandbox.Name, v1.WaitOptions{}); err != nil {
+//	sandbox, err = client.Sandboxes().WaitReady(ctx, sandbox.Name)
+//	if err != nil {
 //	    log.Fatal(err)
 //	}
 //
@@ -43,14 +44,14 @@
 //
 // # Error Handling
 //
-//	_, err := client.Sandboxes().Get(ctx, "missing", v1.GetOptions{})
+//	_, err = client.Sandboxes().Get(ctx, "missing")
 //	if v1.IsNotFound(err) {
 //	    // handle not found
 //	}
 //
 // # Watching
 //
-//	watcher, err := client.Sandboxes().Watch(ctx, v1.WatchOptions{})
+//	watcher, err := client.Sandboxes().Watch(ctx, sandbox.Name)
 //	if err != nil {
 //	    log.Fatal(err)
 //	}

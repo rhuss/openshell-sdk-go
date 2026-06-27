@@ -107,8 +107,7 @@ func providerFromProto(p *dm.Provider) *Provider {
 	result := &Provider{
 		Type: p.GetType(),
 		Spec: ProviderSpec{
-			Credentials: p.GetCredentials(),
-			Config:      p.GetConfig(),
+			Config: p.GetConfig(),
 		},
 	}
 

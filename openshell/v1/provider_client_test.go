@@ -132,7 +132,7 @@ func TestProviderCreate(t *testing.T) {
 	require.NotNil(t, result)
 	assert.Equal(t, "my-claude", result.Name)
 	assert.Equal(t, "claude", result.Type)
-	assert.Equal(t, map[string]string{"API_KEY": "secret"}, result.Spec.Credentials)
+	assert.Nil(t, result.Spec.Credentials, "credentials are write-only and should not be returned")
 }
 
 func TestProviderCreate_AlreadyExists(t *testing.T) {

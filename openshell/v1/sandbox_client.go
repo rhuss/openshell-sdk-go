@@ -49,6 +49,7 @@ func (s *sandboxClient) List(ctx context.Context, opts ...ListOptions) ([]*Sandb
 	if len(opts) > 0 {
 		req.Limit = uint32(opts[0].Limit)
 		req.Offset = uint32(opts[0].Offset)
+		req.LabelSelector = opts[0].LabelSelector
 	}
 
 	resp, err := s.client.ListSandboxes(ctx, req)
@@ -133,7 +134,7 @@ func (s *sandboxClient) WaitReady(ctx context.Context, name string, opts ...Wait
 		return sb, nil
 	}
 	if sb.Status.Phase == SandboxError {
-		return nil, fmt.Errorf("sandbox %q is in error state", name)
+		return nil, &StatusError{Code: ErrorInternal, Message: fmt.Sprintf("sandbox %q is in error state", name)}
 	}
 
 	ticker := time.NewTicker(interval)
@@ -152,7 +153,7 @@ func (s *sandboxClient) WaitReady(ctx context.Context, name string, opts ...Wait
 				return sb, nil
 			}
 			if sb.Status.Phase == SandboxError {
-				return nil, fmt.Errorf("sandbox %q is in error state", name)
+				return nil, &StatusError{Code: ErrorInternal, Message: fmt.Sprintf("sandbox %q is in error state", name)}
 			}
 		}
 	}
@@ -317,15 +318,29 @@ func (s *sandboxClient) Watch(ctx context.Context, name string, _ ...WatchOption
 		for {
 			if sbPayload, ok := ev.Payload.(*pb.SandboxStreamEvent_Sandbox); ok && sbPayload.Sandbox != nil {
 				sandbox := sandboxFromProto(sbPayload.Sandbox)
+				eventType := EventModified
+				if sandbox.Status.Phase == SandboxDeleting {
+					eventType = EventDeleted
+				}
 				select {
-				case ch <- Event[*Sandbox]{Type: EventModified, Object: sandbox}:
+				case ch <- Event[*Sandbox]{Type: eventType, Object: sandbox}:
 				case <-w.done:
 					return
 				}
 			}
-			var err error
-			ev, err = stream.Recv()
-			if err != nil {
+			var recvErr error
+			ev, recvErr = stream.Recv()
+			if recvErr != nil {
+				select {
+				case <-w.done:
+				default:
+					if recvErr.Error() != "EOF" {
+						select {
+						case ch <- Event[*Sandbox]{Type: EventError, Object: nil}:
+						default:
+						}
+					}
+				}
 				return
 			}
 		}
