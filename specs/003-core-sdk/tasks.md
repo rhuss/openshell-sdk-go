@@ -195,10 +195,10 @@
 
 **Purpose**: Cleanup, documentation, and CI validation
 
-- [ ] T056 Remove old stub `openshell/client.go` and `openshell/client_test.go`
-- [ ] T057 Create integration test stubs with `//go:build integration` tag in `openshell/v1/integration_test.go`
-- [ ] T058 Verify `make ci` passes (lint + build + test)
-- [ ] T059 Verify all SPDX license headers are present on new .go files
+- [X] T056 Remove old stub `openshell/client.go` and `openshell/client_test.go`
+- [X] T057 Create integration test stubs with `//go:build integration` tag in `openshell/v1/integration_test.go`
+- [X] T058 Verify `make ci` passes (lint + build + test)
+- [X] T059 Verify all SPDX license headers are present on new .go files
 
 ---
 
