@@ -38,8 +38,7 @@ type ClientInterface interface {
 
 // ExecInterface is defined in exec.go
 
-// FileInterface is a placeholder for file operations (implemented in Phase 8).
-type FileInterface interface{}
+// FileInterface is defined in file.go
 
 
 // Client implements ClientInterface. It holds a gRPC connection and provides
@@ -91,7 +90,7 @@ func NewClient(cfg Config) (*Client, error) {
 	c.sandboxes = newSandboxClient(conn)
 	c.providers = newProviderClient(conn)
 	c.exec = newExecClient(conn)
-	c.files = &stubFile{}
+	c.files = newFileClient(conn)
 	c.health = newHealthClient(conn)
 
 	return c, nil
@@ -119,5 +118,3 @@ func (c *Client) Close() error {
 	})
 	return c.closeErr
 }
-
-type stubFile struct{}
