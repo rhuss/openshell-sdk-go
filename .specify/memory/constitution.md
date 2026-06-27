@@ -1,50 +1,67 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+# OpenShell SDK for Go Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Proto Isolation
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+The SDK separates generated protobuf code from hand-written Go code.
+Generated types live in dedicated packages and are never exposed directly
+in the public API. Users interact with idiomatic Go types; conversion
+between proto and Go types happens internally. This allows the proto
+schema to evolve without breaking the SDK's public surface.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### II. Idiomatic Go
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+The SDK follows established Go conventions: standard project layout,
+`error` returns instead of exceptions, context propagation, functional
+options for configuration, and interfaces for testability. Code should
+feel natural to a Go developer familiar with the standard library and
+packages like `net/http` or `google.golang.org/grpc`.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### III. Test-First (NON-NEGOTIABLE)
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+Tests are written before or alongside implementation code. Every public
+function has at least one test. The Red-Green-Refactor cycle is enforced:
+write a failing test, make it pass, then clean up. Integration tests use
+the `//go:build integration` build tag to separate from unit tests.
+`make ci` must pass before any merge.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### IV. Upstream Tracking
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+The SDK tracks the upstream OpenShell project's proto definitions and
+API changes. When upstream protos change, the SDK updates generated code
+and adapts the Go API layer. Breaking upstream changes are absorbed in
+the conversion layer, not propagated to SDK users. Version compatibility
+with specific OpenShell releases is documented.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### V. Minimal Dependencies
+
+The SDK minimizes external dependencies to reduce supply chain risk and
+binary size. The only non-stdlib runtime dependency is gRPC and its
+required packages. Test dependencies (testify) are acceptable. Every new
+dependency requires justification. Prefer stdlib solutions over third-party
+packages when the stdlib solution is adequate.
+
+## Development Standards
+
+- All `.go` files carry SPDX Apache-2.0 license headers
+- golangci-lint enforces code quality with govet, errcheck, staticcheck,
+  unused, ineffassign, revive, and goheader linters
+- mise pins tool versions for reproducible builds
+- CI validates lint, build, and test on every pull request
+
+## Quality Gates
+
+- `make lint` must pass with zero violations
+- `make test` must pass with coverage output
+- `make ci` runs the full pipeline (lint + build + test)
+- All exported types and functions must have doc comments
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution governs all design decisions for the OpenShell SDK
+for Go. Amendments require documentation and a clear migration plan for
+any breaking changes. All pull requests must verify compliance with these
+principles.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: 2026-06-27 | **Last Amended**: 2026-06-27

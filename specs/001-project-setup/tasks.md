@@ -13,9 +13,9 @@
 
 **Purpose**: Project initialization, module definition, and licensing
 
-- [ ] T001 Initialize Go module with `go mod init github.com/rhuss/openshell-sdk-go` in go.mod
-- [ ] T002 [P] Create Apache-2.0 LICENSE file at repository root
-- [ ] T003 [P] Create .gitignore with Go binaries, coverage files, IDE artifacts, and .specify ignores
+- [x] T001 Initialize Go module with `go mod init github.com/rhuss/openshell-sdk-go` in go.mod
+- [x] T002 [P] Create Apache-2.0 LICENSE file at repository root
+- [x] T003 [P] Create .gitignore with Go binaries, coverage files, IDE artifacts, and .specify ignores
 
 ---
 
@@ -25,9 +25,9 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T004 Create mise.toml with Go 1.23, golangci-lint 1.64 tool pins and task definitions (test, test:integration, lint, fmt, build, ci)
-- [ ] T005 [P] Create Makefile as thin shim delegating to mise tasks with availability check and install hint
-- [ ] T006 [P] Create .golangci.yml with govet, errcheck, staticcheck, unused, gosimple, ineffassign, revive, goimports, and goheader linters configured with SPDX template
+- [x] T004 Create mise.toml with Go 1.23, golangci-lint 1.64 tool pins and task definitions (test, test:integration, lint, fmt, build, ci)
+- [x] T005 [P] Create Makefile as thin shim delegating to mise tasks with availability check and install hint
+- [x] T006 [P] Create .golangci.yml with govet, errcheck, staticcheck, unused, gosimple, ineffassign, revive, goimports, and goheader linters configured with SPDX template
 
 **Checkpoint**: Build tooling ready. `make lint` and `make test` targets exist (tests will fail until stub code is created).
 
@@ -41,11 +41,11 @@
 
 ### Implementation for User Story 1
 
-- [ ] T007 [US1] Create openshell/client.go with Client struct, Dial(address string) function returning (*Client, error), and Close() method with SPDX headers
-- [ ] T008 [US1] Create openshell/client_test.go with TestDialEmptyAddress test validating Dial("") returns error, with SPDX headers
-- [ ] T009 [US1] Run `go mod tidy` to add testify dependency and generate go.sum
-- [ ] T010 [US1] Verify `make test` passes with coverage output
-- [ ] T011 [US1] Verify `make lint` passes with zero violations
+- [x] T007 [US1] Create openshell/client.go with Client struct, Dial(address string) function returning (*Client, error), and Close() method with SPDX headers
+- [x] T008 [US1] Create openshell/client_test.go with TestDialEmptyAddress test validating Dial("") returns error, with SPDX headers
+- [x] T009 [US1] Run `go mod tidy` to add testify dependency and generate go.sum
+- [x] T010 [US1] Verify `make test` passes with coverage output
+- [x] T011 [US1] Verify `make lint` passes with zero violations
 
 **Checkpoint**: User Story 1 complete. `make test` and `make lint` both pass.
 
@@ -59,7 +59,7 @@
 
 ### Implementation for User Story 2
 
-- [ ] T012 [US2] Create .github/workflows/ci.yml with lint, test, and build jobs triggered on PR and push to main, using mise for Go version consistency
+- [x] T012 [US2] Create .github/workflows/ci.yml with lint, test, and build jobs triggered on PR and push to main, using mise for Go version consistency
 
 **Checkpoint**: CI workflow ready. Will validate on first PR push.
 
@@ -73,9 +73,9 @@
 
 ### Implementation for User Story 3
 
-- [ ] T013 [P] [US3] Create README.md with project description, status, quick start, and license info
-- [ ] T014 [P] [US3] Create CONTRIBUTING.md with prerequisites (Go, mise), setup steps, build commands, test commands, commit conventions, and DCO sign-off
-- [ ] T015 [US3] Update CLAUDE.md with build, test, lint, ci commands and project conventions
+- [x] T013 [P] [US3] Create README.md with project description, status, quick start, and license info
+- [x] T014 [P] [US3] Create CONTRIBUTING.md with prerequisites (Go, mise), setup steps, build commands, test commands, commit conventions, and DCO sign-off
+- [x] T015 [US3] Update CLAUDE.md with build, test, lint, ci commands and project conventions
 
 **Checkpoint**: Documentation complete. Contributors can onboard from CONTRIBUTING.md.
 
@@ -89,7 +89,7 @@
 
 ### Implementation for User Story 5
 
-- [ ] T016 [US5] Fill in .specify/memory/constitution.md with five principles: proto isolation, idiomatic Go, test-first, upstream tracking, minimal dependencies
+- [x] T016 [US5] Fill in .specify/memory/constitution.md with five principles: proto isolation, idiomatic Go, test-first, upstream tracking, minimal dependencies
 
 **Checkpoint**: Constitution ready. All governance documentation in place.
 
@@ -99,9 +99,9 @@
 
 **Purpose**: Final validation across all user stories
 
-- [ ] T017 Verify all .go files have SPDX license headers by running `make lint`
-- [ ] T018 Verify `make ci` runs full pipeline (lint, build, test) successfully
-- [ ] T019 Verify .gitignore covers all generated artifacts (coverage.out, binaries)
+- [x] T017 Verify all .go files have SPDX license headers by running `make lint`
+- [x] T018 Verify `make ci` runs full pipeline (lint, build, test) successfully
+- [x] T019 Verify .gitignore covers all generated artifacts (coverage.out, binaries)
 
 ---
 
