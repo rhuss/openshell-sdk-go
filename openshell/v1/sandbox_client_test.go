@@ -33,6 +33,8 @@ type mockSandboxServer struct {
 	attachErr  error
 	detachErr  error
 	listProvErr error
+	watchEvents []*pb.SandboxStreamEvent
+	watchErr    error
 }
 
 func newMockSandboxServer() *mockSandboxServer {
@@ -139,6 +141,22 @@ func (s *mockSandboxServer) ListSandboxProviders(_ context.Context, req *pb.List
 	}
 	provs := s.providers[req.GetSandboxName()]
 	return &pb.ListSandboxProvidersResponse{Providers: provs}, nil
+}
+
+func (s *mockSandboxServer) WatchSandbox(_ *pb.WatchSandboxRequest, stream grpc.ServerStreamingServer[pb.SandboxStreamEvent]) error {
+	if s.watchErr != nil {
+		return s.watchErr
+	}
+	s.mu.Lock()
+	events := make([]*pb.SandboxStreamEvent, len(s.watchEvents))
+	copy(events, s.watchEvents)
+	s.mu.Unlock()
+	for _, ev := range events {
+		if err := stream.Send(ev); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func setupSandboxTest(t *testing.T, mock *mockSandboxServer) (*sandboxClient, func()) {
@@ -491,6 +509,105 @@ func TestSandboxWaitReady_NotFound(t *testing.T) {
 	defer cleanup()
 
 	_, err := client.WaitReady(context.Background(), "nonexistent")
+
+	require.Error(t, err)
+	assert.True(t, IsNotFound(err))
+}
+
+// --- T039: Watch integration tests ---
+
+func TestSandboxWatch_ReceivesEvents(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.watchEvents = []*pb.SandboxStreamEvent{
+		{Payload: &pb.SandboxStreamEvent_Sandbox{Sandbox: &pb.Sandbox{
+			Metadata: &dm.ObjectMeta{Name: "sb-1", Id: "id-1"},
+			Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_PROVISIONING},
+		}}},
+		{Payload: &pb.SandboxStreamEvent_Sandbox{Sandbox: &pb.Sandbox{
+			Metadata: &dm.ObjectMeta{Name: "sb-1", Id: "id-1"},
+			Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_READY},
+		}}},
+	}
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	w, err := client.Watch(context.Background(), "sb-1")
+	require.NoError(t, err)
+	defer w.Stop()
+
+	ev1 := <-w.ResultChan()
+	assert.Equal(t, EventModified, ev1.Type)
+	require.NotNil(t, ev1.Object)
+	assert.Equal(t, "sb-1", ev1.Object.Name)
+	assert.Equal(t, SandboxProvisioning, ev1.Object.Status.Phase)
+
+	ev2 := <-w.ResultChan()
+	assert.Equal(t, EventModified, ev2.Type)
+	assert.Equal(t, SandboxReady, ev2.Object.Status.Phase)
+}
+
+func TestSandboxWatch_FiltersSandboxEventsOnly(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.watchEvents = []*pb.SandboxStreamEvent{
+		{Payload: &pb.SandboxStreamEvent_Log{Log: &pb.SandboxLogLine{Message: "some log"}}},
+		{Payload: &pb.SandboxStreamEvent_Sandbox{Sandbox: &pb.Sandbox{
+			Metadata: &dm.ObjectMeta{Name: "sb-1"},
+			Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_READY},
+		}}},
+		{Payload: &pb.SandboxStreamEvent_Warning{Warning: &pb.SandboxStreamWarning{Message: "warn"}}},
+	}
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	w, err := client.Watch(context.Background(), "sb-1")
+	require.NoError(t, err)
+	defer w.Stop()
+
+	ev := <-w.ResultChan()
+	assert.Equal(t, EventModified, ev.Type)
+	assert.Equal(t, "sb-1", ev.Object.Name)
+
+	// Stream ends after server sends all events; channel should close
+	select {
+	case _, ok := <-w.ResultChan():
+		assert.False(t, ok, "channel should close after stream ends")
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for channel close")
+	}
+}
+
+func TestSandboxWatch_StopCancelsStream(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.watchEvents = []*pb.SandboxStreamEvent{
+		{Payload: &pb.SandboxStreamEvent_Sandbox{Sandbox: &pb.Sandbox{
+			Metadata: &dm.ObjectMeta{Name: "sb-1"},
+			Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_READY},
+		}}},
+	}
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	w, err := client.Watch(context.Background(), "sb-1")
+	require.NoError(t, err)
+
+	<-w.ResultChan()
+	w.Stop()
+
+	select {
+	case _, ok := <-w.ResultChan():
+		assert.False(t, ok, "channel should be closed after Stop")
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for channel close after Stop")
+	}
+}
+
+func TestSandboxWatch_RPCError(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.watchErr = status.Error(codes.NotFound, "sandbox not found")
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	_, err := client.Watch(context.Background(), "missing")
 
 	require.Error(t, err)
 	assert.True(t, IsNotFound(err))

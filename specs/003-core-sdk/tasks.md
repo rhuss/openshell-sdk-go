@@ -133,13 +133,13 @@
 
 ### Tests for US6 ⚠️
 
-- [ ] T038 [US6] Test WatchInterface event delivery, Stop, and error handling against mock streaming server in `openshell/v1/watch_test.go`
-- [ ] T039 [US6] Test Sandbox.Watch integration (WatchSandbox RPC -> Event[Sandbox] channel) in `openshell/v1/sandbox_client_test.go`
+- [x] T038 [US6] Test WatchInterface event delivery, Stop, and error handling against mock streaming server in `openshell/v1/watch_test.go`
+- [x] T039 [US6] Test Sandbox.Watch integration (WatchSandbox RPC -> Event[Sandbox] channel) in `openshell/v1/sandbox_client_test.go`
 
 ### Implementation for US6
 
-- [ ] T040 [US6] Implement WatchInterface[T], Event[T], and watcher goroutine in `openshell/v1/watch.go`
-- [ ] T041 [US6] Implement Watch method on sandboxClient (WatchSandbox RPC -> filter SandboxStreamEvent to status events -> Event[Sandbox]) in `openshell/v1/sandbox_client.go`
+- [x] T040 [US6] Implement WatchInterface[T], Event[T], and watcher goroutine in `openshell/v1/watch.go`
+- [x] T041 [US6] Implement Watch method on sandboxClient (WatchSandbox RPC -> filter SandboxStreamEvent to status events -> Event[Sandbox]) in `openshell/v1/sandbox_client.go`
 
 **Checkpoint**: `client.Sandboxes().Watch(ctx, opts)` delivers typed events on a channel.
 

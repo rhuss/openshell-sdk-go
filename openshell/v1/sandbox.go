@@ -81,4 +81,5 @@ type SandboxInterface interface {
 	DetachProvider(ctx context.Context, sandboxName, providerName string, expectedResourceVersion uint64) (*DetachProviderResult, error)
 	ListProviders(ctx context.Context, sandboxName string) ([]*Provider, error)
 	WaitReady(ctx context.Context, name string, opts ...WaitOptions) (*Sandbox, error)
+	Watch(ctx context.Context, name string, opts ...WatchOptions) (WatchInterface[*Sandbox], error)
 }

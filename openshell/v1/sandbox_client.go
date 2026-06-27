@@ -292,6 +292,49 @@ func sandboxSpecToProto(spec *SandboxSpec) *pb.SandboxSpec {
 	return result
 }
 
+func (s *sandboxClient) Watch(ctx context.Context, name string, _ ...WatchOptions) (WatchInterface[*Sandbox], error) {
+	streamCtx, streamCancel := context.WithCancel(ctx)
+	stream, err := s.client.WatchSandbox(streamCtx, &pb.WatchSandboxRequest{
+		Id:           name,
+		FollowStatus: true,
+	})
+	if err != nil {
+		streamCancel()
+		return nil, fromGRPCError(err)
+	}
+
+	first, err := stream.Recv()
+	if err != nil {
+		streamCancel()
+		return nil, fromGRPCError(err)
+	}
+
+	ch := make(chan Event[*Sandbox], 64)
+	w := newWatcher(ch, streamCancel)
+
+	go func() {
+		defer close(ch)
+		ev := first
+		for {
+			if sbPayload, ok := ev.Payload.(*pb.SandboxStreamEvent_Sandbox); ok && sbPayload.Sandbox != nil {
+				sandbox := sandboxFromProto(sbPayload.Sandbox)
+				select {
+				case ch <- Event[*Sandbox]{Type: EventModified, Object: sandbox}:
+				case <-w.done:
+					return
+				}
+			}
+			var err error
+			ev, err = stream.Recv()
+			if err != nil {
+				return
+			}
+		}
+	}()
+
+	return w, nil
+}
+
 // sandboxToProto is kept for potential future use (e.g., Update).
 func sandboxToProto(s *Sandbox) *pb.Sandbox {
 	if s == nil {
