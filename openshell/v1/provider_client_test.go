@@ -107,7 +107,7 @@ func setupProviderTest(t *testing.T, mock *mockProviderServer) (*providerClient,
 	require.NoError(t, err)
 
 	return newProviderClient(conn), func() {
-		conn.Close()
+		_ = conn.Close()
 		srv.Stop()
 	}
 }

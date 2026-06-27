@@ -8,6 +8,7 @@ import "time"
 // SandboxPhase represents the lifecycle phase of a sandbox.
 type SandboxPhase string
 
+// SandboxPhase values for sandbox lifecycle.
 const (
 	SandboxProvisioning SandboxPhase = "Provisioning"
 	SandboxReady        SandboxPhase = "Ready"
@@ -19,6 +20,7 @@ const (
 // EventType classifies watch events.
 type EventType string
 
+// EventType values for watch events.
 const (
 	EventAdded    EventType = "ADDED"
 	EventModified EventType = "MODIFIED"
@@ -29,6 +31,7 @@ const (
 // StreamType identifies which output stream a chunk belongs to.
 type StreamType string
 
+// StreamType values for exec output.
 const (
 	StreamStdout StreamType = "stdout"
 	StreamStderr StreamType = "stderr"

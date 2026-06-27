@@ -72,7 +72,7 @@ func TestWatcher_StopClosesChannel(t *testing.T) {
 	}
 }
 
-func TestWatcher_StopIsIdempotent(t *testing.T) {
+func TestWatcher_StopIsIdempotent(_ *testing.T) {
 	src := make(chan Event[string], 10)
 	w := newTestWatcher(src)
 

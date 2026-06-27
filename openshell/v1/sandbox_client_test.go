@@ -19,6 +19,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
+	"google.golang.org/protobuf/proto"
 )
 
 type mockSandboxServer struct {
@@ -73,12 +74,8 @@ func (s *mockSandboxServer) GetSandbox(_ context.Context, req *pb.GetSandboxRequ
 	if !ok {
 		return nil, status.Errorf(codes.NotFound, "sandbox %q not found", req.GetName())
 	}
-	clone := *sb
-	if sb.Status != nil {
-		clonedStatus := *sb.Status
-		clone.Status = &clonedStatus
-	}
-	return &pb.SandboxResponse{Sandbox: &clone}, nil
+	cloned := proto.Clone(sb).(*pb.Sandbox)
+	return &pb.SandboxResponse{Sandbox: cloned}, nil
 }
 
 func (s *mockSandboxServer) setPhase(name string, phase pb.SandboxPhase) {
@@ -175,7 +172,7 @@ func setupSandboxTest(t *testing.T, mock *mockSandboxServer) (*sandboxClient, fu
 	require.NoError(t, err)
 
 	return newSandboxClient(conn), func() {
-		conn.Close()
+		_ = conn.Close()
 		srv.Stop()
 	}
 }

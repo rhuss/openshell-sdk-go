@@ -52,7 +52,7 @@ func newMockHealthServer(s pb.ServiceStatus, version string, err error) (*grpc.C
 	)
 
 	return conn, func() {
-		conn.Close()
+		_ = conn.Close()
 		srv.Stop()
 	}
 }

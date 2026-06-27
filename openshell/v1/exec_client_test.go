@@ -114,7 +114,7 @@ func setupExecTest(t *testing.T, mock *mockExecServer) (*execClient, func()) {
 	require.NoError(t, err)
 
 	return newExecClient(conn), func() {
-		conn.Close()
+		_ = conn.Close()
 		srv.Stop()
 	}
 }
@@ -211,7 +211,7 @@ func TestExecStream(t *testing.T) {
 	stream, err := client.Stream(context.Background(), "sb-1", []string{"cat"})
 	require.NoError(t, err)
 	require.NotNil(t, stream)
-	defer stream.Close()
+	defer func() { _ = stream.Close() }()
 
 	chunk1, err := stream.Next()
 	require.NoError(t, err)
@@ -261,7 +261,7 @@ func TestExecStream_EmptyOutput(t *testing.T) {
 
 	stream, err := client.Stream(context.Background(), "sb-1", []string{"true"})
 	require.NoError(t, err)
-	defer stream.Close()
+	defer func() { _ = stream.Close() }()
 
 	_, err = stream.Next()
 	assert.ErrorIs(t, err, io.EOF)
@@ -286,7 +286,7 @@ func TestExecInteractive(t *testing.T) {
 	session, err := client.Interactive(context.Background(), "sb-1", []string{"/bin/bash"}, 80, 24)
 	require.NoError(t, err)
 	require.NotNil(t, session)
-	defer session.Close()
+	defer func() { _ = session.Close() }()
 
 	// Read output
 	buf := make([]byte, 1024)
@@ -320,7 +320,7 @@ func TestExecInteractive_Write(t *testing.T) {
 
 	session, err := client.Interactive(context.Background(), "sb-1", []string{"/bin/sh"}, 80, 24)
 	require.NoError(t, err)
-	defer session.Close()
+	defer func() { _ = session.Close() }()
 
 	n, err := session.Write([]byte("ls\n"))
 	require.NoError(t, err)
@@ -338,7 +338,7 @@ func TestExecInteractive_Resize(t *testing.T) {
 
 	session, err := client.Interactive(context.Background(), "sb-1", []string{"/bin/sh"}, 80, 24)
 	require.NoError(t, err)
-	defer session.Close()
+	defer func() { _ = session.Close() }()
 
 	err = session.Resize(120, 40)
 	require.NoError(t, err)
@@ -384,5 +384,5 @@ func TestExecInteractive_ExitCode(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 130, exitCode)
 
-	session.Close()
+	_ = session.Close()
 }

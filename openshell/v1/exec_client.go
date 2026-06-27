@@ -101,16 +101,18 @@ func (s *execStream) Next() (*ExecChunk, error) {
 			return nil, fromGRPCError(err)
 		}
 
-		chunk, code, convErr := execChunkFromEvent(ev)
+		chunk, code, isExit, convErr := execChunkFromEvent(ev)
 		if convErr != nil {
 			return nil, convErr
 		}
 		if chunk != nil {
 			return chunk, nil
 		}
-		s.exitCode = code
-		s.exited = true
-		return nil, io.EOF
+		if isExit {
+			s.exitCode = code
+			s.exited = true
+			return nil, io.EOF
+		}
 	}
 }
 
@@ -172,14 +174,18 @@ func (s *interactiveSession) Read(p []byte) (int, error) {
 		return 0, fromGRPCError(err)
 	}
 
-	chunk, code, convErr := execChunkFromEvent(ev)
+	chunk, code, isExit, convErr := execChunkFromEvent(ev)
 	if convErr != nil {
 		return 0, convErr
 	}
 
-	if chunk == nil {
+	if isExit {
 		s.exitCode = code
 		s.exited = true
+		return 0, io.EOF
+	}
+
+	if chunk == nil {
 		return 0, io.EOF
 	}
 
@@ -228,11 +234,11 @@ func (s *interactiveSession) ExitCode() (int, error) {
 			return -1, fromGRPCError(err)
 		}
 
-		_, code, convErr := execChunkFromEvent(ev)
+		_, code, isExit, convErr := execChunkFromEvent(ev)
 		if convErr != nil {
 			return -1, convErr
 		}
-		if code >= 0 {
+		if isExit {
 			s.exitCode = code
 			s.exited = true
 			return s.exitCode, nil
@@ -254,9 +260,9 @@ func (s *interactiveSession) Close() error {
 // Package-level converter functions to avoid circular imports
 // (internal/converter imports v1 for domain types).
 
-func execChunkFromEvent(event *pb.ExecSandboxEvent) (*ExecChunk, int, error) {
+func execChunkFromEvent(event *pb.ExecSandboxEvent) (chunk *ExecChunk, exitCode int, isExit bool, err error) {
 	if event == nil {
-		return nil, -1, fmt.Errorf("nil exec event")
+		return nil, -1, false, fmt.Errorf("nil exec event")
 	}
 
 	switch p := event.Payload.(type) {
@@ -264,16 +270,16 @@ func execChunkFromEvent(event *pb.ExecSandboxEvent) (*ExecChunk, int, error) {
 		return &ExecChunk{
 			Stream: StreamStdout,
 			Data:   p.Stdout.GetData(),
-		}, -1, nil
+		}, -1, false, nil
 	case *pb.ExecSandboxEvent_Stderr:
 		return &ExecChunk{
 			Stream: StreamStderr,
 			Data:   p.Stderr.GetData(),
-		}, -1, nil
+		}, -1, false, nil
 	case *pb.ExecSandboxEvent_Exit:
-		return nil, int(p.Exit.GetExitCode()), nil
+		return nil, int(p.Exit.GetExitCode()), true, nil
 	default:
-		return nil, -1, fmt.Errorf("unknown exec event payload type: %T", p)
+		return nil, -1, false, nil
 	}
 }
 
@@ -306,19 +312,19 @@ func execResultFromEvents(events []*pb.ExecSandboxEvent) (*ExecResult, error) {
 	exitCode := -1
 
 	for _, event := range events {
-		chunk, code, err := execChunkFromEvent(event)
+		chunk, code, isExit, err := execChunkFromEvent(event)
 		if err != nil {
 			return nil, err
 		}
-		if chunk != nil {
+		if isExit {
+			exitCode = code
+		} else if chunk != nil {
 			switch chunk.Stream {
 			case StreamStdout:
 				stdout = append(stdout, chunk.Data...)
 			case StreamStderr:
 				stderr = append(stderr, chunk.Data...)
 			}
-		} else {
-			exitCode = code
 		}
 	}
 

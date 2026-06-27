@@ -11,6 +11,7 @@ import (
 // ErrorCode classifies SDK errors by their gRPC origin.
 type ErrorCode int
 
+// ErrorCode values for classifying gRPC errors.
 const (
 	ErrorNotFound         ErrorCode = iota + 1
 	ErrorAlreadyExists

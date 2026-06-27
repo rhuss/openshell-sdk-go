@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"time"
 
-	dm "github.com/rhuss/openshell-sdk-go/proto/datamodelv1"
 	pb "github.com/rhuss/openshell-sdk-go/proto/openshellv1"
 	"google.golang.org/grpc"
 )
@@ -335,20 +334,3 @@ func (s *sandboxClient) Watch(ctx context.Context, name string, _ ...WatchOption
 	return w, nil
 }
 
-// sandboxToProto is kept for potential future use (e.g., Update).
-func sandboxToProto(s *Sandbox) *pb.Sandbox {
-	if s == nil {
-		return nil
-	}
-
-	return &pb.Sandbox{
-		Metadata: &dm.ObjectMeta{
-			Id:              s.ID,
-			Name:            s.Name,
-			CreatedAtMs:     millisFromTime(s.CreatedAt),
-			Labels:          s.Labels,
-			ResourceVersion: s.ResourceVersion,
-		},
-		Spec: sandboxSpecToProto(&s.Spec),
-	}
-}
