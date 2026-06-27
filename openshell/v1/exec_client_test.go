@@ -386,3 +386,45 @@ func TestExecInteractive_ExitCode(t *testing.T) {
 
 	_ = session.Close()
 }
+
+func TestExecInteractive_ConcurrentReadAndExitCode(t *testing.T) {
+	mock := newMockExecServer()
+	mock.interactiveEvents = []*pb.ExecSandboxEvent{
+		{Payload: &pb.ExecSandboxEvent_Stdout{Stdout: &pb.ExecSandboxStdout{Data: []byte("line1\n")}}},
+		{Payload: &pb.ExecSandboxEvent_Stdout{Stdout: &pb.ExecSandboxStdout{Data: []byte("line2\n")}}},
+		{Payload: &pb.ExecSandboxEvent_Stdout{Stdout: &pb.ExecSandboxStdout{Data: []byte("line3\n")}}},
+		{Payload: &pb.ExecSandboxEvent_Exit{Exit: &pb.ExecSandboxExit{ExitCode: 0}}},
+	}
+
+	client, cleanup := setupExecTest(t, mock)
+	defer cleanup()
+
+	session, err := client.Interactive(context.Background(), "sb-1", []string{"sh"}, 80, 24)
+	require.NoError(t, err)
+
+	var wg sync.WaitGroup
+	var readData []byte
+	var readErr error
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		buf := make([]byte, 1024)
+		for {
+			n, err := session.Read(buf)
+			if err != nil {
+				readErr = err
+				return
+			}
+			readData = append(readData, buf[:n]...)
+		}
+	}()
+
+	exitCode, exitErr := session.ExitCode()
+	wg.Wait()
+
+	require.NoError(t, exitErr)
+	assert.Equal(t, 0, exitCode)
+	assert.Equal(t, io.EOF, readErr)
+	assert.Contains(t, string(readData), "line1\n")
+}

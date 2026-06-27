@@ -141,70 +141,91 @@ func (s *execStream) Close() error {
 }
 
 // interactiveSession wraps a bidirectional streaming RPC into the InteractiveSession interface.
+// A background goroutine owns the Recv loop and routes events to dataCh (for Read)
+// and exitCh (for ExitCode), preventing concurrent Recv calls on the stream.
 type interactiveSession struct {
-	stream   grpc.BidiStreamingClient[pb.ExecSandboxInput, pb.ExecSandboxEvent]
-	mu       sync.Mutex
-	sendMu   sync.Mutex
-	buf      []byte
-	exitCode int
-	exited   bool
-	closed   bool
+	stream grpc.BidiStreamingClient[pb.ExecSandboxInput, pb.ExecSandboxEvent]
+	sendMu sync.Mutex
+	dataCh chan []byte
+	exitCh chan int
+	errCh  chan error
+	done   chan struct{}
+	buf    []byte
 }
 
 func newInteractiveSession(stream grpc.BidiStreamingClient[pb.ExecSandboxInput, pb.ExecSandboxEvent]) *interactiveSession {
-	return &interactiveSession{
-		stream:   stream,
-		exitCode: -1,
+	s := &interactiveSession{
+		stream: stream,
+		dataCh: make(chan []byte, 64),
+		exitCh: make(chan int, 1),
+		errCh:  make(chan error, 1),
+		done:   make(chan struct{}),
+	}
+	go s.readLoop()
+	return s
+}
+
+func (s *interactiveSession) readLoop() {
+	defer close(s.dataCh)
+	defer close(s.done)
+	for {
+		ev, err := s.stream.Recv()
+		if err != nil {
+			if err != io.EOF {
+				select {
+				case s.errCh <- fromGRPCError(err):
+				default:
+				}
+			}
+			return
+		}
+
+		chunk, code, isExit, convErr := execChunkFromEvent(ev)
+		if convErr != nil {
+			select {
+			case s.errCh <- convErr:
+			default:
+			}
+			return
+		}
+		if isExit {
+			select {
+			case s.exitCh <- code:
+			default:
+			}
+			return
+		}
+		if chunk != nil {
+			s.dataCh <- chunk.Data
+		}
 	}
 }
 
 func (s *interactiveSession) Read(p []byte) (int, error) {
-	s.mu.Lock()
 	if len(s.buf) > 0 {
 		n := copy(p, s.buf)
 		s.buf = s.buf[n:]
-		s.mu.Unlock()
 		return n, nil
 	}
-	if s.exited {
-		s.mu.Unlock()
-		return 0, io.EOF
-	}
-	s.mu.Unlock()
 
-	ev, err := s.stream.Recv()
-	if err == io.EOF {
-		return 0, io.EOF
+	select {
+	case data, ok := <-s.dataCh:
+		if !ok {
+			select {
+			case err := <-s.errCh:
+				return 0, err
+			default:
+				return 0, io.EOF
+			}
+		}
+		n := copy(p, data)
+		if n < len(data) {
+			s.buf = append(s.buf, data[n:]...)
+		}
+		return n, nil
+	case err := <-s.errCh:
+		return 0, err
 	}
-	if err != nil {
-		return 0, fromGRPCError(err)
-	}
-
-	chunk, code, isExit, convErr := execChunkFromEvent(ev)
-	if convErr != nil {
-		return 0, convErr
-	}
-
-	s.mu.Lock()
-	if isExit {
-		s.exitCode = code
-		s.exited = true
-		s.mu.Unlock()
-		return 0, io.EOF
-	}
-	s.mu.Unlock()
-
-	if chunk == nil {
-		return s.Read(p)
-	}
-
-	s.mu.Lock()
-	n := copy(p, chunk.Data)
-	if n < len(chunk.Data) {
-		s.buf = append(s.buf, chunk.Data[n:]...)
-	}
-	s.mu.Unlock()
-	return n, nil
 }
 
 func (s *interactiveSession) Write(p []byte) (int, error) {
@@ -233,45 +254,24 @@ func (s *interactiveSession) Resize(cols, rows uint32) error {
 }
 
 func (s *interactiveSession) ExitCode() (int, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if s.exited {
-		return s.exitCode, nil
-	}
-
-	for {
-		ev, err := s.stream.Recv()
-		if err == io.EOF {
-			if !s.exited {
-				return -1, &StatusError{Code: ErrorInternal, Message: "stream ended without exit event"}
-			}
-			return s.exitCode, nil
-		}
-		if err != nil {
-			return -1, fromGRPCError(err)
-		}
-
-		_, code, isExit, convErr := execChunkFromEvent(ev)
-		if convErr != nil {
-			return -1, convErr
-		}
-		if isExit {
-			s.exitCode = code
-			s.exited = true
-			return s.exitCode, nil
+	select {
+	case code := <-s.exitCh:
+		return code, nil
+	case err := <-s.errCh:
+		return -1, err
+	case <-s.done:
+		select {
+		case code := <-s.exitCh:
+			return code, nil
+		case err := <-s.errCh:
+			return -1, err
+		default:
+			return -1, &StatusError{Code: ErrorInternal, Message: "stream ended without exit event"}
 		}
 	}
 }
 
 func (s *interactiveSession) Close() error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if s.closed {
-		return nil
-	}
-	s.closed = true
 	return s.stream.CloseSend()
 }
 
