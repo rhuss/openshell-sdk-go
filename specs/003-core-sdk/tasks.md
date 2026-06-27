@@ -178,14 +178,14 @@
 
 ### Tests for US4 ⚠️
 
-- [ ] T051 [US4] Test Upload and Download against mock SSH session server in `openshell/v1/file_client_test.go`
-- [ ] T052 [US4] Test Upload error cases (non-existent local file, transfer interruption) in `openshell/v1/file_client_test.go`
+- [X] T051 [US4] Test Upload and Download against mock SSH session server in `openshell/v1/file_client_test.go`
+- [X] T052 [US4] Test Upload error cases (non-existent local file, transfer interruption) in `openshell/v1/file_client_test.go`
 
 ### Implementation for US4
 
-- [ ] T053 [US4] Define FileInterface in `openshell/v1/file.go`
-- [ ] T054 [US4] Implement fileClient using CreateSshSession RPC internally for Upload and Download in `openshell/v1/file_client.go`
-- [ ] T055 [US4] Wire Files() accessor on Client in `openshell/v1/client.go`
+- [X] T053 [US4] Define FileInterface in `openshell/v1/file.go`
+- [X] T054 [US4] Implement fileClient using CreateSshSession RPC internally for Upload and Download in `openshell/v1/file_client.go`
+- [X] T055 [US4] Wire Files() accessor on Client in `openshell/v1/client.go`
 
 **Checkpoint**: `client.Files().Upload/Download(ctx, ...)` works against mock server. US4 acceptance scenarios verified.
 
