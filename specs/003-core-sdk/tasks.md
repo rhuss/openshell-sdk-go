@@ -19,8 +19,8 @@
 
 **Purpose**: Create package structure and shared documentation
 
-- [ ] T001 Create v1 package directory structure: `openshell/v1/`, `openshell/v1/internal/grpc/`, `openshell/v1/internal/converter/`
-- [ ] T002 Create package doc.go with usage examples in `openshell/v1/doc.go`
+- [x] T001 Create v1 package directory structure: `openshell/v1/`, `openshell/v1/internal/grpc/`, `openshell/v1/internal/converter/`
+- [x] T002 Create package doc.go with usage examples in `openshell/v1/doc.go`
 
 ---
 
@@ -34,23 +34,23 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T003 [P] Test StatusError, ErrorCode, and Is* helpers in `openshell/v1/errors_test.go`
-- [ ] T004 [P] Test gRPC status code to StatusError mapping in `openshell/v1/internal/converter/errors_test.go`
-- [ ] T005 [P] Test timestamp conversions (ms epoch <-> time.Time) in `openshell/v1/internal/converter/time_test.go`
-- [ ] T006 [P] Test NewClient with valid config, empty address, and Close behavior in `openshell/v1/client_test.go`
-- [ ] T007 [P] Test NoAuth and StaticToken implementations in `openshell/v1/auth_test.go`
+- [x] T003 [P] Test StatusError, ErrorCode, and Is* helpers in `openshell/v1/errors_test.go`
+- [x] T004 [P] Test gRPC status code to StatusError mapping in `openshell/v1/internal/converter/errors_test.go`
+- [x] T005 [P] Test timestamp conversions (ms epoch <-> time.Time) in `openshell/v1/internal/converter/time_test.go`
+- [x] T006 [P] Test NewClient with valid config, empty address, and Close behavior in `openshell/v1/client_test.go`
+- [x] T007 [P] Test NoAuth and StaticToken implementations in `openshell/v1/auth_test.go`
 
 ### Implementation for Foundation
 
-- [ ] T008 [P] Implement shared types: SandboxPhase, EventType, StreamType constants, RetryPolicy struct, and TLSConfig struct in `openshell/v1/types.go`
-- [ ] T009 [P] Implement Options structs (CreateOptions, GetOptions, ListOptions, DeleteOptions, UpdateOptions, WatchOptions, WaitOptions, ExecOptions) in `openshell/v1/options.go`
-- [ ] T010 [P] Implement Logger interface in `openshell/v1/logger.go`
-- [ ] T011 [P] Implement AuthProvider interface with NoAuth and StaticToken in `openshell/v1/auth.go`
-- [ ] T012 Implement StatusError, ErrorCode enum, and Is* helper functions (IsNotFound, IsAlreadyExists, IsUnavailable, IsPermissionDenied, IsInvalidArgument, IsDeadlineExceeded, IsCancelled) in `openshell/v1/errors.go`
-- [ ] T013 [P] Implement timestamp converter (ms epoch <-> time.Time) in `openshell/v1/internal/converter/time.go`
-- [ ] T014 [P] Implement gRPC error converter (gRPC status -> StatusError) in `openshell/v1/internal/converter/errors.go`
-- [ ] T015 Implement gRPC connection setup (dial options, TLS config, credentials) in `openshell/v1/internal/grpc/conn.go`
-- [ ] T016 Implement Client struct, NewClient, Close, and ClientInterface with sub-client accessor stubs in `openshell/v1/client.go`
+- [x] T008 [P] Implement shared types: SandboxPhase, EventType, StreamType constants, RetryPolicy struct, and TLSConfig struct in `openshell/v1/types.go`
+- [x] T009 [P] Implement Options structs (CreateOptions, GetOptions, ListOptions, DeleteOptions, UpdateOptions, WatchOptions, WaitOptions, ExecOptions) in `openshell/v1/options.go`
+- [x] T010 [P] Implement Logger interface in `openshell/v1/logger.go`
+- [x] T011 [P] Implement AuthProvider interface with NoAuth and StaticToken in `openshell/v1/auth.go`
+- [x] T012 Implement StatusError, ErrorCode enum, and Is* helper functions (IsNotFound, IsAlreadyExists, IsUnavailable, IsPermissionDenied, IsInvalidArgument, IsDeadlineExceeded, IsCancelled) in `openshell/v1/errors.go`
+- [x] T013 [P] Implement timestamp converter (ms epoch <-> time.Time) in `openshell/v1/internal/converter/time.go`
+- [x] T014 [P] Implement gRPC error converter (gRPC status -> StatusError) in `openshell/v1/internal/converter/errors.go`
+- [x] T015 Implement gRPC connection setup (dial options, TLS config, credentials) in `openshell/v1/internal/grpc/conn.go`
+- [x] T016 Implement Client struct, NewClient, Close, and ClientInterface with sub-client accessor stubs in `openshell/v1/client.go`
 
 **Checkpoint**: Foundation ready. Client can connect to gateway, errors are typed, all shared types exist. US7 acceptance scenarios can be verified.
 
@@ -64,13 +64,13 @@
 
 ### Tests for US5 ⚠️
 
-- [ ] T017 [US5] Test Health.Check success and unavailable error against mock gRPC server in `openshell/v1/health_client_test.go`
+- [x] T017 [US5] Test Health.Check success and unavailable error against mock gRPC server in `openshell/v1/health_client_test.go`
 
 ### Implementation for US5
 
-- [ ] T018 [US5] Define HealthInterface in `openshell/v1/health.go`
-- [ ] T019 [US5] Implement healthClient calling Health RPC in `openshell/v1/health_client.go`
-- [ ] T020 [US5] Wire Health() accessor on Client in `openshell/v1/client.go`
+- [x] T018 [US5] Define HealthInterface in `openshell/v1/health.go`
+- [x] T019 [US5] Implement healthClient calling Health RPC in `openshell/v1/health_client.go`
+- [x] T020 [US5] Wire Health() accessor on Client in `openshell/v1/client.go`
 
 **Checkpoint**: `client.Health().Check(ctx)` works against a mock server. First sub-client pattern established.
 
@@ -84,16 +84,16 @@
 
 ### Tests for US3 ⚠️
 
-- [ ] T021 [P] [US3] Test provider proto <-> SDK type conversion in `openshell/v1/internal/converter/provider_test.go`
-- [ ] T022 [US3] Test Provider CRUD (Create, Get, List, Update, Delete) and Ensure against mock gRPC server in `openshell/v1/provider_client_test.go`
+- [x] T021 [P] [US3] Test provider proto <-> SDK type conversion in `openshell/v1/internal/converter/provider_test.go`
+- [x] T022 [US3] Test Provider CRUD (Create, Get, List, Update, Delete) and Ensure against mock gRPC server in `openshell/v1/provider_client_test.go`
 
 ### Implementation for US3
 
-- [ ] T023 [US3] Define Provider, ProviderSpec domain types and ProviderInterface in `openshell/v1/provider.go`
-- [ ] T024 [US3] Implement provider converter (proto Provider <-> SDK Provider) in `openshell/v1/internal/converter/provider.go`
-- [ ] T025 [US3] Implement providerClient with Create, Get, List, Update, Delete methods in `openshell/v1/provider_client.go`
-- [ ] T026 [US3] Implement Ensure (Get + Create/Update) on providerClient in `openshell/v1/provider_client.go`
-- [ ] T027 [US3] Wire Providers() accessor on Client in `openshell/v1/client.go`
+- [x] T023 [US3] Define Provider, ProviderSpec domain types and ProviderInterface in `openshell/v1/provider.go`
+- [x] T024 [US3] Implement provider converter (proto Provider <-> SDK Provider) in `openshell/v1/internal/converter/provider.go`
+- [x] T025 [US3] Implement providerClient with Create, Get, List, Update, Delete methods in `openshell/v1/provider_client.go`
+- [x] T026 [US3] Implement Ensure (Get + Create/Update) on providerClient in `openshell/v1/provider_client.go`
+- [x] T027 [US3] Wire Providers() accessor on Client in `openshell/v1/client.go`
 
 **Checkpoint**: `client.Providers().Create/Get/List/Update/Delete/Ensure(ctx, ...)` all work against mock server.
 
