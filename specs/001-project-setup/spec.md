@@ -142,8 +142,8 @@ principles are documented with clear descriptions.
 - **FR-007**: Every `.go` file MUST include SPDX license headers:
   `SPDX-FileCopyrightText` and `SPDX-License-Identifier: Apache-2.0`.
 - **FR-008**: Project MUST have a stub `openshell/client.go` with a `Client`
-  struct, `Dial()` function returning `(*Client, error)`, and `Close()`
-  method.
+  struct, `Dial(address string)` function returning `(*Client, error)`, and
+  `Close()` method.
 - **FR-009**: Project MUST have a stub `openshell/client_test.go` with at
   least one test that validates `Dial` with an empty address returns an error.
 - **FR-010**: Integration tests MUST use the `//go:build integration` build
@@ -192,6 +192,27 @@ principles are documented with clear descriptions.
   verified by the go-header linter.
 - **SC-006**: A contributor can go from clone to passing tests in under
   5 minutes following CONTRIBUTING.md instructions.
+
+## Out of Scope
+
+- gRPC proto compilation or code generation (deferred to Phase 1)
+- Release workflows, versioning automation, or publishing
+- Container images, Dockerfiles, or container-based CI
+- Dependency vendoring (standard Go module proxy is used)
+- Code coverage thresholds or coverage reporting services
+
+## Error Handling
+
+- **Missing mise**: The Makefile detects that mise is not installed and prints
+  a message directing the user to `https://mise.jdx.dev` with install
+  instructions. It exits with a non-zero status.
+- **Go version mismatch**: The CI workflow reads the Go version from
+  `mise.toml` so that CI and local development use the same version. If a
+  contributor has a different Go version locally, `mise install` resolves it.
+- **Missing SPDX headers**: The `go-header` linter in `.golangci.yml` reports
+  a clear violation message identifying the file and expected header content.
+- **Test failures**: `make test` propagates the `go test` exit code so CI
+  and local runs fail visibly with standard Go test output.
 
 ## Assumptions
 
