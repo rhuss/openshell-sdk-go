@@ -29,7 +29,7 @@ func TestIntegration_HealthCheck(t *testing.T) {
 	require.NoError(t, err)
 	defer client.Close()
 
-	err = client.Health().Check(context.Background())
+	_, err = client.Health().Check(context.Background())
 	require.NoError(t, err)
 }
 

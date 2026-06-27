@@ -88,11 +88,11 @@ func (f *fileClient) Download(ctx context.Context, sandboxID string, remotePath 
 type defaultSSHTransport struct{}
 
 func (t *defaultSSHTransport) upload(_ context.Context, session *pb.CreateSshSessionResponse, localPath, remotePath string) error {
-	return fmt.Errorf("SSH transport to %s:%d not implemented (session token: %s, local: %s -> remote: %s)",
-		session.GetGatewayHost(), session.GetGatewayPort(), session.GetToken(), localPath, remotePath)
+	return fmt.Errorf("SSH transport to %s:%d not implemented (local: %s -> remote: %s)",
+		session.GetGatewayHost(), session.GetGatewayPort(), localPath, remotePath)
 }
 
 func (t *defaultSSHTransport) download(_ context.Context, session *pb.CreateSshSessionResponse, remotePath, localPath string) error {
-	return fmt.Errorf("SSH transport to %s:%d not implemented (session token: %s, remote: %s -> local: %s)",
-		session.GetGatewayHost(), session.GetGatewayPort(), session.GetToken(), remotePath, localPath)
+	return fmt.Errorf("SSH transport to %s:%d not implemented (remote: %s -> local: %s)",
+		session.GetGatewayHost(), session.GetGatewayPort(), remotePath, localPath)
 }

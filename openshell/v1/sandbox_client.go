@@ -6,6 +6,7 @@ package v1
 import (
 	"context"
 	"fmt"
+	"io"
 	"time"
 
 	pb "github.com/rhuss/openshell-sdk-go/proto/openshellv1"
@@ -143,7 +144,10 @@ func (s *sandboxClient) WaitReady(ctx context.Context, name string, opts ...Wait
 	for {
 		select {
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			if ctx.Err() == context.DeadlineExceeded {
+				return nil, &StatusError{Code: ErrorDeadlineExceeded, Message: fmt.Sprintf("timed out waiting for sandbox %q to become ready", name)}
+			}
+			return nil, &StatusError{Code: ErrorCancelled, Message: fmt.Sprintf("cancelled waiting for sandbox %q to become ready", name)}
 		case <-ticker.C:
 			sb, err = s.Get(ctx, name)
 			if err != nil {
@@ -334,7 +338,7 @@ func (s *sandboxClient) Watch(ctx context.Context, name string, _ ...WatchOption
 				select {
 				case <-w.done:
 				default:
-					if recvErr.Error() != "EOF" {
+					if recvErr != io.EOF {
 						select {
 						case ch <- Event[*Sandbox]{Type: EventError, Object: nil}:
 						default:

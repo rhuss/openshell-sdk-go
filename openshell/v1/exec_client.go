@@ -139,6 +139,7 @@ func (s *execStream) Close() error {
 type interactiveSession struct {
 	stream   grpc.BidiStreamingClient[pb.ExecSandboxInput, pb.ExecSandboxEvent]
 	mu       sync.Mutex
+	sendMu   sync.Mutex
 	buf      []byte
 	exitCode int
 	exited   bool
@@ -154,17 +155,17 @@ func newInteractiveSession(stream grpc.BidiStreamingClient[pb.ExecSandboxInput, 
 
 func (s *interactiveSession) Read(p []byte) (int, error) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	if len(s.buf) > 0 {
 		n := copy(p, s.buf)
 		s.buf = s.buf[n:]
+		s.mu.Unlock()
 		return n, nil
 	}
-
 	if s.exited {
+		s.mu.Unlock()
 		return 0, io.EOF
 	}
+	s.mu.Unlock()
 
 	ev, err := s.stream.Recv()
 	if err == io.EOF {
@@ -179,24 +180,31 @@ func (s *interactiveSession) Read(p []byte) (int, error) {
 		return 0, convErr
 	}
 
+	s.mu.Lock()
 	if isExit {
 		s.exitCode = code
 		s.exited = true
+		s.mu.Unlock()
 		return 0, io.EOF
 	}
+	s.mu.Unlock()
 
 	if chunk == nil {
-		return 0, io.EOF
+		return s.Read(p)
 	}
 
+	s.mu.Lock()
 	n := copy(p, chunk.Data)
 	if n < len(chunk.Data) {
 		s.buf = append(s.buf, chunk.Data[n:]...)
 	}
+	s.mu.Unlock()
 	return n, nil
 }
 
 func (s *interactiveSession) Write(p []byte) (int, error) {
+	s.sendMu.Lock()
+	defer s.sendMu.Unlock()
 	err := s.stream.Send(&pb.ExecSandboxInput{
 		Payload: &pb.ExecSandboxInput_Stdin{Stdin: p},
 	})
@@ -207,6 +215,8 @@ func (s *interactiveSession) Write(p []byte) (int, error) {
 }
 
 func (s *interactiveSession) Resize(cols, rows uint32) error {
+	s.sendMu.Lock()
+	defer s.sendMu.Unlock()
 	return s.stream.Send(&pb.ExecSandboxInput{
 		Payload: &pb.ExecSandboxInput_Resize{
 			Resize: &pb.ExecSandboxWindowResize{

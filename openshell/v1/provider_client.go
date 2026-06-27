@@ -94,9 +94,10 @@ func (p *providerClient) Ensure(ctx context.Context, provider *Provider) (*Provi
 		return p.Create(ctx, provider)
 	}
 
-	provider.ID = existing.ID
-	provider.ResourceVersion = existing.ResourceVersion
-	return p.Update(ctx, provider)
+	updated := *provider
+	updated.ID = existing.ID
+	updated.ResourceVersion = existing.ResourceVersion
+	return p.Update(ctx, &updated)
 }
 
 func providerFromProto(p *dm.Provider) *Provider {
