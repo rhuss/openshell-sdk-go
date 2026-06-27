@@ -20,162 +20,169 @@
 #### FR-001: Copy exactly three proto files
 **Implementation:** mise.toml:178 (`PROTO_FILES="openshell.proto datamodel.proto sandbox.proto"`)
 **Status:** Compliant
-**Notes:** Explicit file list, no wildcards. Exactly 3 files copied.
 
 #### FR-002: Must NOT copy unneeded protos
 **Implementation:** mise.toml:178-186 (explicit file list, individual copy loop)
 **Status:** Compliant
-**Notes:** Only named files are copied. compute_driver.proto, inference.proto, test.proto are excluded by omission.
 
 #### FR-003: Record upstream git commit SHA
 **Implementation:** mise.toml:190-196 (git rev-parse HEAD, write to UPSTREAM_VERSION)
 **Status:** Compliant
-**Notes:** Falls back to "unknown" when not a git repo (edge case handled).
 
 #### FR-004: Generate with protoc + plugins
 **Implementation:** mise.toml:64-73 (protoc with --go_out, --go-grpc_out)
 **Status:** Compliant
-**Notes:** Tool availability checks at mise.toml:39-44.
 
 #### FR-005: Use --go_opt=M flags
-**Implementation:** mise.toml:53-59 (6 M flags for 3 proto files, both go and go-grpc)
+**Implementation:** mise.toml:53-59 (6 M flags for 3 proto files)
 **Status:** Compliant
-**Notes:** Correct mapping matches data-model.md package path table.
 
 #### FR-006: Versioned Go packages
 **Implementation:** mise.toml:50 (mkdir openshellv1, datamodelv1, sandboxv1)
 **Status:** Compliant
-**Notes:** Generated files confirmed in correct directories.
 
 #### FR-007: Validation task (staleness detection)
 **Implementation:** mise.toml:82-140 (proto:check generates to temp dir, diffs)
 **Status:** Compliant
-**Notes:** Uses diff -r with --exclude for .proto and UPSTREAM_VERSION.
 
 #### FR-008: Clean task
-**Implementation:** mise.toml:142-159 (find -name "*.pb.go" -delete, rmdir empty dirs)
+**Implementation:** mise.toml:142-159 (find -name "*.pb.go" -delete)
 **Status:** Compliant
-**Notes:** Preserves .proto files and UPSTREAM_VERSION.
 
 #### FR-009: Pin tool versions in mise.toml
-**Implementation:** mise.toml:2-6 (go 1.25, protoc 29.6, protoc-gen-go latest, protoc-gen-go-grpc latest)
+**Implementation:** mise.toml:2-6 (protoc 29.6, protoc-gen-go 1.36.11, protoc-gen-go-grpc 1.6.2)
 **Status:** Compliant
-**Notes:** protoc pinned to exact version matching upstream. Go plugins use "latest" which is acceptable since mise resolves to a specific version at install time.
 
 #### FR-010: Configurable upstream path
-**Implementation:** mise.toml:167 (`UPSTREAM_PATH="${UPSTREAM_PATH:-../OpenShell/proto}"`)
+**Implementation:** mise.toml:167 (`UPSTREAM_PATH` env var with default)
 **Status:** Compliant
-**Notes:** Environment variable with sensible default.
 
 #### FR-011: Proto packages not public API
-**Implementation:** By design (proto/ packages are not re-exported from openshell/)
+**Implementation:** By design (proto/ packages not re-exported from openshell/)
 **Status:** Compliant
-**Notes:** Constitution principle (Proto Isolation) satisfied. openshell/client.go does not import proto packages yet (that's for the core SDK phase).
 
 ### Error Handling
 
-| Error Case | Implemented | Location | Status |
-|---|---|---|---|
-| Upstream path not found | Yes | mise.toml:169-172 | Compliant |
-| protoc/plugins missing | Yes | mise.toml:39-44 | Compliant |
-| Proto syntax errors | Yes | Delegated to protoc | Compliant |
-| No .git in upstream | Yes | mise.toml:191-195 | Compliant |
-
-### Edge Cases
-
-All 4 edge cases from the spec are implemented and verified.
+| Error Case | Location | Status |
+|---|---|---|
+| Upstream path not found | mise.toml:169-172 | Compliant |
+| protoc/plugins missing | mise.toml:39-44 | Compliant |
+| Proto syntax errors | Delegated to protoc | Compliant |
+| No .git in upstream | mise.toml:191-195 | Compliant |
 
 ### Extra Features (Not in Spec)
 
-None found. Implementation matches spec scope exactly.
-
-## Code Quality Notes
-
-- All shell scripts use `set -euo pipefail` for strict error handling
-- Consistent error message format with "ERROR:" prefix and actionable instructions
-- proto:check and proto:gen share identical M flag mappings (DRY violation is acceptable here since they're separate shell scripts embedded in TOML, and extracting shared config would add complexity)
-- Linter configuration correctly excludes proto/ from goheader and revive
+None found.
 
 ## Deep Review Report
 
-### Review Dimensions
+### Review Method
 
-#### 1. Correctness Review
+5 specialized review agents dispatched sequentially (model: opus), each
+reviewing the implementation from a single perspective with no implementation
+context. Findings consolidated and deduplicated below.
 
-**Findings:** 0 Critical, 0 Important, 1 Minor, 1 Info
+### Findings by Dimension
 
-- **[Minor] Unquoted variable expansion in protoc invocation** (mise.toml:70)
-  `$M_FLAGS` is unquoted, relying on word splitting to expand into separate arguments.
-  This works correctly because the flag values contain no spaces, but is technically
-  fragile. Acceptable for this use case since the values are hardcoded constants.
-  **Action:** No fix needed.
+#### 1. Correctness (Agent 1/5)
 
-- **[Info] Go version bump to 1.25** (mise.toml:2, go.mod:3)
-  The implementation subagent upgraded Go from 1.23 to 1.25, likely because the
-  grpc/protobuf dependencies require it. The spec says "Go 1.23+" (a minimum),
-  and go.mod is authoritative. CLAUDE.md should be updated to reflect 1.25.
-  **Action:** Informational only.
+- **[Important] FIXED: protoc plugins pinned to `latest`** (mise.toml:4-5)
+  Pinned to explicit versions: protoc-gen-go 1.36.11, protoc-gen-go-grpc 1.6.2.
 
-#### 2. Architecture Review
+- **[Important] FIXED: `TMPDIR` trap quoting fragile** (mise.toml:99)
+  Renamed to `WORK_DIR`, trap uses single quotes with inner double quotes.
 
-**Findings:** 0 Critical, 0 Important, 0 Minor
+- **[Minor] Unquoted `$M_FLAGS` expansion** (mise.toml:70, 120)
+  Intentional word splitting for multi-argument expansion. Acceptable.
 
-- Proto file layout matches the planned structure exactly
-- Generated packages follow Go naming conventions (openshellv1, not openshell_v1)
-- M flag mapping correctly routes proto packages to versioned Go directories
-- proto:check uses the same generation flags as proto:gen (consistency)
+- **[Minor] `proto:sync` resolves parent via `cd "$UPSTREAM_PATH/.."**
+  Follows physical path through symlinks. Correct for finding `.git`.
 
-#### 3. Security Review
+#### 2. Architecture (Agent 2/5)
 
-**Findings:** 0 Critical, 0 Important, 0 Minor
+- **[Important] ACKNOWLEDGED: DRY violation in M_FLAGS** (mise.toml:53-59, 105-111)
+  M_FLAGS and protoc invocation duplicated between proto:gen and proto:check.
+  Accepted for now: extracting to a shared script adds complexity for 3 proto
+  files. Will refactor if/when a 4th proto is added.
 
-- Shell scripts use `set -euo pipefail` throughout
-- No user input is passed to shell commands unsanitized
-- No secrets or credentials in any configuration files
-- Temp directory cleanup uses `trap` for reliable cleanup (mise.toml:99)
+- **[Minor] Proto file list hardcoded in 3 places**
+  proto:gen, proto:check, and proto:sync each list the 3 filenames independently.
+  Accepted for same reason as above.
 
-#### 4. Production Readiness Review
+- **[Info] Proto layout follows Go conventions correctly.**
+- **[Info] Proto isolation (constitution) holds.**
+- **[Info] CI structure is sound (4 parallel jobs).**
 
-**Findings:** 0 Critical, 0 Important, 1 Minor
+#### 3. Security (Agent 3/5)
 
-- **[Minor] proto:check diff output may be verbose** (mise.toml:131-136)
-  When generated files diverge, the full diff is printed. For large proto files
-  (openshell.pb.go is 412KB), this could produce very long CI output.
-  **Action:** Acceptable for now. Could add `| head -50` in a future iteration.
+- **[Important] FIXED: Supply chain, plugins pinned to `latest`**
+  Same as correctness finding 1. Now pinned to explicit versions.
 
-#### 5. Test Quality Review
+- **[Important] FIXED: Trap quoting**
+  Same as correctness finding 2. Now uses proper quoting.
 
-**Findings:** 0 Critical, 0 Important, 1 Info
+- **[Minor] Path traversal via UPSTREAM_PATH**
+  Developer-only task, not run in CI. Low risk. Accepted.
 
-- **[Info] Generated packages show 0% coverage** (expected)
-  Generated code is not tested directly. proto:check serves as the validation
-  mechanism (verifies generation correctness). The openshell package maintains
-  100% coverage. This is the correct approach for generated code.
+- **[Info] CI permissions follow least privilege (`contents: read`).**
+- **[Info] proto:sync correctly excluded from CI workflows.**
 
-### Summary
+#### 4. Production Readiness (Agent 4/5)
 
-| Dimension | Critical | Important | Minor | Info |
-|-----------|----------|-----------|-------|------|
-| Correctness | 0 | 0 | 1 | 1 |
-| Architecture | 0 | 0 | 0 | 0 |
-| Security | 0 | 0 | 0 | 0 |
-| Production | 0 | 0 | 1 | 0 |
-| Test Quality | 0 | 0 | 0 | 1 |
-| **Total** | **0** | **0** | **2** | **2** |
+- **[Important] FIXED: Non-reproducible plugin versions**
+  Same as correctness finding 1. Now pinned.
+
+- **[Important] ACKNOWLEDGED: proto:check diff could flag non-generated files**
+  The `--exclude` flags handle `.proto` and `UPSTREAM_VERSION`. Any other
+  non-generated file in proto/ subdirs would cause a spurious failure.
+  Accepted: this is the desired behavior (proto/ subdirs should only contain
+  generated files).
+
+- **[Minor] FIXED: TMPDIR variable shadows system env**
+  Renamed to WORK_DIR.
+
+- **[Minor] Cross-platform: bash scripts won't work on Windows**
+  Acceptable per spec (target: Linux, macOS). Windows not in scope.
+
+#### 5. Test Quality (Agent 5/5)
+
+- **[Important] ACKNOWLEDGED: No Go tests for generated proto code**
+  The spec focuses on the generation pipeline, not on testing generated types.
+  Go-level tests (instantiate messages, verify stubs) belong in the core SDK
+  phase (brainstorm 004). proto:check validates generation correctness.
+
+- **[Important] ACKNOWLEDGED: proto:check duplicates proto:gen logic**
+  Same as architecture DRY finding. Accepted for now.
+
+- **[Minor] Edge case paths (missing tools, syntax errors) untested in CI**
+  These are developer-facing error paths. Testing would require removing
+  tools from PATH, which is fragile in CI. Accepted.
+
+- **[Info] proto:check in CI task deps is well-designed.**
+
+### Fix Summary
+
+| Finding | Severity | Action | Status |
+|---------|----------|--------|--------|
+| Plugin versions `latest` | Important | Pinned to 1.36.11 / 1.6.2 | FIXED |
+| Trap quoting fragile | Important | Single-quoted trap, renamed var | FIXED |
+| TMPDIR shadows system var | Minor | Renamed to WORK_DIR | FIXED |
+| DRY: M_FLAGS duplicated | Important | Accepted (3 files, refactor later) | ACKNOWLEDGED |
+| No Go tests for generated code | Important | Out of scope (core SDK phase) | ACKNOWLEDGED |
+| proto:check diff false positives | Important | Desired behavior | ACKNOWLEDGED |
 
 ### Gate Outcome: **PASS**
 
-No Critical or Important findings. 2 Minor findings (both acceptable as-is,
-no code changes required). 2 Informational notes documented for future reference.
+0 Critical findings. 3 Important findings fixed, 3 Important acknowledged with
+justification. All Minor findings documented. `make ci` passes after fixes.
 
 ### Verification
 
 ```
 $ make ci
 [lint] 0 issues.
-[build] Finished
+[build] Finished in 435ms
 [test] ok (coverage: 100.0% openshell)
 [proto:check] Proto check passed: generated files are up to date.
+Finished in 1.10s
 ```
-
-All CI checks pass. Implementation is spec-compliant and ready for smoke test.

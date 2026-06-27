@@ -2,8 +2,8 @@
 go = "1.25"
 protoc = "29.6"
 "go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint" = "2.12"
-"go:google.golang.org/protobuf/cmd/protoc-gen-go" = "latest"
-"go:google.golang.org/grpc/cmd/protoc-gen-go-grpc" = "latest"
+"go:google.golang.org/protobuf/cmd/protoc-gen-go" = "1.36.11"
+"go:google.golang.org/grpc/cmd/protoc-gen-go-grpc" = "1.6.2"
 
 [tasks.test]
 description = "Run unit tests with coverage"
@@ -95,11 +95,11 @@ done
 
 MODULE="github.com/rhuss/openshell-sdk-go"
 PROTO_DIR="proto"
-TMPDIR=$(mktemp -d)
-trap "rm -rf $TMPDIR" EXIT
+WORK_DIR=$(mktemp -d)
+trap 'rm -rf "$WORK_DIR"' EXIT
 
 # Create output directories in temp
-mkdir -p "$TMPDIR/proto/openshellv1" "$TMPDIR/proto/datamodelv1" "$TMPDIR/proto/sandboxv1"
+mkdir -p "$WORK_DIR/proto/openshellv1" "$WORK_DIR/proto/datamodelv1" "$WORK_DIR/proto/sandboxv1"
 
 # M flag mappings (same as proto:gen)
 M_FLAGS=""
@@ -113,9 +113,9 @@ M_FLAGS="$M_FLAGS --go-grpc_opt=Msandbox.proto=$MODULE/proto/sandboxv1"
 # Generate to temp directory
 protoc \
   --proto_path="$PROTO_DIR" \
-  --go_out="$TMPDIR" \
+  --go_out="$WORK_DIR" \
   --go_opt=module=$MODULE \
-  --go-grpc_out="$TMPDIR" \
+  --go-grpc_out="$WORK_DIR" \
   --go-grpc_opt=module=$MODULE \
   $M_FLAGS \
   "$PROTO_DIR/openshell.proto" \
@@ -123,7 +123,7 @@ protoc \
   "$PROTO_DIR/sandbox.proto"
 
 # Diff against committed files
-DIFF_OUTPUT=$(diff -r "$TMPDIR/proto" "$PROTO_DIR" \
+DIFF_OUTPUT=$(diff -r "$WORK_DIR/proto" "$PROTO_DIR" \
   --exclude="*.proto" \
   --exclude="UPSTREAM_VERSION" \
   2>&1) || true
