@@ -3,6 +3,8 @@
 
 package v1
 
+import "time"
+
 // CreateOptions configures resource creation.
 type CreateOptions struct{}
 
@@ -29,7 +31,9 @@ type WatchOptions struct {
 }
 
 // WaitOptions configures wait behavior. Use context for timeout control.
-type WaitOptions struct{}
+type WaitOptions struct {
+	PollInterval time.Duration
+}
 
 // ExecOptions configures command execution.
 type ExecOptions struct {

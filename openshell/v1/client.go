@@ -32,8 +32,7 @@ type ClientInterface interface {
 	Close() error
 }
 
-// SandboxInterface is a placeholder for sandbox operations (implemented in Phase 5).
-type SandboxInterface interface{}
+// SandboxInterface is defined in sandbox.go
 
 // ProviderInterface is defined in provider.go
 
@@ -90,7 +89,7 @@ func NewClient(cfg Config) (*Client, error) {
 		config: cfg,
 	}
 
-	c.sandboxes = &stubSandbox{}
+	c.sandboxes = newSandboxClient(conn)
 	c.providers = newProviderClient(conn)
 	c.exec = &stubExec{}
 	c.files = &stubFile{}
@@ -122,6 +121,5 @@ func (c *Client) Close() error {
 	return c.closeErr
 }
 
-type stubSandbox struct{}
 type stubExec struct{}
 type stubFile struct{}

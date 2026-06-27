@@ -107,19 +107,19 @@
 
 ### Tests for US1 ⚠️
 
-- [ ] T028 [P] [US1] Test sandbox proto <-> SDK type conversion (including SandboxPhase mapping) in `openshell/v1/internal/converter/sandbox_test.go`
-- [ ] T029 [US1] Test Sandbox CRUD (Create, Get, List, Delete) against mock gRPC server in `openshell/v1/sandbox_client_test.go`
-- [ ] T030 [US1] Test AttachProvider, DetachProvider, ListProviders against mock gRPC server in `openshell/v1/sandbox_client_test.go`
-- [ ] T031 [US1] Test WaitReady (success, timeout, sandbox-failed cases) against mock gRPC server in `openshell/v1/sandbox_client_test.go`
+- [x] T028 [P] [US1] Test sandbox proto <-> SDK type conversion (including SandboxPhase mapping) in `openshell/v1/internal/converter/sandbox_test.go`
+- [x] T029 [US1] Test Sandbox CRUD (Create, Get, List, Delete) against mock gRPC server in `openshell/v1/sandbox_client_test.go`
+- [x] T030 [US1] Test AttachProvider, DetachProvider, ListProviders against mock gRPC server in `openshell/v1/sandbox_client_test.go`
+- [x] T031 [US1] Test WaitReady (success, timeout, sandbox-failed cases) against mock gRPC server in `openshell/v1/sandbox_client_test.go`
 
 ### Implementation for US1
 
-- [ ] T032 [US1] Define Sandbox, SandboxSpec, SandboxCondition domain types and SandboxInterface in `openshell/v1/sandbox.go`
-- [ ] T033 [US1] Implement sandbox converter (proto Sandbox <-> SDK Sandbox, SandboxPhase mapping) in `openshell/v1/internal/converter/sandbox.go`
-- [ ] T034 [US1] Implement sandboxClient with Create, Get, List, Delete methods in `openshell/v1/sandbox_client.go`
-- [ ] T035 [US1] Implement AttachProvider, DetachProvider, ListProviders on sandboxClient in `openshell/v1/sandbox_client.go`
-- [ ] T036 [US1] Implement WaitReady on sandboxClient (poll Get until Ready/Failed or context deadline) in `openshell/v1/sandbox_client.go`
-- [ ] T037 [US1] Wire Sandboxes() accessor on Client in `openshell/v1/client.go`
+- [x] T032 [US1] Define Sandbox, SandboxSpec, SandboxCondition domain types and SandboxInterface in `openshell/v1/sandbox.go`
+- [x] T033 [US1] Implement sandbox converter (proto Sandbox <-> SDK Sandbox, SandboxPhase mapping) in `openshell/v1/internal/converter/sandbox.go`
+- [x] T034 [US1] Implement sandboxClient with Create, Get, List, Delete methods in `openshell/v1/sandbox_client.go`
+- [x] T035 [US1] Implement AttachProvider, DetachProvider, ListProviders on sandboxClient in `openshell/v1/sandbox_client.go`
+- [x] T036 [US1] Implement WaitReady on sandboxClient (poll Get until Ready/Failed or context deadline) in `openshell/v1/sandbox_client.go`
+- [x] T037 [US1] Wire Sandboxes() accessor on Client in `openshell/v1/client.go`
 
 **Checkpoint**: Full sandbox lifecycle works against mock server. US1 acceptance scenarios verified.
 
