@@ -89,6 +89,7 @@ type execStream struct {
 	stream   grpc.ServerStreamingClient[pb.ExecSandboxEvent]
 	exitCode int
 	exited   bool
+	hasExit  bool
 }
 
 func (s *execStream) Next() (*ExecChunk, error) {
@@ -111,6 +112,7 @@ func (s *execStream) Next() (*ExecChunk, error) {
 		if isExit {
 			s.exitCode = code
 			s.exited = true
+			s.hasExit = true
 			return nil, io.EOF
 		}
 	}
@@ -127,6 +129,9 @@ func (s *execStream) ExitCode() (int, error) {
 				return -1, err
 			}
 		}
+	}
+	if !s.hasExit {
+		return -1, &StatusError{Code: ErrorInternal, Message: "stream ended without exit event"}
 	}
 	return s.exitCode, nil
 }
@@ -238,6 +243,9 @@ func (s *interactiveSession) ExitCode() (int, error) {
 	for {
 		ev, err := s.stream.Recv()
 		if err == io.EOF {
+			if !s.exited {
+				return -1, &StatusError{Code: ErrorInternal, Message: "stream ended without exit event"}
+			}
 			return s.exitCode, nil
 		}
 		if err != nil {
