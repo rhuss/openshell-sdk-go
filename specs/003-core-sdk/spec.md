@@ -135,6 +135,30 @@ A Go developer handles errors from SDK operations using typed error helpers (IsN
 - What happens when Watch receives a malformed event from the gateway? An ERROR event must be emitted on the channel rather than crashing the consumer.
 - What happens when the client is used after Close is called? All subsequent calls must return an error indicating the client is closed.
 
+## Clarifications
+
+### Session 2026-06-27
+
+- Q: Is the Client safe for concurrent use from multiple goroutines? → A: Yes, the Client and all sub-clients MUST be safe for concurrent use. This is standard Go convention for client libraries.
+- Q: What is explicitly out of scope for Phase 1? → A: Service exposure, provider profiles, credential refresh, policy management, configuration management, SSH session management, TCP forwarding, logging RPCs, and all supervisor/internal RPCs. These are deferred to Phase 2a/2b.
+- Q: Does the SDK validate resource names client-side? → A: No. The SDK passes names through to the gateway, which enforces naming rules. Invalid names result in a typed InvalidArgument error from the gateway.
+- Q: Does NewClient connect eagerly or lazily? → A: Eagerly. NewClient establishes the gRPC connection during construction and returns an error if the gateway is unreachable. Consumers know immediately whether the connection is valid.
+- Q: Should the SDK provide logging or tracing hooks? → A: The SDK accepts an optional structured logger interface for debug/trace output. No logging occurs by default. Detailed observability is deferred to a future phase.
+
+## Out of Scope
+
+The following capabilities are explicitly excluded from Phase 1 and deferred to later phases:
+
+- Service exposure (ExposeService, GetService, ListServices, DeleteService)
+- Provider profiles (ListProfiles, GetProfile, ImportProfiles, UpdateProfiles, DeleteProfile)
+- Provider credential refresh (GetRefreshStatus, ConfigureRefresh, RotateCredential, DeleteRefresh)
+- Policy management (GetStatus, List, GetDraft, draft chunk operations, history)
+- Configuration management (GetSandboxConfig, GetGatewayConfig, Update)
+- SSH session management (CreateSession, RevokeSession)
+- TCP forwarding (ForwardTCP)
+- Logging RPCs
+- Supervisor/internal RPCs (ConnectSupervisor, RelayStream, PushSandboxLogs, etc.)
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
@@ -155,6 +179,9 @@ A Go developer handles errors from SDK operations using typed error helpers (IsN
 - **FR-014**: All operations MUST accept a context.Context as the first parameter for cancellation and deadline propagation.
 - **FR-015**: SDK MUST convert between internal proto types and public domain types using internal converter functions that are not exported.
 - **FR-016**: SDK MUST namespace its public API under a version path (v1) so future API versions can coexist without breaking existing consumers.
+- **FR-017**: The Client and all sub-clients MUST be safe for concurrent use from multiple goroutines.
+- **FR-018**: NewClient MUST establish the gateway connection eagerly and return an error if the gateway is unreachable, so consumers get immediate feedback on connectivity.
+- **FR-019**: SDK MUST accept an optional structured logger interface for debug and trace output. No logging occurs when no logger is configured.
 
 ### Key Entities
 
