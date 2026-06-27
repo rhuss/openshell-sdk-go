@@ -148,10 +148,7 @@ func (s *sandboxClient) WaitReady(ctx context.Context, name string, opts ...Wait
 	for {
 		select {
 		case <-ctx.Done():
-			if ctx.Err() == context.DeadlineExceeded {
-				return nil, &StatusError{Code: ErrorDeadlineExceeded, Message: fmt.Sprintf("timed out waiting for sandbox %q to become ready", name)}
-			}
-			return nil, &StatusError{Code: ErrorCancelled, Message: fmt.Sprintf("cancelled waiting for sandbox %q to become ready", name)}
+			return nil, ctx.Err()
 		case <-ticker.C:
 			sb, err = s.Get(ctx, name)
 			if err != nil {
