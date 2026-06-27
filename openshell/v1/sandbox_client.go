@@ -48,8 +48,12 @@ func (s *sandboxClient) Get(ctx context.Context, name string) (*Sandbox, error) 
 func (s *sandboxClient) List(ctx context.Context, opts ...ListOptions) ([]*Sandbox, error) {
 	req := &pb.ListSandboxesRequest{}
 	if len(opts) > 0 {
-		req.Limit = uint32(opts[0].Limit)
-		req.Offset = uint32(opts[0].Offset)
+		if opts[0].Limit > 0 {
+			req.Limit = uint32(opts[0].Limit)
+		}
+		if opts[0].Offset > 0 {
+			req.Offset = uint32(opts[0].Offset)
+		}
 		req.LabelSelector = opts[0].LabelSelector
 	}
 

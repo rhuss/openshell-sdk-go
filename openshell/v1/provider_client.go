@@ -86,6 +86,9 @@ func (p *providerClient) Delete(ctx context.Context, name string) error {
 }
 
 func (p *providerClient) Ensure(ctx context.Context, provider *Provider) (*Provider, error) {
+	if provider == nil {
+		return nil, &StatusError{Code: ErrorInvalidArgument, Message: "provider must not be nil"}
+	}
 	existing, err := p.Get(ctx, provider.Name)
 	if err != nil {
 		if !IsNotFound(err) {

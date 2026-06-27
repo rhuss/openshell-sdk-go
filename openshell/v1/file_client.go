@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	pb "github.com/rhuss/openshell-sdk-go/proto/openshellv1"
 	"google.golang.org/grpc"
@@ -53,7 +54,9 @@ func (f *fileClient) Upload(ctx context.Context, sandboxID string, localPath str
 	}
 
 	defer func() {
-		_, _ = f.client.RevokeSshSession(ctx, &pb.RevokeSshSessionRequest{
+		revokeCtx, revokeCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer revokeCancel()
+		_, _ = f.client.RevokeSshSession(revokeCtx, &pb.RevokeSshSessionRequest{
 			Token: session.GetToken(),
 		})
 	}()
@@ -77,7 +80,9 @@ func (f *fileClient) Download(ctx context.Context, sandboxID string, remotePath 
 	}
 
 	defer func() {
-		_, _ = f.client.RevokeSshSession(ctx, &pb.RevokeSshSessionRequest{
+		revokeCtx, revokeCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer revokeCancel()
+		_, _ = f.client.RevokeSshSession(revokeCtx, &pb.RevokeSshSessionRequest{
 			Token: session.GetToken(),
 		})
 	}()
