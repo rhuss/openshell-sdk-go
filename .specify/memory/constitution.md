@@ -42,6 +42,31 @@ required packages. Test dependencies (testify) are acceptable. Every new
 dependency requires justification. Prefer stdlib solutions over third-party
 packages when the stdlib solution is adequate.
 
+### VI. Secrets Never Leak
+
+Sensitive values (tokens, credentials, API keys, session secrets) must
+never appear in error messages, log output, or public response types.
+Credential fields in domain types are write-only: set during Create or
+Update, never returned by Get or List. Error messages must omit secrets
+even in debug/development builds. This principle applies to both SDK
+code and test fixtures.
+
+### VII. Deep Copy at Boundaries
+
+Maps, slices, and other mutable reference types crossing the proto/SDK
+boundary must be deep-copied. The converter layer must not share
+references between internal proto state and public SDK types. Mutations
+to a returned SDK struct must never affect the proto message it was
+converted from, and vice versa.
+
+### VIII. Doc Examples Compile
+
+Code examples in package documentation (doc.go, godoc comments) must
+use actual function signatures, type names, and argument counts. When
+a public API signature changes, all documentation examples referencing
+it must be updated in the same commit. Stale examples that do not
+compile are treated as bugs.
+
 ## Development Standards
 
 - All `.go` files carry SPDX Apache-2.0 license headers
@@ -64,4 +89,4 @@ for Go. Amendments require documentation and a clear migration plan for
 any breaking changes. All pull requests must verify compliance with these
 principles.
 
-**Version**: 1.0.0 | **Ratified**: 2026-06-27 | **Last Amended**: 2026-06-27
+**Version**: 1.1.0 | **Ratified**: 2026-06-27 | **Last Amended**: 2026-06-27
