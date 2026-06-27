@@ -1,0 +1,6 @@
+
+# spex: generated/local files (only constitution is committed)
+**/.claude/
+**/.specify/**
+!**/.specify/memory/
+!**/.specify/memory/constitution.md
