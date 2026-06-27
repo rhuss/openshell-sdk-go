@@ -36,8 +36,7 @@ type ClientInterface interface {
 
 // ProviderInterface is defined in provider.go
 
-// ExecInterface is a placeholder for exec operations (implemented in Phase 7).
-type ExecInterface interface{}
+// ExecInterface is defined in exec.go
 
 // FileInterface is a placeholder for file operations (implemented in Phase 8).
 type FileInterface interface{}
@@ -91,7 +90,7 @@ func NewClient(cfg Config) (*Client, error) {
 
 	c.sandboxes = newSandboxClient(conn)
 	c.providers = newProviderClient(conn)
-	c.exec = &stubExec{}
+	c.exec = newExecClient(conn)
 	c.files = &stubFile{}
 	c.health = newHealthClient(conn)
 
@@ -121,5 +120,4 @@ func (c *Client) Close() error {
 	return c.closeErr
 }
 
-type stubExec struct{}
 type stubFile struct{}

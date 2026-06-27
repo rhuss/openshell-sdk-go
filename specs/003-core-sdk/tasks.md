@@ -153,18 +153,18 @@
 
 ### Tests for US2 ⚠️
 
-- [ ] T042 [P] [US2] Test exec event conversion (ExecSandboxEvent -> ExecChunk/ExecResult) in `openshell/v1/internal/converter/exec_test.go`
-- [ ] T043 [US2] Test Run (collect stream into ExecResult) and Stream (iterate ExecChunks) against mock streaming server in `openshell/v1/exec_client_test.go`
-- [ ] T044 [US2] Test Interactive session (bidirectional stream, Read/Write/Resize/Close) against mock bidirectional server in `openshell/v1/exec_client_test.go`
+- [X] T042 [P] [US2] Test exec event conversion (ExecSandboxEvent -> ExecChunk/ExecResult) in `openshell/v1/internal/converter/exec_test.go`
+- [X] T043 [US2] Test Run (collect stream into ExecResult) and Stream (iterate ExecChunks) against mock streaming server in `openshell/v1/exec_client_test.go`
+- [X] T044 [US2] Test Interactive session (bidirectional stream, Read/Write/Resize/Close) against mock bidirectional server in `openshell/v1/exec_client_test.go`
 
 ### Implementation for US2
 
-- [ ] T045 [US2] Define ExecResult, ExecStream, ExecChunk, InteractiveSession, StreamType types and ExecInterface in `openshell/v1/exec.go`
-- [ ] T046 [US2] Implement exec converter (ExecSandboxEvent oneof -> ExecChunk) in `openshell/v1/internal/converter/exec.go`
-- [ ] T047 [US2] Implement execClient.Run (ExecSandbox RPC, collect all events into ExecResult) in `openshell/v1/exec_client.go`
-- [ ] T048 [US2] Implement execClient.Stream (ExecSandbox RPC, yield ExecChunks via Next(), track exit code) in `openshell/v1/exec_client.go`
-- [ ] T049 [US2] Implement execClient.Interactive (ExecSandboxInteractive bidirectional stream, io.Reader/Writer, Resize) in `openshell/v1/exec_client.go`
-- [ ] T050 [US2] Wire Exec() accessor on Client in `openshell/v1/client.go`
+- [X] T045 [US2] Define ExecResult, ExecStream, ExecChunk, InteractiveSession, StreamType types and ExecInterface in `openshell/v1/exec.go`
+- [X] T046 [US2] Implement exec converter (ExecSandboxEvent oneof -> ExecChunk) in `openshell/v1/internal/converter/exec.go`
+- [X] T047 [US2] Implement execClient.Run (ExecSandbox RPC, collect all events into ExecResult) in `openshell/v1/exec_client.go`
+- [X] T048 [US2] Implement execClient.Stream (ExecSandbox RPC, yield ExecChunks via Next(), track exit code) in `openshell/v1/exec_client.go`
+- [X] T049 [US2] Implement execClient.Interactive (ExecSandboxInteractive bidirectional stream, io.Reader/Writer, Resize) in `openshell/v1/exec_client.go`
+- [X] T050 [US2] Wire Exec() accessor on Client in `openshell/v1/client.go`
 
 **Checkpoint**: All three exec modes work against mock server. US2 acceptance scenarios verified.
 
