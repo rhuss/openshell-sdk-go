@@ -220,3 +220,6 @@ and `_grpc.pb.go` files are removed while `.proto` files remain.
   requiring protoc on the consumer's machine.
 - Generated `.pb.go` files are committed to the repository to avoid build-time
   proto compilation requirements for SDK consumers.
+- Generated `.pb.go` files are exempt from the SPDX license header requirement
+  since they are machine-produced by protoc. The goheader linter must be
+  configured to skip files in `proto/` subdirectories.

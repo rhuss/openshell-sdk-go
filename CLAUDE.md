@@ -39,12 +39,33 @@ Every `.go` file must start with:
 // SPDX-License-Identifier: Apache-2.0
 ```
 
+## Proto Generation
+
+Proto tasks for syncing upstream `.proto` files and generating Go bindings:
+
+```bash
+mise run proto:sync    # Copy proto files from upstream OpenShell repo
+mise run proto:gen     # Generate Go bindings with protoc
+mise run proto:check   # Verify generated files are up to date (CI)
+mise run proto:clean   # Remove all generated .pb.go files
+```
+
+- Set `UPSTREAM_PATH` env var to override the default upstream path (`../OpenShell/proto/`)
+- Generated `.pb.go` files are committed to the repo
+- Generated files are exempt from SPDX license header checks
+
 ## Project Structure
 
 ```
 openshell/          # SDK package (Client, Dial, Close)
+proto/              # Proto source and generated Go packages
+  *.proto           # Upstream proto files (synced via proto:sync)
+  UPSTREAM_VERSION  # Git SHA of upstream at sync time
+  openshellv1/      # Generated: gRPC service + messages
+  datamodelv1/      # Generated: shared data types
+  sandboxv1/        # Generated: sandbox types
 mise.toml           # Tool versions and task definitions
 Makefile            # Build shim delegating to mise
 .golangci.yml       # Linter configuration
-.github/workflows/  # CI pipeline (lint, test, build)
+.github/workflows/  # CI pipeline (lint, test, build, proto:check)
 ```

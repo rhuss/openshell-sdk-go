@@ -22,9 +22,9 @@ foundational (sync must exist before gen). US3 and US4 build on top.
 
 **Purpose**: Pin protoc and plugin versions, add Go module dependencies
 
-- [ ] T001 Add protoc, protoc-gen-go, and protoc-gen-go-grpc to mise.toml tools section
-- [ ] T002 Add google.golang.org/protobuf and google.golang.org/grpc dependencies to go.mod via `go get`
-- [ ] T003 Update .golangci.yml to exclude proto/ subdirectories from goheader linter
+- [x] T001 Add protoc, protoc-gen-go, and protoc-gen-go-grpc to mise.toml tools section
+- [x] T002 Add google.golang.org/protobuf and google.golang.org/grpc dependencies to go.mod via `go get`
+- [x] T003 Update .golangci.yml to exclude proto/ subdirectories from goheader linter
 
 ---
 
@@ -37,12 +37,12 @@ UPSTREAM_VERSION contains a commit SHA
 
 ### Implementation for User Story 2
 
-- [ ] T004 [US2] Create proto/ directory and add proto:sync mise task in mise.toml
-- [ ] T005 [US2] Implement proto:sync shell script that copies openshell.proto, datamodel.proto, sandbox.proto from upstream path (default: ../OpenShell/proto/) to proto/
-- [ ] T006 [US2] Add upstream commit SHA recording to proto:sync (writes to proto/UPSTREAM_VERSION, or "unknown" if not a git repo)
-- [ ] T007 [US2] Add configurable upstream path support via UPSTREAM_PATH env var to proto:sync
-- [ ] T008 [US2] Add error handling to proto:sync for missing upstream path
-- [ ] T009 [US2] Run proto:sync and verify all 3 proto files are copied with correct content, and UPSTREAM_VERSION contains a valid SHA
+- [x] T004 [US2] Create proto/ directory and add proto:sync mise task in mise.toml
+- [x] T005 [US2] Implement proto:sync shell script that copies openshell.proto, datamodel.proto, sandbox.proto from upstream path (default: ../OpenShell/proto/) to proto/
+- [x] T006 [US2] Add upstream commit SHA recording to proto:sync (writes to proto/UPSTREAM_VERSION, or "unknown" if not a git repo)
+- [x] T007 [US2] Add configurable upstream path support via UPSTREAM_PATH env var to proto:sync
+- [x] T008 [US2] Add error handling to proto:sync for missing upstream path
+- [x] T009 [US2] Run proto:sync and verify all 3 proto files are copied with correct content, and UPSTREAM_VERSION contains a valid SHA
 
 **Checkpoint**: `mise run proto:sync` works, proto/ contains 3 proto files and UPSTREAM_VERSION
 
@@ -58,14 +58,14 @@ UPSTREAM_VERSION contains a commit SHA
 
 ### Implementation for User Story 1
 
-- [ ] T010 [US1] Add proto:gen mise task in mise.toml
-- [ ] T011 [US1] Implement proto:gen shell script that runs protoc with --go_out, --go-grpc_out, and all --go_opt=M / --go-grpc_opt=M flags per data-model.md mapping
-- [ ] T012 [US1] Add output directory creation (proto/openshellv1/, proto/datamodelv1/, proto/sandboxv1/) to proto:gen
-- [ ] T013 [US1] Add tool availability checks to proto:gen (protoc, protoc-gen-go, protoc-gen-go-grpc) with helpful error messages
-- [ ] T014 [US1] Verify proto:gen fails with a clear message when protoc or plugins are not installed (remove from PATH temporarily, run proto:gen, check error output)
-- [ ] T015 [US1] Run proto:gen and verify generated .pb.go files exist in correct packages
-- [ ] T016 [US1] Verify `go build ./proto/...` compiles all generated packages without errors
-- [ ] T017 [US1] Verify cross-package imports resolve correctly (openshellv1 imports datamodelv1 and sandboxv1)
+- [x] T010 [US1] Add proto:gen mise task in mise.toml
+- [x] T011 [US1] Implement proto:gen shell script that runs protoc with --go_out, --go-grpc_out, and all --go_opt=M / --go-grpc_opt=M flags per data-model.md mapping
+- [x] T012 [US1] Add output directory creation (proto/openshellv1/, proto/datamodelv1/, proto/sandboxv1/) to proto:gen
+- [x] T013 [US1] Add tool availability checks to proto:gen (protoc, protoc-gen-go, protoc-gen-go-grpc) with helpful error messages
+- [x] T014 [US1] Verify proto:gen fails with a clear message when protoc or plugins are not installed (remove from PATH temporarily, run proto:gen, check error output)
+- [x] T015 [US1] Run proto:gen and verify generated .pb.go files exist in correct packages
+- [x] T016 [US1] Verify `go build ./proto/...` compiles all generated packages without errors
+- [x] T017 [US1] Verify cross-package imports resolve correctly (openshellv1 imports datamodelv1 and sandboxv1)
 
 **Checkpoint**: `mise run proto:gen` produces compilable Go packages, `go build ./proto/...` passes
 
@@ -81,11 +81,11 @@ UPSTREAM_VERSION contains a commit SHA
 
 ### Implementation for User Story 3
 
-- [ ] T018 [US3] Add proto:check mise task in mise.toml
-- [ ] T019 [US3] Implement proto:check shell script that generates to a temp directory and diffs against committed files
-- [ ] T020 [US3] Add proto:check to CI workflow in .github/workflows/ci.yml and to mise.toml [tasks.ci] depends list
-- [ ] T021 [US3] Verify proto:check passes with unmodified generated files (exit 0)
-- [ ] T022 [US3] Verify proto:check fails when a .pb.go file is manually edited (exit 1 with diff)
+- [x] T018 [US3] Add proto:check mise task in mise.toml
+- [x] T019 [US3] Implement proto:check shell script that generates to a temp directory and diffs against committed files
+- [x] T020 [US3] Add proto:check to CI workflow in .github/workflows/ci.yml and to mise.toml [tasks.ci] depends list
+- [x] T021 [US3] Verify proto:check passes with unmodified generated files (exit 0)
+- [x] T022 [US3] Verify proto:check fails when a .pb.go file is manually edited (exit 1 with diff)
 
 **Checkpoint**: `mise run proto:check` detects staleness, CI runs it alongside lint/build/test
 
@@ -101,10 +101,10 @@ UPSTREAM_VERSION contains a commit SHA
 
 ### Implementation for User Story 4
 
-- [ ] T023 [US4] Add proto:clean mise task in mise.toml
-- [ ] T024 [US4] Implement proto:clean shell script that removes *.pb.go files recursively under proto/ and removes empty generated subdirectories
-- [ ] T025 [US4] Verify proto:clean preserves .proto files and UPSTREAM_VERSION
-- [ ] T026 [US4] Verify proto:clean removes all .pb.go and _grpc.pb.go files
+- [x] T023 [US4] Add proto:clean mise task in mise.toml
+- [x] T024 [US4] Implement proto:clean shell script that removes *.pb.go files recursively under proto/ and removes empty generated subdirectories
+- [x] T025 [US4] Verify proto:clean preserves .proto files and UPSTREAM_VERSION
+- [x] T026 [US4] Verify proto:clean removes all .pb.go and _grpc.pb.go files
 
 **Checkpoint**: `mise run proto:clean` cleans generated files without affecting sources
 
@@ -114,9 +114,9 @@ UPSTREAM_VERSION contains a commit SHA
 
 **Purpose**: Final validation and documentation
 
-- [ ] T027 [P] Update CLAUDE.md project structure section to include proto/ layout
-- [ ] T028 [P] Commit all generated .pb.go files and proto source files
-- [ ] T029 Run `make ci` to verify full CI pipeline passes (lint + build + test + proto:check)
+- [x] T027 [P] Update CLAUDE.md project structure section to include proto/ layout
+- [x] T028 [P] Commit all generated .pb.go files and proto source files
+- [x] T029 Run `make ci` to verify full CI pipeline passes (lint + build + test + proto:check)
 
 ---
 
