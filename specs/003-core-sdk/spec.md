@@ -132,6 +132,7 @@ A Go developer handles errors from SDK operations using typed error helpers (IsN
 - What happens when context is cancelled during a streaming exec? The stream must close cleanly and return a context cancellation error.
 - What happens when WaitReady is called on a sandbox that transitions to "Failed" instead of "Ready"? The call must return an error indicating the sandbox failed, not block forever.
 - What happens when Upload is called with a path that exists as a directory in the sandbox? An appropriate error must be returned.
+- What happens when a file transfer is interrupted mid-upload or mid-download (e.g., network failure)? The SDK must return an error and must not leave a partial file at the destination path.
 - What happens when Watch receives a malformed event from the gateway? An ERROR event must be emitted on the channel rather than crashing the consumer.
 - What happens when the client is used after Close is called? All subsequent calls must return an error indicating the client is closed.
 
@@ -199,7 +200,7 @@ The following capabilities are explicitly excluded from Phase 1 and deferred to 
 
 - **SC-001**: A Go developer with Kubernetes client-go experience can create a client, manage a sandbox lifecycle (create, wait-ready, exec, delete), and handle errors using typed helpers in under 30 lines of code.
 - **SC-002**: All sub-client interfaces are mockable: a consumer can write a complete unit test suite for their operator without a running gateway by implementing the SDK interfaces.
-- **SC-003**: No proto-generated types or gRPC packages appear in any import path that a consumer needs. The consumer's go.sum does not grow by gRPC dependencies from using the SDK's public API.
+- **SC-003**: No proto-generated types or gRPC packages appear in any import path that a consumer needs. Consumer code never directly imports gRPC or proto packages to use the SDK's public API.
 - **SC-004**: 100% of the ~20 Phase 1 RPCs (Sandbox CRUD + Watch + WaitReady, Provider CRUD + Ensure, Exec Run + Stream + Interactive, File Upload + Download, Health Check, Sandbox-Provider attachment) are covered by the SDK.
 - **SC-005**: Every sub-client operation is tested against an in-process mock gRPC server with at least one positive and one negative (error) test case.
 - **SC-006**: The Watch interface delivers events within 1 second of the gateway emitting them under normal network conditions.
