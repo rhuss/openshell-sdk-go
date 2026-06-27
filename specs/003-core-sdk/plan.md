@@ -84,6 +84,19 @@ openshell/
 
 No constitution violations. No complexity justification needed.
 
+## Global Constraints
+
+These apply to every task implicitly:
+
+- **Go version**: 1.23+ minimum (go.mod currently says 1.25.0)
+- **Module path**: `github.com/rhuss/openshell-sdk-go`
+- **Public API package**: `openshell/v1`
+- **SPDX headers**: Required on all `.go` files (enforced by goheader linter)
+- **Runtime dependencies**: No new dependencies beyond gRPC + protobuf
+- **Test dependencies**: testify (assert/require) only
+- **Concurrency**: Client and all sub-clients MUST be safe for concurrent use
+- **Context**: All operations accept `context.Context` as first parameter
+
 ## Implementation Phases
 
 ### Phase A: Foundation (errors, types, options, converter utilities)

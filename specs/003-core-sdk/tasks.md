@@ -42,7 +42,7 @@
 
 ### Implementation for Foundation
 
-- [ ] T008 [P] Implement shared types: SandboxPhase, EventType, StreamType constants in `openshell/v1/types.go`
+- [ ] T008 [P] Implement shared types: SandboxPhase, EventType, StreamType constants, RetryPolicy struct, and TLSConfig struct in `openshell/v1/types.go`
 - [ ] T009 [P] Implement Options structs (CreateOptions, GetOptions, ListOptions, DeleteOptions, UpdateOptions, WatchOptions, WaitOptions, ExecOptions) in `openshell/v1/options.go`
 - [ ] T010 [P] Implement Logger interface in `openshell/v1/logger.go`
 - [ ] T011 [P] Implement AuthProvider interface with NoAuth and StaticToken in `openshell/v1/auth.go`
