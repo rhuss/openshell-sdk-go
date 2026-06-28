@@ -35,11 +35,11 @@ Last updated: 2026-06-28
 - Multi-gateway client support (multi-cluster)? (from #004)
 - Policy draft operations: transaction pattern vs. individual chunk ops? (from #005)
 - When to brainstorm Phase 3 (operator support)? (from #005)
+- File transfer: API exists but defaultSSHTransport is a stub. Add golang.org/x/crypto/ssh or defer? (from #004, reopened after PR #1 review)
 - Types package path: `openshell/types/` vs `openshell/v1/types/`? (from #006)
 - Should v1/ re-export types via aliases to avoid breaking consumers? (from #006)
 
 ## Resolved Threads
-- File transfer: included in Phase 1 SDK (from #001, resolved in #004)
 - Proto generation: dedicated mise task, not `go generate` (from #002, resolved in #003)
 - API shape: client-go sub-client pattern with interfaces (from #001, resolved in #004)
 - API versioning: `openshell/v1/` namespace from day one (from #001, resolved in #004)
