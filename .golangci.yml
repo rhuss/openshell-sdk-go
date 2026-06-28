@@ -12,6 +12,12 @@ linters:
     - ineffassign
     - revive
     - goheader
+  exclusions:
+    rules:
+      - path: "proto/"
+        linters:
+          - goheader
+          - revive
 
 linters-settings:
   goheader:

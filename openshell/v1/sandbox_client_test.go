@@ -1,0 +1,611 @@
+// SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
+package v1
+
+import (
+	"context"
+	"net"
+	"sync"
+	"testing"
+	"time"
+
+	dm "github.com/rhuss/openshell-sdk-go/proto/datamodelv1"
+	pb "github.com/rhuss/openshell-sdk-go/proto/openshellv1"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
+	"google.golang.org/grpc/test/bufconn"
+	"google.golang.org/protobuf/proto"
+)
+
+type mockSandboxServer struct {
+	pb.UnimplementedOpenShellServer
+	mu         sync.Mutex
+	sandboxes  map[string]*pb.Sandbox
+	providers  map[string][]*dm.Provider
+	createErr  error
+	getErr     error
+	listErr    error
+	deleteErr  error
+	attachErr  error
+	detachErr  error
+	listProvErr error
+	watchEvents []*pb.SandboxStreamEvent
+	watchErr    error
+}
+
+func newMockSandboxServer() *mockSandboxServer {
+	return &mockSandboxServer{
+		sandboxes: make(map[string]*pb.Sandbox),
+		providers: make(map[string][]*dm.Provider),
+	}
+}
+
+func (s *mockSandboxServer) CreateSandbox(_ context.Context, req *pb.CreateSandboxRequest) (*pb.SandboxResponse, error) {
+	if s.createErr != nil {
+		return nil, s.createErr
+	}
+	sb := &pb.Sandbox{
+		Metadata: &dm.ObjectMeta{
+			Id:              "sb-" + req.GetName(),
+			Name:            req.GetName(),
+			CreatedAtMs:     1700000000000,
+			Labels:          req.GetLabels(),
+			ResourceVersion: 1,
+		},
+		Spec:   req.GetSpec(),
+		Status: &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_PROVISIONING},
+	}
+	s.sandboxes[req.GetName()] = sb
+	return &pb.SandboxResponse{Sandbox: sb}, nil
+}
+
+func (s *mockSandboxServer) GetSandbox(_ context.Context, req *pb.GetSandboxRequest) (*pb.SandboxResponse, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.getErr != nil {
+		return nil, s.getErr
+	}
+	sb, ok := s.sandboxes[req.GetName()]
+	if !ok {
+		return nil, status.Errorf(codes.NotFound, "sandbox %q not found", req.GetName())
+	}
+	cloned := proto.Clone(sb).(*pb.Sandbox)
+	return &pb.SandboxResponse{Sandbox: cloned}, nil
+}
+
+func (s *mockSandboxServer) setPhase(name string, phase pb.SandboxPhase) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if sb, ok := s.sandboxes[name]; ok {
+		sb.Status.Phase = phase
+	}
+}
+
+func (s *mockSandboxServer) ListSandboxes(_ context.Context, _ *pb.ListSandboxesRequest) (*pb.ListSandboxesResponse, error) {
+	if s.listErr != nil {
+		return nil, s.listErr
+	}
+	var list []*pb.Sandbox
+	for _, sb := range s.sandboxes {
+		list = append(list, sb)
+	}
+	return &pb.ListSandboxesResponse{Sandboxes: list}, nil
+}
+
+func (s *mockSandboxServer) DeleteSandbox(_ context.Context, req *pb.DeleteSandboxRequest) (*pb.DeleteSandboxResponse, error) {
+	if s.deleteErr != nil {
+		return nil, s.deleteErr
+	}
+	_, ok := s.sandboxes[req.GetName()]
+	if !ok {
+		return nil, status.Errorf(codes.NotFound, "sandbox %q not found", req.GetName())
+	}
+	delete(s.sandboxes, req.GetName())
+	return &pb.DeleteSandboxResponse{Deleted: true}, nil
+}
+
+func (s *mockSandboxServer) AttachSandboxProvider(_ context.Context, req *pb.AttachSandboxProviderRequest) (*pb.AttachSandboxProviderResponse, error) {
+	if s.attachErr != nil {
+		return nil, s.attachErr
+	}
+	sb, ok := s.sandboxes[req.GetSandboxName()]
+	if !ok {
+		return nil, status.Errorf(codes.NotFound, "sandbox %q not found", req.GetSandboxName())
+	}
+	sb.Spec.Providers = append(sb.Spec.Providers, req.GetProviderName())
+	return &pb.AttachSandboxProviderResponse{Sandbox: sb, Attached: true}, nil
+}
+
+func (s *mockSandboxServer) DetachSandboxProvider(_ context.Context, req *pb.DetachSandboxProviderRequest) (*pb.DetachSandboxProviderResponse, error) {
+	if s.detachErr != nil {
+		return nil, s.detachErr
+	}
+	sb, ok := s.sandboxes[req.GetSandboxName()]
+	if !ok {
+		return nil, status.Errorf(codes.NotFound, "sandbox %q not found", req.GetSandboxName())
+	}
+	return &pb.DetachSandboxProviderResponse{Sandbox: sb, Detached: true}, nil
+}
+
+func (s *mockSandboxServer) ListSandboxProviders(_ context.Context, req *pb.ListSandboxProvidersRequest) (*pb.ListSandboxProvidersResponse, error) {
+	if s.listProvErr != nil {
+		return nil, s.listProvErr
+	}
+	provs := s.providers[req.GetSandboxName()]
+	return &pb.ListSandboxProvidersResponse{Providers: provs}, nil
+}
+
+func (s *mockSandboxServer) WatchSandbox(_ *pb.WatchSandboxRequest, stream grpc.ServerStreamingServer[pb.SandboxStreamEvent]) error {
+	if s.watchErr != nil {
+		return s.watchErr
+	}
+	s.mu.Lock()
+	events := make([]*pb.SandboxStreamEvent, len(s.watchEvents))
+	copy(events, s.watchEvents)
+	s.mu.Unlock()
+	for _, ev := range events {
+		if err := stream.Send(ev); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func setupSandboxTest(t *testing.T, mock *mockSandboxServer) (*sandboxClient, func()) {
+	t.Helper()
+	lis := bufconn.Listen(bufSize)
+	srv := grpc.NewServer()
+	pb.RegisterOpenShellServer(srv, mock)
+	go func() { _ = srv.Serve(lis) }()
+
+	conn, err := grpc.NewClient("passthrough:///bufconn",
+		grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {
+			return lis.Dial()
+		}),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	require.NoError(t, err)
+
+	return newSandboxClient(conn), func() {
+		_ = conn.Close()
+		srv.Stop()
+	}
+}
+
+// --- T029: Sandbox CRUD tests ---
+
+func TestSandboxCreate(t *testing.T) {
+	mock := newMockSandboxServer()
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	spec := &SandboxSpec{
+		LogLevel:    "debug",
+		Environment: map[string]string{"FOO": "bar"},
+		Providers:   []string{"claude"},
+	}
+	labels := map[string]string{"env": "dev"}
+
+	result, err := client.Create(context.Background(), "my-sandbox", spec, labels)
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, "my-sandbox", result.Name)
+	assert.Equal(t, "sb-my-sandbox", result.ID)
+	assert.Equal(t, map[string]string{"env": "dev"}, result.Labels)
+	assert.Equal(t, SandboxProvisioning, result.Status.Phase)
+}
+
+func TestSandboxCreate_AlreadyExists(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.createErr = status.Error(codes.AlreadyExists, "sandbox already exists")
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	_, err := client.Create(context.Background(), "dup", &SandboxSpec{}, nil)
+
+	require.Error(t, err)
+	assert.True(t, IsAlreadyExists(err))
+}
+
+func TestSandboxGet(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.sandboxes["existing"] = &pb.Sandbox{
+		Metadata: &dm.ObjectMeta{Id: "sb-1", Name: "existing", ResourceVersion: 5},
+		Spec:     &pb.SandboxSpec{LogLevel: "info"},
+		Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_READY},
+	}
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	result, err := client.Get(context.Background(), "existing")
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, "existing", result.Name)
+	assert.Equal(t, "sb-1", result.ID)
+	assert.Equal(t, uint64(5), result.ResourceVersion)
+	assert.Equal(t, SandboxReady, result.Status.Phase)
+}
+
+func TestSandboxGet_NotFound(t *testing.T) {
+	mock := newMockSandboxServer()
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	_, err := client.Get(context.Background(), "nonexistent")
+
+	require.Error(t, err)
+	assert.True(t, IsNotFound(err))
+}
+
+func TestSandboxList(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.sandboxes["sb1"] = &pb.Sandbox{
+		Metadata: &dm.ObjectMeta{Name: "sb1"},
+		Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_READY},
+	}
+	mock.sandboxes["sb2"] = &pb.Sandbox{
+		Metadata: &dm.ObjectMeta{Name: "sb2"},
+		Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_PROVISIONING},
+	}
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	result, err := client.List(context.Background())
+
+	require.NoError(t, err)
+	assert.Len(t, result, 2)
+}
+
+func TestSandboxList_Empty(t *testing.T) {
+	mock := newMockSandboxServer()
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	result, err := client.List(context.Background())
+
+	require.NoError(t, err)
+	assert.Empty(t, result)
+}
+
+func TestSandboxList_WithOptions(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.sandboxes["sb1"] = &pb.Sandbox{
+		Metadata: &dm.ObjectMeta{Name: "sb1"},
+		Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_READY},
+	}
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	result, err := client.List(context.Background(), ListOptions{Limit: 10, Offset: 0})
+
+	require.NoError(t, err)
+	assert.Len(t, result, 1)
+}
+
+func TestSandboxDelete(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.sandboxes["deleteme"] = &pb.Sandbox{
+		Metadata: &dm.ObjectMeta{Name: "deleteme"},
+	}
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	err := client.Delete(context.Background(), "deleteme")
+
+	require.NoError(t, err)
+	assert.Empty(t, mock.sandboxes["deleteme"])
+}
+
+func TestSandboxDelete_NotFound(t *testing.T) {
+	mock := newMockSandboxServer()
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	err := client.Delete(context.Background(), "nonexistent")
+
+	require.Error(t, err)
+	assert.True(t, IsNotFound(err))
+}
+
+// --- T030: AttachProvider, DetachProvider, ListProviders tests ---
+
+func TestSandboxAttachProvider(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.sandboxes["my-sb"] = &pb.Sandbox{
+		Metadata: &dm.ObjectMeta{Name: "my-sb", ResourceVersion: 2},
+		Spec:     &pb.SandboxSpec{Providers: []string{"existing-prov"}},
+		Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_READY},
+	}
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	result, err := client.AttachProvider(context.Background(), "my-sb", "new-prov", 2)
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.True(t, result.Attached)
+	require.NotNil(t, result.Sandbox)
+	assert.Equal(t, "my-sb", result.Sandbox.Name)
+}
+
+func TestSandboxAttachProvider_NotFound(t *testing.T) {
+	mock := newMockSandboxServer()
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	_, err := client.AttachProvider(context.Background(), "missing", "prov", 1)
+
+	require.Error(t, err)
+	assert.True(t, IsNotFound(err))
+}
+
+func TestSandboxAttachProvider_Error(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.attachErr = status.Error(codes.InvalidArgument, "bad version")
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	_, err := client.AttachProvider(context.Background(), "sb", "prov", 99)
+
+	require.Error(t, err)
+	assert.True(t, IsInvalidArgument(err))
+}
+
+func TestSandboxDetachProvider(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.sandboxes["my-sb"] = &pb.Sandbox{
+		Metadata: &dm.ObjectMeta{Name: "my-sb", ResourceVersion: 3},
+		Spec:     &pb.SandboxSpec{Providers: []string{"prov-a", "prov-b"}},
+		Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_READY},
+	}
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	result, err := client.DetachProvider(context.Background(), "my-sb", "prov-a", 3)
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.True(t, result.Detached)
+	require.NotNil(t, result.Sandbox)
+	assert.Equal(t, "my-sb", result.Sandbox.Name)
+}
+
+func TestSandboxDetachProvider_NotFound(t *testing.T) {
+	mock := newMockSandboxServer()
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	_, err := client.DetachProvider(context.Background(), "missing", "prov", 1)
+
+	require.Error(t, err)
+	assert.True(t, IsNotFound(err))
+}
+
+func TestSandboxListProviders(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.providers["my-sb"] = []*dm.Provider{
+		{Metadata: &dm.ObjectMeta{Name: "claude-prov"}, Type: "claude"},
+		{Metadata: &dm.ObjectMeta{Name: "github-prov"}, Type: "github"},
+	}
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	result, err := client.ListProviders(context.Background(), "my-sb")
+
+	require.NoError(t, err)
+	assert.Len(t, result, 2)
+}
+
+func TestSandboxListProviders_Empty(t *testing.T) {
+	mock := newMockSandboxServer()
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	result, err := client.ListProviders(context.Background(), "empty-sb")
+
+	require.NoError(t, err)
+	assert.Empty(t, result)
+}
+
+func TestSandboxListProviders_Error(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.listProvErr = status.Error(codes.Unavailable, "service down")
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	_, err := client.ListProviders(context.Background(), "sb")
+
+	require.Error(t, err)
+	assert.True(t, IsUnavailable(err))
+}
+
+// --- T031: WaitReady tests ---
+
+func TestSandboxWaitReady_AlreadyReady(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.sandboxes["ready-sb"] = &pb.Sandbox{
+		Metadata: &dm.ObjectMeta{Name: "ready-sb"},
+		Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_READY},
+	}
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	result, err := client.WaitReady(context.Background(), "ready-sb")
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, "ready-sb", result.Name)
+	assert.Equal(t, SandboxReady, result.Status.Phase)
+}
+
+func TestSandboxWaitReady_BecomesReady(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.sandboxes["pending-sb"] = &pb.Sandbox{
+		Metadata: &dm.ObjectMeta{Name: "pending-sb"},
+		Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_PROVISIONING},
+	}
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		mock.setPhase("pending-sb", pb.SandboxPhase_SANDBOX_PHASE_READY)
+	}()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	result, err := client.WaitReady(ctx, "pending-sb", WaitOptions{PollInterval: 20 * time.Millisecond})
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, SandboxReady, result.Status.Phase)
+}
+
+func TestSandboxWaitReady_ContextTimeout(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.sandboxes["stuck-sb"] = &pb.Sandbox{
+		Metadata: &dm.ObjectMeta{Name: "stuck-sb"},
+		Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_PROVISIONING},
+	}
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	_, err := client.WaitReady(ctx, "stuck-sb", WaitOptions{PollInterval: 20 * time.Millisecond})
+
+	require.Error(t, err)
+}
+
+func TestSandboxWaitReady_SandboxFailed(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.sandboxes["fail-sb"] = &pb.Sandbox{
+		Metadata: &dm.ObjectMeta{Name: "fail-sb"},
+		Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_ERROR},
+	}
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	_, err := client.WaitReady(context.Background(), "fail-sb")
+
+	require.Error(t, err)
+}
+
+func TestSandboxWaitReady_NotFound(t *testing.T) {
+	mock := newMockSandboxServer()
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	_, err := client.WaitReady(context.Background(), "nonexistent")
+
+	require.Error(t, err)
+	assert.True(t, IsNotFound(err))
+}
+
+// --- T039: Watch integration tests ---
+
+func TestSandboxWatch_ReceivesEvents(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.watchEvents = []*pb.SandboxStreamEvent{
+		{Payload: &pb.SandboxStreamEvent_Sandbox{Sandbox: &pb.Sandbox{
+			Metadata: &dm.ObjectMeta{Name: "sb-1", Id: "id-1"},
+			Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_PROVISIONING},
+		}}},
+		{Payload: &pb.SandboxStreamEvent_Sandbox{Sandbox: &pb.Sandbox{
+			Metadata: &dm.ObjectMeta{Name: "sb-1", Id: "id-1"},
+			Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_READY},
+		}}},
+	}
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	w, err := client.Watch(context.Background(), "sb-1")
+	require.NoError(t, err)
+	defer w.Stop()
+
+	ev1 := <-w.ResultChan()
+	assert.Equal(t, EventModified, ev1.Type)
+	require.NotNil(t, ev1.Object)
+	assert.Equal(t, "sb-1", ev1.Object.Name)
+	assert.Equal(t, SandboxProvisioning, ev1.Object.Status.Phase)
+
+	ev2 := <-w.ResultChan()
+	assert.Equal(t, EventModified, ev2.Type)
+	assert.Equal(t, SandboxReady, ev2.Object.Status.Phase)
+}
+
+func TestSandboxWatch_FiltersSandboxEventsOnly(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.watchEvents = []*pb.SandboxStreamEvent{
+		{Payload: &pb.SandboxStreamEvent_Log{Log: &pb.SandboxLogLine{Message: "some log"}}},
+		{Payload: &pb.SandboxStreamEvent_Sandbox{Sandbox: &pb.Sandbox{
+			Metadata: &dm.ObjectMeta{Name: "sb-1"},
+			Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_READY},
+		}}},
+		{Payload: &pb.SandboxStreamEvent_Warning{Warning: &pb.SandboxStreamWarning{Message: "warn"}}},
+	}
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	w, err := client.Watch(context.Background(), "sb-1")
+	require.NoError(t, err)
+	defer w.Stop()
+
+	ev := <-w.ResultChan()
+	assert.Equal(t, EventModified, ev.Type)
+	assert.Equal(t, "sb-1", ev.Object.Name)
+
+	// Stream ends after server sends all events; channel should close
+	select {
+	case _, ok := <-w.ResultChan():
+		assert.False(t, ok, "channel should close after stream ends")
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for channel close")
+	}
+}
+
+func TestSandboxWatch_StopCancelsStream(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.watchEvents = []*pb.SandboxStreamEvent{
+		{Payload: &pb.SandboxStreamEvent_Sandbox{Sandbox: &pb.Sandbox{
+			Metadata: &dm.ObjectMeta{Name: "sb-1"},
+			Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_READY},
+		}}},
+	}
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	w, err := client.Watch(context.Background(), "sb-1")
+	require.NoError(t, err)
+
+	<-w.ResultChan()
+	w.Stop()
+
+	select {
+	case _, ok := <-w.ResultChan():
+		assert.False(t, ok, "channel should be closed after Stop")
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for channel close after Stop")
+	}
+}
+
+func TestSandboxWatch_RPCError(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.watchErr = status.Error(codes.NotFound, "sandbox not found")
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	_, err := client.Watch(context.Background(), "missing")
+
+	require.Error(t, err)
+	assert.True(t, IsNotFound(err))
+}

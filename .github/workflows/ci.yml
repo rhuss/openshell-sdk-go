@@ -42,3 +42,14 @@ jobs:
 
       - name: Build
         run: mise run build
+
+  proto-check:
+    name: Proto Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: jdx/mise-action@v2
+
+      - name: Verify generated proto files
+        run: mise run proto:check
