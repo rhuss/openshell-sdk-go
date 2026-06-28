@@ -12,6 +12,7 @@ Last updated: 2026-06-28
 | 004 | 2026-06-27 | core-sdk | spec-created | 003 | - |
 | 005 | 2026-06-27 | full-api | active | - | - |
 | 006 | 2026-06-28 | converter-refactor | active | - | - |
+| 007 | 2026-06-28 | fake-client | active | - | - |
 
 ## Dependency Chain
 
@@ -21,13 +22,13 @@ Last updated: 2026-06-28
        └─ 003-proto-generation (proto pipeline)
             └─ 004-core-sdk (Phase 1: sandbox, provider, exec, files, health)
                  ├─ 006-converter-refactor (dedup converters)
+                 ├─ 007-fake-client (testing support)
                  └─ 005-full-api (Phase 2a: services, profiles, refresh)
                       └─ 005-full-api (Phase 2b: policy, config, SSH, TCP)
                            └─ (future) Phase 3: operator support
 ```
 
 ## Open Threads
-- Should the SDK provide a `fake` package (like client-go/kubernetes/fake) for consumer testing? (from #001, #004)
 - Repo ownership: `rhuss` now, transfer to NVIDIA later (from #001, #002)
 - SDK versioning: track gateway versions or independent semver? (from #001)
 - Auth patterns: what OIDC/OAuth flows out of the box? (from #001)
@@ -38,6 +39,9 @@ Last updated: 2026-06-28
 - File transfer: API exists but defaultSSHTransport is a stub. Add golang.org/x/crypto/ssh or defer? (from #004, reopened after PR #1 review)
 - Types package path: `openshell/types/` vs `openshell/v1/types/`? (from #006)
 - Should v1/ re-export types via aliases to avoid breaking consumers? (from #006)
+- Should reactors be included in fake v1 or deferred? (from #007)
+- Should fake Exec return configurable ExecResult or leave to consumer mocking? (from #007)
+- Fake package path: `openshell/v1/fake/` vs `openshell/fake/`? (from #007)
 
 ## Resolved Threads
 - Proto generation: dedicated mise task, not `go generate` (from #002, resolved in #003)
@@ -45,6 +49,7 @@ Last updated: 2026-06-28
 - API versioning: `openshell/v1/` namespace from day one (from #001, resolved in #004)
 - Proto as separate Go module or packages in main module? (from #003, resolved: packages in main module)
 - Minimum Go version to support (from #002, resolved: Go 1.23+)
+- Fake package: yes, in-memory object store following client-go pattern (from #001, #004, resolved in #007)
 
 ## Parked Ideas
 (none)
