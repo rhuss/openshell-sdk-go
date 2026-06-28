@@ -19,6 +19,7 @@ var grpcToSDK = map[codes.Code]types.ErrorCode{
 	codes.DeadlineExceeded: types.ErrorDeadlineExceeded,
 	codes.Canceled:         types.ErrorCancelled,
 	codes.Internal:         types.ErrorInternal,
+	codes.Unimplemented:    types.ErrorUnimplemented,
 }
 
 // FromGRPCError converts a gRPC error to a typed StatusError.

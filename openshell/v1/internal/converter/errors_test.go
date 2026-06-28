@@ -72,8 +72,18 @@ func TestFromGRPCError_Internal(t *testing.T) {
 	assert.Equal(t, v1.ErrorInternal, se.Code)
 }
 
-func TestFromGRPCError_UnmappedCode(t *testing.T) {
+func TestFromGRPCError_Unimplemented(t *testing.T) {
 	grpcErr := status.Error(codes.Unimplemented, "not implemented")
+	err := FromGRPCError(grpcErr)
+	require.Error(t, err)
+
+	var se *v1.StatusError
+	require.ErrorAs(t, err, &se)
+	assert.Equal(t, v1.ErrorUnimplemented, se.Code)
+}
+
+func TestFromGRPCError_UnmappedCode(t *testing.T) {
+	grpcErr := status.Error(codes.DataLoss, "data loss")
 	err := FromGRPCError(grpcErr)
 	require.Error(t, err)
 
