@@ -65,7 +65,7 @@
 
 **Goal**: Update converter package to import types/ instead of v1/, wire clients to use converter, remove all duplicated conversion functions
 
-**Independent Test**: grep for unexported conversion functions in *_client.go returns zero matches
+**Independent Test**: grep for unexported conversion functions in *_client.go and grpc_errors.go returns zero matches
 
 - [ ] T024 [US1] Update converter imports in openshell/v1/internal/converter/sandbox.go to use types/ instead of v1/
 - [ ] T025 [P] [US1] Update converter imports in openshell/v1/internal/converter/provider.go to use types/ instead of v1/
@@ -74,7 +74,8 @@
 - [ ] T028 [US1] Create openshell/v1/internal/converter/copy.go with deep-copy helpers (copyStringMap, copyBoolPtr, copyStringSlice) moved from openshell/v1/sandbox_client.go
 - [ ] T029 [US1] Remove duplicated conversion functions from openshell/v1/sandbox_client.go (sandboxFromProto, sandboxSpecFromProto, sandboxStatusFromProto, sandboxPhaseFromProto, sandboxSpecToProto, copyStringMap, copyBoolPtr, copyStringSlice) and replace call sites with converter package calls
 - [ ] T030 [P] [US1] Remove duplicated conversion functions from openshell/v1/provider_client.go (providerFromProto, providerToProto, timeFromMillis, millisFromTime) and replace call sites with converter package calls
-- [ ] T031 [P] [US1] Remove duplicated conversion functions from openshell/v1/exec_client.go (execChunkFromEvent, execRequestToProto, execInteractiveRequestToProto, execResultFromEvents) and replace call sites with converter package calls
+- [ ] T031 [P] [US1] Remove duplicated conversion functions from openshell/v1/exec_client.go (execChunkFromEvent, execRequestToProto, execInteractiveRequestToProto, execResultFromEvents) and replace call sites with converter package calls. NOTE: local execChunkFromEvent returns (chunk, exitCode, isExit, err) while converter.ExecChunkFromEvent returns (*ExecChunk, int, error) — call sites must adapt to the different return signature (the isExit bool is not returned by the converter; instead check for a non-nil exit code or use ExecResultFromEvents for batch processing).
+- [ ] T032a [US1] Remove duplicated fromGRPCError function and grpcToSDK map from openshell/v1/grpc_errors.go and replace call sites with converter.FromGRPCError. The converter package already has an exported FromGRPCError with identical logic.
 
 **Checkpoint**: Zero duplicated conversion functions. `make test` passes.
 
@@ -101,7 +102,7 @@
 
 - [ ] T036 Run `make ci` (lint + build + test) and fix any remaining issues
 - [ ] T037 Verify no circular imports exist with `go build ./...`
-- [ ] T038 Verify zero duplicated conversion functions with `rg '^func [a-z].*[Ff]rom[Pp]roto|^func [a-z].*[Tt]o[Pp]roto' openshell/v1/*_client.go`
+- [ ] T038 Verify zero duplicated conversion functions with `rg '^func [a-z].*[Ff]rom[Pp]roto|^func [a-z].*[Tt]o[Pp]roto|^func fromGRPCError' openshell/v1/*_client.go openshell/v1/grpc_errors.go`
 - [ ] T039 Update openshell/v1/internal/grpc/conn.go if it references types that moved (TLSConfig → types.TLSConfig or via v1/ alias)
 
 ---
