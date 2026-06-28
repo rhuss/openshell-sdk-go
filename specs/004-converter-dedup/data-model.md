@@ -69,10 +69,10 @@ openshell/v1/internal/grpc/
 
 | Type | Kind | Fields/Values |
 |------|------|---------------|
-| `ExecOptions` | struct | Env, WorkDir, Timeout, Stdin |
-| `ListOptions` | struct | LabelSelector, FieldSelector, Limit, Continue |
-| `WaitOptions` | struct | Timeout, PollInterval |
-| `WatchOptions` | struct | (empty, reserved for future use) |
+| `ExecOptions` | struct | Env, WorkDir |
+| `ListOptions` | struct | Limit, Offset, LabelSelector |
+| `WaitOptions` | struct | PollInterval |
+| `WatchOptions` | struct | TimeoutSeconds, LabelSelector |
 | `CreateOptions` | struct | (empty) |
 | `DeleteOptions` | struct | (empty) |
 | `GetOptions` | struct | (empty) |

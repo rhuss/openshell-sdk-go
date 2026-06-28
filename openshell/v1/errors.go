@@ -26,22 +26,22 @@ const (
 type StatusError = types.StatusError
 
 // IsNotFound returns true if the error indicates a resource was not found.
-var IsNotFound = types.IsNotFound
+func IsNotFound(err error) bool { return types.IsNotFound(err) }
 
 // IsAlreadyExists returns true if the error indicates a resource already exists.
-var IsAlreadyExists = types.IsAlreadyExists
+func IsAlreadyExists(err error) bool { return types.IsAlreadyExists(err) }
 
 // IsUnavailable returns true if the error indicates the service is unavailable.
-var IsUnavailable = types.IsUnavailable
+func IsUnavailable(err error) bool { return types.IsUnavailable(err) }
 
 // IsPermissionDenied returns true if the error indicates insufficient permissions.
-var IsPermissionDenied = types.IsPermissionDenied
+func IsPermissionDenied(err error) bool { return types.IsPermissionDenied(err) }
 
 // IsInvalidArgument returns true if the error indicates an invalid argument.
-var IsInvalidArgument = types.IsInvalidArgument
+func IsInvalidArgument(err error) bool { return types.IsInvalidArgument(err) }
 
 // IsDeadlineExceeded returns true if the error indicates a deadline was exceeded.
-var IsDeadlineExceeded = types.IsDeadlineExceeded
+func IsDeadlineExceeded(err error) bool { return types.IsDeadlineExceeded(err) }
 
 // IsCancelled returns true if the error indicates the operation was cancelled.
-var IsCancelled = types.IsCancelled
+func IsCancelled(err error) bool { return types.IsCancelled(err) }

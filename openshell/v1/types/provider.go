@@ -20,5 +20,5 @@ type Provider struct {
 type ProviderSpec struct {
 	Credentials         map[string]string
 	Config              map[string]string
-	CredentialExpiresAt  map[string]time.Time
+	CredentialExpiresAt map[string]time.Time
 }
