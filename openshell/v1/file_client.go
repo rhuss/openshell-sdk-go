@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/rhuss/openshell-sdk-go/openshell/v1/internal/converter"
 	pb "github.com/rhuss/openshell-sdk-go/proto/openshellv1"
 	"google.golang.org/grpc"
 )
@@ -50,7 +51,7 @@ func (f *fileClient) Upload(ctx context.Context, sandboxID string, localPath str
 		SandboxId: sandboxID,
 	})
 	if err != nil {
-		return fromGRPCError(err)
+		return converter.FromGRPCError(err)
 	}
 
 	defer func() {
@@ -76,7 +77,7 @@ func (f *fileClient) Download(ctx context.Context, sandboxID string, remotePath 
 		SandboxId: sandboxID,
 	})
 	if err != nil {
-		return fromGRPCError(err)
+		return converter.FromGRPCError(err)
 	}
 
 	defer func() {

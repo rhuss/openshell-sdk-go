@@ -5,21 +5,15 @@ package v1
 
 import (
 	"sync"
-	"time"
+
+	"github.com/rhuss/openshell-sdk-go/openshell/v1/types"
 
 	internalgrpc "github.com/rhuss/openshell-sdk-go/openshell/v1/internal/grpc"
 	"google.golang.org/grpc"
 )
 
 // Config holds all settings needed to create a Client.
-type Config struct {
-	Address     string
-	TLS         *TLSConfig
-	Auth        AuthProvider
-	Timeout     time.Duration
-	RetryPolicy *RetryPolicy
-	Logger      Logger
-}
+type Config = types.Config
 
 // ClientInterface defines the top-level SDK surface.
 type ClientInterface interface {

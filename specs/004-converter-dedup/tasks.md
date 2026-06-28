@@ -13,7 +13,7 @@
 
 **Purpose**: Create the types package skeleton
 
-- [ ] T001 Create openshell/v1/types/doc.go with package documentation and SPDX license header
+- [X] T001 Create openshell/v1/types/doc.go with package documentation and SPDX license header
 
 ---
 
@@ -23,17 +23,17 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T002 [P] Create openshell/v1/types/sandbox.go with Sandbox, SandboxSpec, SandboxTemplate, SandboxStatus, SandboxCondition, AttachProviderResult, DetachProviderResult structs (copied from openshell/v1/sandbox.go)
-- [ ] T003 [P] Create openshell/v1/types/provider.go with Provider, ProviderSpec structs (copied from openshell/v1/provider.go)
-- [ ] T004 [P] Create openshell/v1/types/exec.go with ExecResult, ExecChunk structs (copied from openshell/v1/exec.go)
-- [ ] T005 [P] Create openshell/v1/types/health.go with HealthResult struct (copied from openshell/v1/health.go)
-- [ ] T006 [P] Create openshell/v1/types/errors.go with ErrorCode type, StatusError struct, IsStatusError function, and all error code constants (copied from openshell/v1/errors.go)
-- [ ] T007 [P] Create openshell/v1/types/types.go with SandboxPhase, EventType, StreamType enums, TLSConfig, RetryPolicy structs, and all associated constants (copied from openshell/v1/types.go)
-- [ ] T008 [P] Create openshell/v1/types/options.go with ExecOptions, ListOptions, WaitOptions, WatchOptions, CreateOptions, DeleteOptions, GetOptions, UpdateOptions structs (copied from openshell/v1/options.go)
-- [ ] T009 [P] Create openshell/v1/types/config.go with Config struct (copied from openshell/v1/client.go)
-- [ ] T010 [P] Create openshell/v1/types/watch.go with Event[T] struct and WatchInterface[T] interface (copied from openshell/v1/watch.go)
-- [ ] T011 [P] Create openshell/v1/types/logger.go with Logger interface (copied from openshell/v1/logger.go)
-- [ ] T012 [P] Create openshell/v1/types/auth.go with AuthProvider interface (copied from openshell/v1/auth.go)
+- [X] T002 [P] Create openshell/v1/types/sandbox.go with Sandbox, SandboxSpec, SandboxTemplate, SandboxStatus, SandboxCondition, AttachProviderResult, DetachProviderResult structs (copied from openshell/v1/sandbox.go)
+- [X] T003 [P] Create openshell/v1/types/provider.go with Provider, ProviderSpec structs (copied from openshell/v1/provider.go)
+- [X] T004 [P] Create openshell/v1/types/exec.go with ExecResult, ExecChunk structs (copied from openshell/v1/exec.go)
+- [X] T005 [P] Create openshell/v1/types/health.go with HealthResult struct (copied from openshell/v1/health.go)
+- [X] T006 [P] Create openshell/v1/types/errors.go with ErrorCode type, StatusError struct, IsStatusError function, and all error code constants (copied from openshell/v1/errors.go)
+- [X] T007 [P] Create openshell/v1/types/types.go with SandboxPhase, EventType, StreamType enums, TLSConfig, RetryPolicy structs, and all associated constants (copied from openshell/v1/types.go)
+- [X] T008 [P] Create openshell/v1/types/options.go with ExecOptions, ListOptions, WaitOptions, WatchOptions, CreateOptions, DeleteOptions, GetOptions, UpdateOptions structs (copied from openshell/v1/options.go)
+- [X] T009 [P] Create openshell/v1/types/config.go with Config struct (copied from openshell/v1/client.go)
+- [X] T010 [P] Create openshell/v1/types/watch.go with Event[T] struct and WatchInterface[T] interface (copied from openshell/v1/watch.go)
+- [X] T011 [P] Create openshell/v1/types/logger.go with Logger interface (copied from openshell/v1/logger.go)
+- [X] T012 [P] Create openshell/v1/types/auth.go with AuthProvider interface (copied from openshell/v1/auth.go)
 
 **Checkpoint**: Types package compiles independently with `go build ./openshell/v1/types/...`
 
@@ -45,17 +45,17 @@
 
 **Independent Test**: Run `make test` — all existing tests pass with aliases in place
 
-- [ ] T013 [US2] Replace type definitions in openshell/v1/sandbox.go with type aliases to types/ (Sandbox, SandboxSpec, SandboxTemplate, SandboxStatus, SandboxCondition, AttachProviderResult, DetachProviderResult)
-- [ ] T014 [P] [US2] Replace type definitions in openshell/v1/provider.go with type aliases to types/ (Provider, ProviderSpec)
-- [ ] T015 [P] [US2] Replace type definitions in openshell/v1/exec.go with type aliases to types/ (ExecResult, ExecChunk)
-- [ ] T016 [P] [US2] Replace type definition in openshell/v1/health.go with type alias to types/ (HealthResult)
-- [ ] T017 [P] [US2] Replace type definitions in openshell/v1/errors.go with type aliases and constant re-exports to types/ (ErrorCode, StatusError, IsStatusError, error code constants)
-- [ ] T018 [P] [US2] Replace type definitions in openshell/v1/types.go with type aliases and constant re-exports to types/ (SandboxPhase, EventType, StreamType, TLSConfig, RetryPolicy, all constants)
-- [ ] T019 [P] [US2] Replace type definitions in openshell/v1/options.go with type aliases to types/ (all option structs)
-- [ ] T020 [P] [US2] Replace Config definition in openshell/v1/client.go with type alias to types/ (Config only; keep Client, ClientInterface)
-- [ ] T021 [P] [US2] Replace type definitions in openshell/v1/watch.go with type aliases to types/ (Event[T], WatchInterface[T], keep watcher[T] implementation)
-- [ ] T022 [P] [US2] Replace type definitions in openshell/v1/logger.go with type alias to types/ (Logger)
-- [ ] T023 [P] [US2] Replace type definitions in openshell/v1/auth.go with type alias to types/ (AuthProvider; keep noAuth, staticToken implementations)
+- [X] T013 [US2] Replace type definitions in openshell/v1/sandbox.go with type aliases to types/ (Sandbox, SandboxSpec, SandboxTemplate, SandboxStatus, SandboxCondition, AttachProviderResult, DetachProviderResult)
+- [X] T014 [P] [US2] Replace type definitions in openshell/v1/provider.go with type aliases to types/ (Provider, ProviderSpec)
+- [X] T015 [P] [US2] Replace type definitions in openshell/v1/exec.go with type aliases to types/ (ExecResult, ExecChunk)
+- [X] T016 [P] [US2] Replace type definition in openshell/v1/health.go with type alias to types/ (HealthResult)
+- [X] T017 [P] [US2] Replace type definitions in openshell/v1/errors.go with type aliases and constant re-exports to types/ (ErrorCode, StatusError, IsStatusError, error code constants)
+- [X] T018 [P] [US2] Replace type definitions in openshell/v1/types.go with type aliases and constant re-exports to types/ (SandboxPhase, EventType, StreamType, TLSConfig, RetryPolicy, all constants)
+- [X] T019 [P] [US2] Replace type definitions in openshell/v1/options.go with type aliases to types/ (all option structs)
+- [X] T020 [P] [US2] Replace Config definition in openshell/v1/client.go with type alias to types/ (Config only; keep Client, ClientInterface)
+- [X] T021 [P] [US2] Replace type definitions in openshell/v1/watch.go with type aliases to types/ (Event[T], WatchInterface[T], keep watcher[T] implementation)
+- [X] T022 [P] [US2] Replace type definitions in openshell/v1/logger.go with type alias to types/ (Logger)
+- [X] T023 [P] [US2] Replace type definitions in openshell/v1/auth.go with type alias to types/ (AuthProvider; keep noAuth, staticToken implementations)
 
 **Checkpoint**: `make test` passes — all existing tests work with type aliases
 
@@ -67,15 +67,15 @@
 
 **Independent Test**: grep for unexported conversion functions in *_client.go and grpc_errors.go returns zero matches
 
-- [ ] T024 [US1] Update converter imports in openshell/v1/internal/converter/sandbox.go to use types/ instead of v1/
-- [ ] T025 [P] [US1] Update converter imports in openshell/v1/internal/converter/provider.go to use types/ instead of v1/
-- [ ] T026 [P] [US1] Update converter imports in openshell/v1/internal/converter/exec.go to use types/ instead of v1/
-- [ ] T027 [P] [US1] Update converter imports in openshell/v1/internal/converter/errors.go to use types/ instead of v1/
-- [ ] T028 [US1] Create openshell/v1/internal/converter/copy.go with deep-copy helpers (copyStringMap, copyBoolPtr, copyStringSlice) moved from openshell/v1/sandbox_client.go
-- [ ] T029 [US1] Remove duplicated conversion functions from openshell/v1/sandbox_client.go (sandboxFromProto, sandboxSpecFromProto, sandboxStatusFromProto, sandboxPhaseFromProto, sandboxSpecToProto, copyStringMap, copyBoolPtr, copyStringSlice) and replace call sites with converter package calls
-- [ ] T030 [P] [US1] Remove duplicated conversion functions from openshell/v1/provider_client.go (providerFromProto, providerToProto, timeFromMillis, millisFromTime) and replace call sites with converter package calls
-- [ ] T031 [P] [US1] Remove duplicated conversion functions from openshell/v1/exec_client.go (execChunkFromEvent, execRequestToProto, execInteractiveRequestToProto, execResultFromEvents) and replace call sites with converter package calls. NOTE: local execChunkFromEvent returns (chunk, exitCode, isExit, err) while converter.ExecChunkFromEvent returns (*ExecChunk, int, error) — call sites must adapt to the different return signature (the isExit bool is not returned by the converter; instead check for a non-nil exit code or use ExecResultFromEvents for batch processing).
-- [ ] T032a [US1] Remove duplicated fromGRPCError function and grpcToSDK map from openshell/v1/grpc_errors.go and replace call sites with converter.FromGRPCError. The converter package already has an exported FromGRPCError with identical logic.
+- [X] T024 [US1] Update converter imports in openshell/v1/internal/converter/sandbox.go to use types/ instead of v1/
+- [X] T025 [P] [US1] Update converter imports in openshell/v1/internal/converter/provider.go to use types/ instead of v1/
+- [X] T026 [P] [US1] Update converter imports in openshell/v1/internal/converter/exec.go to use types/ instead of v1/
+- [X] T027 [P] [US1] Update converter imports in openshell/v1/internal/converter/errors.go to use types/ instead of v1/
+- [X] T028 [US1] Create openshell/v1/internal/converter/copy.go with deep-copy helpers (copyStringMap, copyBoolPtr, copyStringSlice) moved from openshell/v1/sandbox_client.go
+- [X] T029 [US1] Remove duplicated conversion functions from openshell/v1/sandbox_client.go (sandboxFromProto, sandboxSpecFromProto, sandboxStatusFromProto, sandboxPhaseFromProto, sandboxSpecToProto, copyStringMap, copyBoolPtr, copyStringSlice) and replace call sites with converter package calls
+- [X] T030 [P] [US1] Remove duplicated conversion functions from openshell/v1/provider_client.go (providerFromProto, providerToProto, timeFromMillis, millisFromTime) and replace call sites with converter package calls
+- [X] T031 [P] [US1] Remove duplicated conversion functions from openshell/v1/exec_client.go (execChunkFromEvent, execRequestToProto, execInteractiveRequestToProto, execResultFromEvents) and replace call sites with converter package calls. NOTE: local execChunkFromEvent returns (chunk, exitCode, isExit, err) while converter.ExecChunkFromEvent returns (*ExecChunk, int, error) — call sites must adapt to the different return signature (the isExit bool is not returned by the converter; instead check for a non-nil exit code or use ExecResultFromEvents for batch processing).
+- [X] T032a [US1] Remove duplicated fromGRPCError function and grpcToSDK map from openshell/v1/grpc_errors.go and replace call sites with converter.FromGRPCError. The converter package already has an exported FromGRPCError with identical logic.
 
 **Checkpoint**: Zero duplicated conversion functions. `make test` passes.
 
@@ -87,10 +87,10 @@
 
 **Independent Test**: `go test ./openshell/v1/internal/converter/...` passes and `go list -f '{{.Imports}}' ./openshell/v1/internal/converter/` does not include `openshell/v1`
 
-- [ ] T032 [US3] Update converter test imports in openshell/v1/internal/converter/sandbox_test.go to use types/ instead of v1/
-- [ ] T033 [P] [US3] Update converter test imports in openshell/v1/internal/converter/provider_test.go to use types/ instead of v1/
-- [ ] T034 [P] [US3] Update converter test imports in openshell/v1/internal/converter/exec_test.go to use types/ instead of v1/
-- [ ] T035 [P] [US3] Update converter test imports in openshell/v1/internal/converter/errors_test.go to use types/ instead of v1/
+- [X] T032 [US3] Update converter test imports in openshell/v1/internal/converter/sandbox_test.go to use types/ instead of v1/
+- [X] T033 [P] [US3] Update converter test imports in openshell/v1/internal/converter/provider_test.go to use types/ instead of v1/
+- [X] T034 [P] [US3] Update converter test imports in openshell/v1/internal/converter/exec_test.go to use types/ instead of v1/
+- [X] T035 [P] [US3] Update converter test imports in openshell/v1/internal/converter/errors_test.go to use types/ instead of v1/
 
 **Checkpoint**: Converter tests pass independently. No v1/ import in converter package.
 
@@ -100,10 +100,10 @@
 
 **Purpose**: Final verification and cleanup
 
-- [ ] T036 Run `make ci` (lint + build + test) and fix any remaining issues
-- [ ] T037 Verify no circular imports exist with `go build ./...`
-- [ ] T038 Verify zero duplicated conversion functions with `rg '^func [a-z].*[Ff]rom[Pp]roto|^func [a-z].*[Tt]o[Pp]roto|^func fromGRPCError' openshell/v1/*_client.go openshell/v1/grpc_errors.go`
-- [ ] T039 Update openshell/v1/internal/grpc/conn.go if it references types that moved (TLSConfig → types.TLSConfig or via v1/ alias)
+- [X] T036 Run `make ci` (lint + build + test) and fix any remaining issues
+- [X] T037 Verify no circular imports exist with `go build ./...`
+- [X] T038 Verify zero duplicated conversion functions with `rg '^func [a-z].*[Ff]rom[Pp]roto|^func [a-z].*[Tt]o[Pp]roto|^func fromGRPCError' openshell/v1/*_client.go openshell/v1/grpc_errors.go`
+- [X] T039 Update openshell/v1/internal/grpc/conn.go if it references types that moved (TLSConfig → types.TLSConfig or via v1/ alias)
 
 ---
 

@@ -3,14 +3,15 @@
 
 package v1
 
-import "context"
+import (
+	"context"
+
+	"github.com/rhuss/openshell-sdk-go/openshell/v1/types"
+)
 
 // AuthProvider supplies per-RPC credentials. It implements the
 // grpc credentials.PerRPCCredentials interface.
-type AuthProvider interface {
-	GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error)
-	RequireTransportSecurity() bool
-}
+type AuthProvider = types.AuthProvider
 
 type noAuth struct{}
 

@@ -3,51 +3,44 @@
 
 package v1
 
-import "time"
+import (
+	"github.com/rhuss/openshell-sdk-go/openshell/v1/types"
+)
 
 // SandboxPhase represents the lifecycle phase of a sandbox.
-type SandboxPhase string
+type SandboxPhase = types.SandboxPhase
 
 // SandboxPhase values for sandbox lifecycle.
 const (
-	SandboxProvisioning SandboxPhase = "Provisioning"
-	SandboxReady        SandboxPhase = "Ready"
-	SandboxError        SandboxPhase = "Error"
-	SandboxDeleting     SandboxPhase = "Deleting"
-	SandboxUnknown      SandboxPhase = "Unknown"
+	SandboxProvisioning = types.SandboxProvisioning
+	SandboxReady        = types.SandboxReady
+	SandboxError        = types.SandboxError
+	SandboxDeleting     = types.SandboxDeleting
+	SandboxUnknown      = types.SandboxUnknown
 )
 
 // EventType classifies watch events.
-type EventType string
+type EventType = types.EventType
 
 // EventType values for watch events.
 const (
-	EventAdded    EventType = "ADDED"
-	EventModified EventType = "MODIFIED"
-	EventDeleted  EventType = "DELETED"
-	EventError    EventType = "ERROR"
+	EventAdded    = types.EventAdded
+	EventModified = types.EventModified
+	EventDeleted  = types.EventDeleted
+	EventError    = types.EventError
 )
 
 // StreamType identifies which output stream a chunk belongs to.
-type StreamType string
+type StreamType = types.StreamType
 
 // StreamType values for exec output.
 const (
-	StreamStdout StreamType = "stdout"
-	StreamStderr StreamType = "stderr"
+	StreamStdout = types.StreamStdout
+	StreamStderr = types.StreamStderr
 )
 
 // TLSConfig holds TLS connection settings.
-type TLSConfig struct {
-	CertFile string
-	KeyFile  string
-	CAFile   string
-	Insecure bool
-}
+type TLSConfig = types.TLSConfig
 
 // RetryPolicy configures automatic retry behavior for failed RPCs.
-type RetryPolicy struct {
-	MaxRetries  int
-	InitialWait time.Duration
-	MaxWait     time.Duration
-}
+type RetryPolicy = types.RetryPolicy

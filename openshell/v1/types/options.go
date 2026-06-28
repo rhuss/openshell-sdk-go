@@ -1,32 +1,42 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-package v1
+package types
 
-import (
-	"github.com/rhuss/openshell-sdk-go/openshell/v1/types"
-)
+import "time"
 
 // CreateOptions configures resource creation.
-type CreateOptions = types.CreateOptions
+type CreateOptions struct{}
 
 // GetOptions configures resource retrieval.
-type GetOptions = types.GetOptions
+type GetOptions struct{}
 
 // ListOptions configures resource listing with pagination and filtering.
-type ListOptions = types.ListOptions
+type ListOptions struct {
+	Limit         int
+	Offset        int
+	LabelSelector string
+}
 
 // DeleteOptions configures resource deletion.
-type DeleteOptions = types.DeleteOptions
+type DeleteOptions struct{}
 
 // UpdateOptions configures resource updates.
-type UpdateOptions = types.UpdateOptions
+type UpdateOptions struct{}
 
 // WatchOptions configures watch behavior.
-type WatchOptions = types.WatchOptions
+type WatchOptions struct {
+	TimeoutSeconds int64
+	LabelSelector  string
+}
 
 // WaitOptions configures wait behavior. Use context for timeout control.
-type WaitOptions = types.WaitOptions
+type WaitOptions struct {
+	PollInterval time.Duration
+}
 
 // ExecOptions configures command execution.
-type ExecOptions = types.ExecOptions
+type ExecOptions struct {
+	Env     map[string]string
+	WorkDir string
+}

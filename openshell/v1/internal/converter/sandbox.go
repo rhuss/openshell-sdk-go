@@ -4,24 +4,24 @@
 package converter
 
 import (
-	v1 "github.com/rhuss/openshell-sdk-go/openshell/v1"
+	"github.com/rhuss/openshell-sdk-go/openshell/v1/types"
 	dm "github.com/rhuss/openshell-sdk-go/proto/datamodelv1"
 	pb "github.com/rhuss/openshell-sdk-go/proto/openshellv1"
 )
 
 // SandboxFromProto converts a proto Sandbox to an SDK Sandbox.
-func SandboxFromProto(s *pb.Sandbox) *v1.Sandbox {
+func SandboxFromProto(s *pb.Sandbox) *types.Sandbox {
 	if s == nil {
 		return nil
 	}
 
-	result := &v1.Sandbox{}
+	result := &types.Sandbox{}
 
 	if m := s.GetMetadata(); m != nil {
 		result.ID = m.GetId()
 		result.Name = m.GetName()
 		result.CreatedAt = TimeFromMillis(m.GetCreatedAtMs())
-		result.Labels = m.GetLabels()
+		result.Labels = CopyStringMap(m.GetLabels())
 		result.ResourceVersion = m.GetResourceVersion()
 	}
 
@@ -32,28 +32,28 @@ func SandboxFromProto(s *pb.Sandbox) *v1.Sandbox {
 	if status := s.GetStatus(); status != nil {
 		result.Status = sandboxStatusFromProto(status)
 	} else {
-		result.Status.Phase = v1.SandboxUnknown
+		result.Status.Phase = types.SandboxUnknown
 	}
 
 	return result
 }
 
-func sandboxSpecFromProto(spec *pb.SandboxSpec) v1.SandboxSpec {
-	result := v1.SandboxSpec{
+func sandboxSpecFromProto(spec *pb.SandboxSpec) types.SandboxSpec {
+	result := types.SandboxSpec{
 		LogLevel:    spec.GetLogLevel(),
-		Environment: spec.GetEnvironment(),
-		Providers:   spec.GetProviders(),
+		Environment: CopyStringMap(spec.GetEnvironment()),
+		Providers:   CopyStringSlice(spec.GetProviders()),
 	}
 
 	if tmpl := spec.GetTemplate(); tmpl != nil {
-		result.Template = &v1.SandboxTemplate{
+		result.Template = &types.SandboxTemplate{
 			Image:            tmpl.GetImage(),
 			RuntimeClassName: tmpl.GetRuntimeClassName(),
 			AgentSocket:      tmpl.GetAgentSocket(),
-			Labels:           tmpl.GetLabels(),
-			Annotations:      tmpl.GetAnnotations(),
-			Environment:      tmpl.GetEnvironment(),
-			UserNamespaces:   tmpl.UserNamespaces,
+			Labels:           CopyStringMap(tmpl.GetLabels()),
+			Annotations:      CopyStringMap(tmpl.GetAnnotations()),
+			Environment:      CopyStringMap(tmpl.GetEnvironment()),
+			UserNamespaces:   CopyBoolPtr(tmpl.UserNamespaces),
 		}
 	}
 
@@ -66,8 +66,8 @@ func sandboxSpecFromProto(spec *pb.SandboxSpec) v1.SandboxSpec {
 	return result
 }
 
-func sandboxStatusFromProto(status *pb.SandboxStatus) v1.SandboxStatus {
-	result := v1.SandboxStatus{
+func sandboxStatusFromProto(status *pb.SandboxStatus) types.SandboxStatus {
+	result := types.SandboxStatus{
 		SandboxName:          status.GetSandboxName(),
 		AgentPod:             status.GetAgentPod(),
 		AgentFd:              status.GetAgentFd(),
@@ -77,7 +77,7 @@ func sandboxStatusFromProto(status *pb.SandboxStatus) v1.SandboxStatus {
 	}
 
 	for _, c := range status.GetConditions() {
-		result.Conditions = append(result.Conditions, v1.SandboxCondition{
+		result.Conditions = append(result.Conditions, types.SandboxCondition{
 			Type:               c.GetType(),
 			Status:             c.GetStatus(),
 			Reason:             c.GetReason(),
@@ -90,35 +90,35 @@ func sandboxStatusFromProto(status *pb.SandboxStatus) v1.SandboxStatus {
 }
 
 // SandboxPhaseFromProto converts a proto SandboxPhase to an SDK SandboxPhase.
-func SandboxPhaseFromProto(phase pb.SandboxPhase) v1.SandboxPhase {
+func SandboxPhaseFromProto(phase pb.SandboxPhase) types.SandboxPhase {
 	switch phase {
 	case pb.SandboxPhase_SANDBOX_PHASE_PROVISIONING:
-		return v1.SandboxProvisioning
+		return types.SandboxProvisioning
 	case pb.SandboxPhase_SANDBOX_PHASE_READY:
-		return v1.SandboxReady
+		return types.SandboxReady
 	case pb.SandboxPhase_SANDBOX_PHASE_ERROR:
-		return v1.SandboxError
+		return types.SandboxError
 	case pb.SandboxPhase_SANDBOX_PHASE_DELETING:
-		return v1.SandboxDeleting
+		return types.SandboxDeleting
 	case pb.SandboxPhase_SANDBOX_PHASE_UNKNOWN:
-		return v1.SandboxUnknown
+		return types.SandboxUnknown
 	default:
-		return v1.SandboxUnknown
+		return types.SandboxUnknown
 	}
 }
 
 // SandboxPhaseToProto converts an SDK SandboxPhase to a proto SandboxPhase.
-func SandboxPhaseToProto(phase v1.SandboxPhase) pb.SandboxPhase {
+func SandboxPhaseToProto(phase types.SandboxPhase) pb.SandboxPhase {
 	switch phase {
-	case v1.SandboxProvisioning:
+	case types.SandboxProvisioning:
 		return pb.SandboxPhase_SANDBOX_PHASE_PROVISIONING
-	case v1.SandboxReady:
+	case types.SandboxReady:
 		return pb.SandboxPhase_SANDBOX_PHASE_READY
-	case v1.SandboxError:
+	case types.SandboxError:
 		return pb.SandboxPhase_SANDBOX_PHASE_ERROR
-	case v1.SandboxDeleting:
+	case types.SandboxDeleting:
 		return pb.SandboxPhase_SANDBOX_PHASE_DELETING
-	case v1.SandboxUnknown:
+	case types.SandboxUnknown:
 		return pb.SandboxPhase_SANDBOX_PHASE_UNKNOWN
 	default:
 		return pb.SandboxPhase_SANDBOX_PHASE_UNKNOWN
@@ -126,7 +126,7 @@ func SandboxPhaseToProto(phase v1.SandboxPhase) pb.SandboxPhase {
 }
 
 // SandboxToProto converts an SDK Sandbox to a proto Sandbox.
-func SandboxToProto(s *v1.Sandbox) *pb.Sandbox {
+func SandboxToProto(s *types.Sandbox) *pb.Sandbox {
 	if s == nil {
 		return nil
 	}
@@ -144,7 +144,7 @@ func SandboxToProto(s *v1.Sandbox) *pb.Sandbox {
 }
 
 // SandboxSpecToProto converts an SDK SandboxSpec to a proto SandboxSpec.
-func SandboxSpecToProto(spec *v1.SandboxSpec) *pb.SandboxSpec {
+func SandboxSpecToProto(spec *types.SandboxSpec) *pb.SandboxSpec {
 	if spec == nil {
 		return nil
 	}
