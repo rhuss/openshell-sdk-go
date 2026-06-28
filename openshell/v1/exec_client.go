@@ -144,13 +144,14 @@ func (s *execStream) Close() error {
 // A background goroutine owns the Recv loop and routes events to dataCh (for Read)
 // and exitCh (for ExitCode), preventing concurrent Recv calls on the stream.
 type interactiveSession struct {
-	stream grpc.BidiStreamingClient[pb.ExecSandboxInput, pb.ExecSandboxEvent]
-	sendMu sync.Mutex
-	dataCh chan []byte
-	exitCh chan int
-	errCh  chan error
-	done   chan struct{}
-	buf    []byte
+	stream  grpc.BidiStreamingClient[pb.ExecSandboxInput, pb.ExecSandboxEvent]
+	sendMu  sync.Mutex
+	dataCh  chan []byte
+	exitCh  chan int
+	done    chan struct{}
+	errOnce sync.Once
+	err     error
+	buf     []byte
 }
 
 func newInteractiveSession(stream grpc.BidiStreamingClient[pb.ExecSandboxInput, pb.ExecSandboxEvent]) *interactiveSession {
@@ -158,11 +159,14 @@ func newInteractiveSession(stream grpc.BidiStreamingClient[pb.ExecSandboxInput, 
 		stream: stream,
 		dataCh: make(chan []byte, 64),
 		exitCh: make(chan int, 1),
-		errCh:  make(chan error, 1),
 		done:   make(chan struct{}),
 	}
 	go s.readLoop()
 	return s
+}
+
+func (s *interactiveSession) setErr(err error) {
+	s.errOnce.Do(func() { s.err = err })
 }
 
 func (s *interactiveSession) readLoop() {
@@ -172,20 +176,14 @@ func (s *interactiveSession) readLoop() {
 		ev, err := s.stream.Recv()
 		if err != nil {
 			if err != io.EOF {
-				select {
-				case s.errCh <- fromGRPCError(err):
-				default:
-				}
+				s.setErr(fromGRPCError(err))
 			}
 			return
 		}
 
 		chunk, code, isExit, convErr := execChunkFromEvent(ev)
 		if convErr != nil {
-			select {
-			case s.errCh <- convErr:
-			default:
-			}
+			s.setErr(convErr)
 			return
 		}
 		if isExit {
@@ -196,7 +194,11 @@ func (s *interactiveSession) readLoop() {
 			return
 		}
 		if chunk != nil {
-			s.dataCh <- chunk.Data
+			select {
+			case s.dataCh <- chunk.Data:
+			case <-s.done:
+				return
+			}
 		}
 	}
 }
@@ -208,24 +210,18 @@ func (s *interactiveSession) Read(p []byte) (int, error) {
 		return n, nil
 	}
 
-	select {
-	case data, ok := <-s.dataCh:
-		if !ok {
-			select {
-			case err := <-s.errCh:
-				return 0, err
-			default:
-				return 0, io.EOF
-			}
+	data, ok := <-s.dataCh
+	if !ok {
+		if s.err != nil {
+			return 0, s.err
 		}
-		n := copy(p, data)
-		if n < len(data) {
-			s.buf = append(s.buf, data[n:]...)
-		}
-		return n, nil
-	case err := <-s.errCh:
-		return 0, err
+		return 0, io.EOF
 	}
+	n := copy(p, data)
+	if n < len(data) {
+		s.buf = append(s.buf, data[n:]...)
+	}
+	return n, nil
 }
 
 func (s *interactiveSession) Write(p []byte) (int, error) {
@@ -243,7 +239,7 @@ func (s *interactiveSession) Write(p []byte) (int, error) {
 func (s *interactiveSession) Resize(cols, rows uint32) error {
 	s.sendMu.Lock()
 	defer s.sendMu.Unlock()
-	return s.stream.Send(&pb.ExecSandboxInput{
+	err := s.stream.Send(&pb.ExecSandboxInput{
 		Payload: &pb.ExecSandboxInput_Resize{
 			Resize: &pb.ExecSandboxWindowResize{
 				Cols: cols,
@@ -251,21 +247,24 @@ func (s *interactiveSession) Resize(cols, rows uint32) error {
 			},
 		},
 	})
+	if err != nil {
+		return fromGRPCError(err)
+	}
+	return nil
 }
 
 func (s *interactiveSession) ExitCode() (int, error) {
 	select {
 	case code := <-s.exitCh:
 		return code, nil
-	case err := <-s.errCh:
-		return -1, err
 	case <-s.done:
 		select {
 		case code := <-s.exitCh:
 			return code, nil
-		case err := <-s.errCh:
-			return -1, err
 		default:
+			if s.err != nil {
+				return -1, s.err
+			}
 			return -1, &StatusError{Code: ErrorInternal, Message: "stream ended without exit event"}
 		}
 	}
