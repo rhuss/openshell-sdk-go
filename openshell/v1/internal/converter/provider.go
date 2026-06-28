@@ -19,8 +19,7 @@ func ProviderFromProto(p *dm.Provider) *v1.Provider {
 	result := &v1.Provider{
 		Type: p.GetType(),
 		Spec: v1.ProviderSpec{
-			Credentials: p.GetCredentials(),
-			Config:      p.GetConfig(),
+			Config: copyMap(p.GetConfig()),
 		},
 	}
 
@@ -28,7 +27,7 @@ func ProviderFromProto(p *dm.Provider) *v1.Provider {
 		result.ID = m.GetId()
 		result.Name = m.GetName()
 		result.CreatedAt = TimeFromMillis(m.GetCreatedAtMs())
-		result.Labels = m.GetLabels()
+		result.Labels = copyMap(m.GetLabels())
 		result.ResourceVersion = m.GetResourceVersion()
 	}
 
@@ -40,6 +39,17 @@ func ProviderFromProto(p *dm.Provider) *v1.Provider {
 	}
 
 	return result
+}
+
+func copyMap(m map[string]string) map[string]string {
+	if m == nil {
+		return nil
+	}
+	c := make(map[string]string, len(m))
+	for k, v := range m {
+		c[k] = v
+	}
+	return c
 }
 
 // ProviderToProto converts an SDK Provider to a proto Provider.

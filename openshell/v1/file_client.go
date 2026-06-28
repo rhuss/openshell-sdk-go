@@ -32,10 +32,10 @@ func newFileClient(conn grpc.ClientConnInterface) *fileClient {
 
 func (f *fileClient) Upload(ctx context.Context, sandboxID string, localPath string, remotePath string) error {
 	if sandboxID == "" {
-		return fmt.Errorf("sandbox ID must not be empty")
+		return &StatusError{Code: ErrorInvalidArgument, Message: "sandbox ID must not be empty"}
 	}
 	if remotePath == "" {
-		return fmt.Errorf("remote path must not be empty")
+		return &StatusError{Code: ErrorInvalidArgument, Message: "remote path must not be empty"}
 	}
 
 	info, err := os.Stat(localPath)
@@ -66,10 +66,10 @@ func (f *fileClient) Upload(ctx context.Context, sandboxID string, localPath str
 
 func (f *fileClient) Download(ctx context.Context, sandboxID string, remotePath string, localPath string) error {
 	if sandboxID == "" {
-		return fmt.Errorf("sandbox ID must not be empty")
+		return &StatusError{Code: ErrorInvalidArgument, Message: "sandbox ID must not be empty"}
 	}
 	if remotePath == "" {
-		return fmt.Errorf("remote path must not be empty")
+		return &StatusError{Code: ErrorInvalidArgument, Message: "remote path must not be empty"}
 	}
 
 	session, err := f.client.CreateSshSession(ctx, &pb.CreateSshSessionRequest{

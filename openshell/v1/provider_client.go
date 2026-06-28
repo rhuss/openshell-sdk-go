@@ -111,7 +111,7 @@ func providerFromProto(p *dm.Provider) *Provider {
 	result := &Provider{
 		Type: p.GetType(),
 		Spec: ProviderSpec{
-			Config: p.GetConfig(),
+			Config: copyStringMap(p.GetConfig()),
 		},
 	}
 
@@ -119,7 +119,7 @@ func providerFromProto(p *dm.Provider) *Provider {
 		result.ID = m.GetId()
 		result.Name = m.GetName()
 		result.CreatedAt = timeFromMillis(m.GetCreatedAtMs())
-		result.Labels = m.GetLabels()
+		result.Labels = copyStringMap(m.GetLabels())
 		result.ResourceVersion = m.GetResourceVersion()
 	}
 

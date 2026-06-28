@@ -44,12 +44,17 @@ func newMockHealthServer(s pb.ServiceStatus, version string, err error) (*grpc.C
 
 	go func() { _ = srv.Serve(lis) }()
 
-	conn, _ := grpc.NewClient("passthrough:///bufconn",
+	conn, err2 := grpc.NewClient("passthrough:///bufconn",
 		grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {
 			return lis.Dial()
 		}),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
+
+	if err2 != nil {
+		srv.Stop()
+		panic("grpc.NewClient failed: " + err2.Error())
+	}
 
 	return conn, func() {
 		_ = conn.Close()

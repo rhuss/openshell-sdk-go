@@ -4,7 +4,6 @@
 package v1
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -60,7 +59,7 @@ type Client struct {
 // NewClient creates a new SDK client connected to the given gateway.
 func NewClient(cfg Config) (*Client, error) {
 	if cfg.Address == "" {
-		return nil, fmt.Errorf("address must not be empty")
+		return nil, &StatusError{Code: ErrorInvalidArgument, Message: "address must not be empty"}
 	}
 
 	if cfg.Auth == nil {

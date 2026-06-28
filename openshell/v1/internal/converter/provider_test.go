@@ -39,7 +39,7 @@ func TestProviderFromProto(t *testing.T) {
 	assert.Equal(t, time.UnixMilli(1700000000000).UTC(), p.CreatedAt)
 	assert.Equal(t, map[string]string{"env": "prod"}, p.Labels)
 	assert.Equal(t, uint64(5), p.ResourceVersion)
-	assert.Equal(t, map[string]string{"API_KEY": "secret"}, p.Spec.Credentials)
+	assert.Nil(t, p.Spec.Credentials, "credentials are write-only")
 	assert.Equal(t, map[string]string{"region": "us-east-1"}, p.Spec.Config)
 	assert.Equal(t, time.UnixMilli(1700100000000).UTC(), p.Spec.CredentialExpiresAt["API_KEY"])
 }
@@ -126,7 +126,7 @@ func TestProviderRoundTrip(t *testing.T) {
 	assert.Equal(t, original.CreatedAt, back.CreatedAt)
 	assert.Equal(t, original.Labels, back.Labels)
 	assert.Equal(t, original.ResourceVersion, back.ResourceVersion)
-	assert.Equal(t, original.Spec.Credentials, back.Spec.Credentials)
+	assert.Nil(t, back.Spec.Credentials, "credentials are write-only and should not be returned")
 	assert.Equal(t, original.Spec.Config, back.Spec.Config)
 	assert.Equal(t, original.Spec.CredentialExpiresAt, back.Spec.CredentialExpiresAt)
 }

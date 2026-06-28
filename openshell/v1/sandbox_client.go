@@ -178,7 +178,7 @@ func sandboxFromProto(s *pb.Sandbox) *Sandbox {
 		result.ID = m.GetId()
 		result.Name = m.GetName()
 		result.CreatedAt = timeFromMillis(m.GetCreatedAtMs())
-		result.Labels = m.GetLabels()
+		result.Labels = copyStringMap(m.GetLabels())
 		result.ResourceVersion = m.GetResourceVersion()
 	}
 
@@ -198,8 +198,8 @@ func sandboxFromProto(s *pb.Sandbox) *Sandbox {
 func sandboxSpecFromProto(spec *pb.SandboxSpec) SandboxSpec {
 	result := SandboxSpec{
 		LogLevel:    spec.GetLogLevel(),
-		Environment: spec.GetEnvironment(),
-		Providers:   spec.GetProviders(),
+		Environment: copyStringMap(spec.GetEnvironment()),
+		Providers:   copyStringSlice(spec.GetProviders()),
 	}
 
 	if tmpl := spec.GetTemplate(); tmpl != nil {
@@ -207,9 +207,9 @@ func sandboxSpecFromProto(spec *pb.SandboxSpec) SandboxSpec {
 			Image:            tmpl.GetImage(),
 			RuntimeClassName: tmpl.GetRuntimeClassName(),
 			AgentSocket:      tmpl.GetAgentSocket(),
-			Labels:           tmpl.GetLabels(),
-			Annotations:      tmpl.GetAnnotations(),
-			Environment:      tmpl.GetEnvironment(),
+			Labels:           copyStringMap(tmpl.GetLabels()),
+			Annotations:      copyStringMap(tmpl.GetAnnotations()),
+			Environment:      copyStringMap(tmpl.GetEnvironment()),
 			UserNamespaces:   tmpl.UserNamespaces,
 		}
 	}
@@ -352,5 +352,25 @@ func (s *sandboxClient) Watch(ctx context.Context, name string, _ ...WatchOption
 	}()
 
 	return w, nil
+}
+
+func copyStringMap(m map[string]string) map[string]string {
+	if m == nil {
+		return nil
+	}
+	c := make(map[string]string, len(m))
+	for k, v := range m {
+		c[k] = v
+	}
+	return c
+}
+
+func copyStringSlice(s []string) []string {
+	if s == nil {
+		return nil
+	}
+	c := make([]string, len(s))
+	copy(c, s)
+	return c
 }
 
