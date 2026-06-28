@@ -55,12 +55,14 @@ func (e *execClient) Stream(ctx context.Context, sandboxID string, command []str
 	}
 	req := execRequestToProto(sandboxID, command, opt)
 
-	stream, err := e.client.ExecSandbox(ctx, req)
+	streamCtx, cancel := context.WithCancel(ctx)
+	stream, err := e.client.ExecSandbox(streamCtx, req)
 	if err != nil {
+		cancel()
 		return nil, fromGRPCError(err)
 	}
 
-	return &execStream{stream: stream}, nil
+	return &execStream{stream: stream, cancel: cancel}, nil
 }
 
 func (e *execClient) Interactive(ctx context.Context, sandboxID string, command []string, cols, rows uint32, opts ...ExecOptions) (InteractiveSession, error) {
@@ -87,6 +89,7 @@ func (e *execClient) Interactive(ctx context.Context, sandboxID string, command 
 // execStream wraps a server-streaming RPC into the ExecStream interface.
 type execStream struct {
 	stream   grpc.ServerStreamingClient[pb.ExecSandboxEvent]
+	cancel   context.CancelFunc
 	exitCode int
 	exited   bool
 	hasExit  bool
@@ -137,6 +140,9 @@ func (s *execStream) ExitCode() (int, error) {
 }
 
 func (s *execStream) Close() error {
+	if s.cancel != nil {
+		s.cancel()
+	}
 	return nil
 }
 
