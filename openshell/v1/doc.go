@@ -59,4 +59,78 @@
 //	for event := range watcher.ResultChan() {
 //	    fmt.Printf("%s: %s\n", event.Type, event.Object.Name)
 //	}
+//
+// # Watching with StopOnTerminal
+//
+// Use StopOnTerminal to auto-close the watcher when the sandbox reaches a
+// terminal phase (Ready or Error):
+//
+//	watcher, err := client.Sandboxes().Watch(ctx, sandbox.Name,
+//	    v1.WatchOptions{StopOnTerminal: true},
+//	)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	for event := range watcher.ResultChan() {
+//	    fmt.Printf("phase: %s\n", event.Object.Status.Phase)
+//	}
+//	// channel closes automatically after Ready or Error
+//
+// # Service Exposure
+//
+// Expose an HTTP service running inside a sandbox and retrieve its public URL:
+//
+//	endpoint, err := client.Services().Expose(ctx, "my-sandbox", "api", 8080, true)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	fmt.Printf("Service URL: %s\n", endpoint.URL)
+//
+//	endpoints, err := client.Services().List(ctx, "my-sandbox")
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	for _, ep := range endpoints {
+//	    fmt.Printf("  %s → port %d (URL: %s)\n", ep.ServiceName, ep.TargetPort, ep.URL)
+//	}
+//
+// # Provider Profiles
+//
+// List available provider profiles and import new ones:
+//
+//	profiles, err := client.Providers().Profiles().List(ctx)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	for _, p := range profiles {
+//	    fmt.Printf("%s (%s): %s\n", p.DisplayName, p.Category, p.Description)
+//	}
+//
+//	result, err := client.Providers().Profiles().Import(ctx, []v1.ProfileImportItem{
+//	    {Source: "openai-profile.yaml", Profile: v1.ProviderProfile{
+//	        DisplayName: "OpenAI",
+//	        Category:    v1.ProfileCategoryInference,
+//	    }},
+//	})
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	for _, d := range result.Diagnostics {
+//	    fmt.Printf("[%s] %s: %s\n", d.Severity, d.Field, d.Message)
+//	}
+//
+// # Credential Refresh
+//
+// Configure gateway-owned credential refresh for a provider:
+//
+//	status, err := client.Providers().Refresh().Configure(ctx, &v1.RefreshConfig{
+//	    Provider:      "openai",
+//	    CredentialKey:  "api-key",
+//	    Strategy:      v1.RefreshStrategyOAuth2ClientCredentials,
+//	    Material:      map[string]string{"client_id": "xxx", "client_secret": "yyy"},
+//	})
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	fmt.Printf("Refresh status: %s (next: %s)\n", status.Status, status.NextRefreshAt)
 package v1

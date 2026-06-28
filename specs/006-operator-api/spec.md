@@ -47,19 +47,19 @@ An operator managing a fleet of providers needs to list available provider type 
 
 ### User Story 3 - Operator Configures Credential Refresh (Priority: P2)
 
-An operator needs to set up automatic credential refresh for a provider so that expiring credentials are rotated without manual intervention. The operator configures refresh parameters, checks refresh status, triggers manual rotation, and can remove the refresh configuration.
+An operator needs to set up automatic credential refresh for a specific provider credential so that expiring credentials are rotated without manual intervention. The operator configures refresh parameters (specifying both provider name and credential key), checks refresh status, triggers manual rotation, and can remove the refresh configuration.
 
 **Why this priority**: Credential expiration causes service outages. Automated refresh prevents operators from needing to manually rotate credentials on a schedule.
 
-**Independent Test**: Configure refresh for a provider, verify the configuration is accepted. Check refresh status, verify it reflects the configuration. Trigger a manual rotation, verify success. Delete the refresh configuration, verify subsequent GetStatus reflects removal.
+**Independent Test**: Configure refresh for a provider credential (provider "openai-prod", credential key "api-key"), verify the configuration is accepted. Check refresh status for that credential, verify it reflects the configuration. Trigger a manual rotation, verify success. Delete the refresh configuration, verify subsequent GetStatus reflects removal.
 
 **Acceptance Scenarios**:
 
-1. **Given** a provider "openai-prod", **When** the operator calls Providers().Refresh().Configure with a refresh configuration, **Then** the configuration is accepted without error.
-2. **Given** a configured refresh for "openai-prod", **When** the operator calls Providers().Refresh().GetStatus, **Then** the refresh status reflects the active configuration.
-3. **Given** a configured refresh for "openai-prod", **When** the operator calls Providers().Refresh().Rotate, **Then** a credential rotation is triggered successfully.
-4. **Given** a configured refresh for "openai-prod", **When** the operator calls Providers().Refresh().Delete, **Then** the refresh configuration is removed and subsequent GetStatus reflects no active refresh.
-5. **Given** no refresh configured for "new-provider", **When** the operator calls Providers().Refresh().GetStatus, **Then** the status indicates no refresh is configured (not an error).
+1. **Given** a provider "openai-prod" with credential key "api-key", **When** the operator calls Providers().Refresh().Configure with provider name, credential key, and a refresh configuration, **Then** the configuration is accepted and a RefreshStatus is returned.
+2. **Given** a configured refresh for "openai-prod" credential "api-key", **When** the operator calls Providers().Refresh().GetStatus with provider name and credential key, **Then** the refresh status reflects the active configuration.
+3. **Given** a configured refresh for "openai-prod" credential "api-key", **When** the operator calls Providers().Refresh().Rotate with provider name and credential key, **Then** a credential rotation is triggered and an updated RefreshStatus is returned.
+4. **Given** a configured refresh for "openai-prod" credential "api-key", **When** the operator calls Providers().Refresh().Delete with provider name and credential key, **Then** the refresh configuration is removed and subsequent GetStatus reflects no active refresh.
+5. **Given** no refresh configured for "new-provider" credential "api-key", **When** the operator calls Providers().Refresh().GetStatus, **Then** the status indicates no refresh is configured (returns empty credentials list, not an error).
 
 ---
 
@@ -103,7 +103,8 @@ A consumer writing tests against the SDK uses the fake client. After the Phase 2
 - What happens when Profiles().Import is called with an empty profile list? The operation succeeds with imported=false and no profiles returned.
 - What happens when Profiles().Update is called with a built-in profile ID? An error is returned indicating built-in profiles cannot be modified.
 - What happens when Refresh().Configure is called with an empty provider name? A validation error is returned.
-- What happens when Refresh().Rotate is called for a provider with no refresh configured? An error indicating no refresh configuration exists is returned.
+- What happens when Refresh().Configure is called with an empty credential key? A validation error is returned.
+- What happens when Refresh().Rotate is called for a provider credential with no refresh configured? An error indicating no refresh configuration exists is returned.
 - What happens when the gateway is unavailable during any operation? An Unavailable error is returned, consistent with Phase 1 behavior.
 
 ## Requirements
@@ -115,7 +116,7 @@ A consumer writing tests against the SDK uses the fake client. After the Phase 2
 - **FR-001**: The SDK MUST provide a ServiceInterface accessible via `client.Services()` with Expose, Get, List, and Delete operations for sandbox HTTP service endpoints.
 - **FR-002**: Services().Expose MUST accept a sandbox name, service name, target port, and domain flag, and return a ServiceEndpoint containing the endpoint details and URL (when domain is enabled).
 - **FR-003**: Services().Get MUST retrieve a service endpoint by sandbox name and service name, returning NotFound if it does not exist.
-- **FR-004**: Services().List MUST return all service endpoints for a given sandbox. An empty sandbox name returns endpoints across all sandboxes.
+- **FR-004**: Services().List MUST return all service endpoints for a given sandbox, accepting optional ListOptions for pagination (limit, offset). An empty sandbox name returns endpoints across all sandboxes.
 - **FR-005**: Services().Delete MUST remove a service endpoint by sandbox and service name, returning NotFound if it does not exist.
 
 **Provider Profiles**
@@ -124,21 +125,21 @@ A consumer writing tests against the SDK uses the fake client. After the Phase 2
 - **FR-007**: Profiles().List MUST return all available provider profiles, including both built-in and custom profiles.
 - **FR-008**: Profiles().Get MUST retrieve a single provider profile by ID, returning NotFound if it does not exist.
 - **FR-009**: Profiles().Import MUST accept a list of profile import items and return an import result containing diagnostics, imported profiles, and an imported flag.
-- **FR-010**: Profiles().Update MUST accept a profile import item, profile ID, and expected resource version for optimistic concurrency, returning the updated profile or a concurrency error if the version is stale.
+- **FR-010**: Profiles().Update MUST accept a profile import item, profile ID, and expected resource version for optimistic concurrency, returning an update result containing diagnostics, the updated profile, and an updated flag, or a concurrency error if the version is stale.
 - **FR-011**: Profiles().Lint MUST validate profile import items without registering them, returning diagnostics and a valid flag.
 - **FR-012**: Profiles().Delete MUST remove a custom provider profile by ID, returning NotFound if it does not exist.
 
 **Provider Credential Refresh**
 
-- **FR-013**: The SDK MUST provide a RefreshInterface accessible via `client.Providers().Refresh()` with GetStatus, Configure, Rotate, and Delete operations.
-- **FR-014**: Refresh().GetStatus MUST return the refresh status for a provider, indicating whether refresh is configured and its current state.
-- **FR-015**: Refresh().Configure MUST set up gateway-owned refresh configuration for a provider credential.
-- **FR-016**: Refresh().Rotate MUST trigger an immediate credential rotation for a provider.
-- **FR-017**: Refresh().Delete MUST remove the refresh configuration for a provider.
+- **FR-013**: The SDK MUST provide a RefreshInterface accessible via `client.Providers().Refresh()` with GetStatus, Configure, Rotate, and Delete operations. All operations accept a provider name and credential key to identify the specific credential.
+- **FR-014**: Refresh().GetStatus MUST accept a provider name and credential key, returning the refresh status (a list of ProviderCredentialRefreshStatus entries) indicating whether refresh is configured and its current state.
+- **FR-015**: Refresh().Configure MUST accept a provider name, credential key, refresh strategy, material map, secret material keys, and optional expiration, setting up gateway-owned refresh configuration. It MUST return the resulting RefreshStatus.
+- **FR-016**: Refresh().Rotate MUST accept a provider name and credential key, triggering an immediate credential rotation. It MUST return the resulting RefreshStatus.
+- **FR-017**: Refresh().Delete MUST accept a provider name and credential key, removing the refresh configuration for that specific credential.
 
 **Watch Enhancement**
 
-- **FR-018**: WatchOptions MUST support a StopOnTerminal field. When true, the watch stream MUST close automatically after the sandbox reaches a terminal phase (Ready or Error).
+- **FR-018**: WatchOptions MUST support a `StopOnTerminal` field (Go name, mapped from proto `stop_on_terminal`). When true, the watch stream MUST close automatically after the sandbox reaches a terminal phase (Ready or Error).
 - **FR-019**: The default value for StopOnTerminal MUST be false, preserving backward compatibility with existing Watch consumers.
 
 **Fake Client Updates**
@@ -156,10 +157,11 @@ A consumer writing tests against the SDK uses the fake client. After the Phase 2
 
 - **ServiceEndpoint**: Represents an exposed HTTP service on a sandbox. Key attributes: sandbox name, service name, target port, domain flag, URL.
 - **ProviderProfile**: A provider type template defining the credentials schema, network endpoints, binaries, and discovery configuration for a class of providers. Key attributes: ID, display name, description, category, credentials, endpoints, binaries, inference capability, discovery, resource version.
-- **ProfileImportItem**: An item submitted for profile import or lint validation, containing the profile definition file content.
-- **ProfileDiagnostic**: A validation finding from Import or Lint, indicating an issue with a profile definition.
-- **RefreshStatus**: The current state of credential refresh for a provider, indicating whether refresh is configured and its operational status.
-- **RefreshConfig**: Configuration parameters for gateway-owned credential refresh on a provider.
+- **ProfileImportItem**: An item submitted for profile import or lint validation, containing a ProviderProfile definition and a source string identifying the origin (e.g., file path).
+- **ProfileDiagnostic**: A validation finding from Import, Update, or Lint, indicating an issue with a profile definition. Key attributes: source, profile ID, field, message, severity.
+- **ProfileUpdateResult**: The result of a profile update operation. Key attributes: diagnostics, updated profile, updated flag.
+- **RefreshStatus**: The current state of credential refresh for a specific provider credential. Key attributes: provider name, provider ID, credential key, strategy, status, expires at, next/last refresh timestamps, last error.
+- **RefreshConfig**: Configuration parameters for gateway-owned credential refresh on a provider credential. Key attributes: provider name, credential key, strategy (enum: static, external, OAuth2 refresh token, OAuth2 client credentials, Google service account JWT), material map, secret material keys, optional expiration.
 
 ## Success Criteria
 
@@ -173,6 +175,19 @@ A consumer writing tests against the SDK uses the fake client. After the Phase 2
 - **SC-006**: All new operations produce the same typed error codes (NotFound, AlreadyExists, InvalidArgument, Unavailable, Unimplemented) as Phase 1 operations for equivalent error conditions.
 - **SC-007**: All new operations pass the race detector under concurrent access from multiple goroutines.
 
+## Out of Scope
+
+- Phase 2b APIs: policy management, gateway configuration, SSH session management, and TCP forwarding.
+- Enhanced watch capabilities: log streaming, event streaming, and filtering (deferred to brainstorm 008).
+- Server-side caching or business logic in the SDK -- the SDK wraps gateway RPCs without adding logic.
+- Breaking changes to existing Phase 1 interfaces (all changes are additive).
+
+## Dependencies
+
+- **Phase 1 SDK infrastructure**: Client, gRPC connection management, converter pattern, error handling (StatusError, ErrorCode), and types package must be stable.
+- **Proto definitions**: All 14 Phase 2a RPCs must be present in `proto/openshell.proto` with generated Go bindings in `proto/openshellv1/`.
+- **Phase 1 fake client** (spec 005): The FakeClient must already implement ClientInterface. This spec extends it with stub sub-clients.
+
 ## Assumptions
 
 - The gateway already implements all 14 Phase 2a RPCs as defined in the proto. The SDK wraps these RPCs without adding business logic.
@@ -181,5 +196,4 @@ A consumer writing tests against the SDK uses the fake client. After the Phase 2
 - Optimistic concurrency for profile updates uses the resource_version field returned by the gateway. The SDK passes the version through without enforcing it locally.
 - The RefreshConfig structure mirrors the proto's ConfigureProviderRefreshRequest fields. The exact fields are determined during planning when the proto messages are analyzed in detail.
 - StopOnTerminal is implemented in the SDK's Watch client (not on the server side), by monitoring incoming events and closing the channel when a terminal phase is detected. The proto's stop_on_terminal field is also passed to the server for server-side optimization.
-- Phase 2b (policy, config, SSH, TCP) is explicitly out of scope for this specification.
-- Enhanced watch capabilities (log streaming, event streaming, filtering) are out of scope — deferred to brainstorm 008.
+- Phase 2b and enhanced watch capabilities are excluded (see Out of Scope section above).

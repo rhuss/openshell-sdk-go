@@ -6,6 +6,7 @@ package fake
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	v1 "github.com/rhuss/openshell-sdk-go/openshell/v1"
@@ -224,12 +225,60 @@ func (c *fakeSandboxClient) WaitReady(ctx context.Context, name string, _ ...v1.
 }
 
 // Watch registers a watcher for sandbox events. If name is non-empty, only
-// events for that sandbox are delivered.
-func (c *fakeSandboxClient) Watch(_ context.Context, name string, _ ...v1.WatchOptions) (types.WatchInterface[*types.Sandbox], error) {
+// events for that sandbox are delivered. When StopOnTerminal is set, the
+// watcher auto-closes after delivering a terminal phase event (SandboxReady
+// or SandboxError).
+func (c *fakeSandboxClient) Watch(_ context.Context, name string, opts ...v1.WatchOptions) (types.WatchInterface[*types.Sandbox], error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
-	return c.broadcaster.Watch(name), nil
+
+	inner := c.broadcaster.Watch(name)
+
+	var stopOnTerminal bool
+	if len(opts) > 0 {
+		stopOnTerminal = opts[0].StopOnTerminal
+	}
+
+	if !stopOnTerminal {
+		return inner, nil
+	}
+
+	// Wrap with a filtering watcher that auto-stops after terminal events.
+	out := make(chan types.Event[*types.Sandbox], watchChannelBuffer)
+	tw := &terminalWatcher{
+		ch:    out,
+		inner: inner,
+	}
+	go func() {
+		defer close(out)
+		for ev := range inner.ResultChan() {
+			out <- ev
+			if ev.Object != nil &&
+				(ev.Object.Status.Phase == types.SandboxReady || ev.Object.Status.Phase == types.SandboxError) {
+				inner.Stop()
+				return
+			}
+		}
+	}()
+	return tw, nil
+}
+
+// terminalWatcher wraps an inner watcher and exposes its own output channel.
+type terminalWatcher struct {
+	ch    chan types.Event[*types.Sandbox]
+	inner types.WatchInterface[*types.Sandbox]
+	once  sync.Once
+}
+
+func (w *terminalWatcher) ResultChan() <-chan types.Event[*types.Sandbox] {
+	return w.ch
+}
+
+func (w *terminalWatcher) Stop() {
+	w.once.Do(func() {
+		w.inner.Stop()
+	})
 }
 
 // AttachProvider adds a provider name to the sandbox's Spec.Providers list.

@@ -12,11 +12,27 @@ import (
 )
 
 type providerClient struct {
-	client pb.OpenShellClient
+	client   pb.OpenShellClient
+	profiles *profileClient
+	refresh  *refreshClient
 }
 
 func newProviderClient(conn grpc.ClientConnInterface) *providerClient {
-	return &providerClient{client: pb.NewOpenShellClient(conn)}
+	return &providerClient{
+		client:   pb.NewOpenShellClient(conn),
+		profiles: newProfileClient(conn),
+		refresh:  newRefreshClient(conn),
+	}
+}
+
+// Profiles returns a sub-client for provider profile operations.
+func (p *providerClient) Profiles() ProfileInterface {
+	return p.profiles
+}
+
+// Refresh returns a sub-client for credential refresh operations.
+func (p *providerClient) Refresh() RefreshInterface {
+	return p.refresh
 }
 
 func (p *providerClient) Create(ctx context.Context, provider *Provider) (*Provider, error) {

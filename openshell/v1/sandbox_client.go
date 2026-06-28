@@ -165,7 +165,12 @@ func (s *sandboxClient) WaitReady(ctx context.Context, name string, opts ...Wait
 	}
 }
 
-func (s *sandboxClient) Watch(ctx context.Context, name string, _ ...WatchOptions) (WatchInterface[*Sandbox], error) {
+func (s *sandboxClient) Watch(ctx context.Context, name string, opts ...WatchOptions) (WatchInterface[*Sandbox], error) {
+	var watchOpts WatchOptions
+	if len(opts) > 0 {
+		watchOpts = opts[0]
+	}
+
 	streamCtx, streamCancel := context.WithCancel(ctx)
 	stream, err := s.client.WatchSandbox(streamCtx, &pb.WatchSandboxRequest{
 		Id:           name,
@@ -198,6 +203,11 @@ func (s *sandboxClient) Watch(ctx context.Context, name string, _ ...WatchOption
 				select {
 				case ch <- Event[*Sandbox]{Type: eventType, Object: sandbox}:
 				case <-w.done:
+					return
+				}
+				// StopOnTerminal: close watcher after delivering a terminal phase event
+				if watchOpts.StopOnTerminal && (sandbox.Status.Phase == SandboxReady || sandbox.Status.Phase == SandboxError) {
+					w.Stop()
 					return
 				}
 			}

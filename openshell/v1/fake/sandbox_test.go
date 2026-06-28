@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	v1 "github.com/rhuss/openshell-sdk-go/openshell/v1"
 	"github.com/rhuss/openshell-sdk-go/openshell/v1/types"
 )
 
@@ -599,5 +600,98 @@ func TestSandbox_AttachProvider_BroadcastsModified(t *testing.T) {
 		assert.Contains(t, ev.Object.Spec.Providers, "openai")
 	case <-time.After(time.Second):
 		t.Fatal("timed out waiting for MODIFIED event from AttachProvider")
+	}
+}
+
+// --- T033: StopOnTerminal tests for fake Watch ---
+
+func TestSandbox_Watch_StopOnTerminal_Ready(t *testing.T) {
+	sc := newTestSandboxClient()
+	ctx := context.Background()
+
+	_, err := sc.Create(ctx, "test-sb", &types.SandboxSpec{}, nil)
+	require.NoError(t, err)
+
+	w, err := sc.Watch(ctx, "test-sb", v1.WatchOptions{StopOnTerminal: true})
+	require.NoError(t, err)
+
+	// Transition to Ready — this broadcasts a MODIFIED event with SandboxReady phase
+	_, err = sc.WaitReady(ctx, "test-sb")
+	require.NoError(t, err)
+
+	// Should receive the Ready event
+	var gotReady bool
+	for ev := range w.ResultChan() {
+		if ev.Object != nil && ev.Object.Status.Phase == types.SandboxReady {
+			gotReady = true
+		}
+	}
+	// Channel should be closed after the terminal event
+	assert.True(t, gotReady, "expected to receive a Ready event before channel closed")
+}
+
+func TestSandbox_Watch_StopOnTerminal_Error(t *testing.T) {
+	sc := newTestSandboxClient()
+	ctx := context.Background()
+
+	sb, err := sc.Create(ctx, "test-sb", &types.SandboxSpec{}, nil)
+	require.NoError(t, err)
+
+	w, err := sc.Watch(ctx, "test-sb", v1.WatchOptions{StopOnTerminal: true})
+	require.NoError(t, err)
+
+	// Manually transition to Error phase via store update + broadcast
+	sb.Status.Phase = types.SandboxError
+	sb.ResourceVersion++
+	updated, err := sc.store.Update(sb)
+	require.NoError(t, err)
+	sc.broadcaster.Broadcast(types.Event[*types.Sandbox]{
+		Type:   types.EventModified,
+		Object: copySandbox(updated),
+	}, "test-sb")
+
+	// Should receive the Error event and then the channel closes
+	var gotError bool
+	for ev := range w.ResultChan() {
+		if ev.Object != nil && ev.Object.Status.Phase == types.SandboxError {
+			gotError = true
+		}
+	}
+	assert.True(t, gotError, "expected to receive an Error event before channel closed")
+}
+
+func TestSandbox_Watch_StopOnTerminal_False_DoesNotClose(t *testing.T) {
+	sc := newTestSandboxClient()
+	ctx := context.Background()
+
+	_, err := sc.Create(ctx, "test-sb", &types.SandboxSpec{}, nil)
+	require.NoError(t, err)
+
+	// Watch WITHOUT StopOnTerminal
+	w, err := sc.Watch(ctx, "test-sb")
+	require.NoError(t, err)
+	defer w.Stop()
+
+	// Transition to Ready
+	_, err = sc.WaitReady(ctx, "test-sb")
+	require.NoError(t, err)
+
+	// Receive the Ready event
+	select {
+	case ev := <-w.ResultChan():
+		assert.Equal(t, types.SandboxReady, ev.Object.Status.Phase)
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for Ready event")
+	}
+
+	// Channel should still be open — verify by checking no close
+	select {
+	case _, ok := <-w.ResultChan():
+		if !ok {
+			t.Fatal("channel closed unexpectedly when StopOnTerminal was not set")
+		}
+		// Got another event, that's fine
+	case <-time.After(100 * time.Millisecond):
+		// No event and not closed — correct behavior
 	}
 }

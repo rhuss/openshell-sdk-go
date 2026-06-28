@@ -28,6 +28,9 @@ type UpdateOptions struct{}
 type WatchOptions struct {
 	TimeoutSeconds int64
 	LabelSelector  string
+	// StopOnTerminal causes the watch to close automatically when the sandbox
+	// reaches a terminal phase (Ready or Error).
+	StopOnTerminal bool
 }
 
 // WaitOptions configures wait behavior. Use context for timeout control.

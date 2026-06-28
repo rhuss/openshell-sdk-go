@@ -19,6 +19,7 @@ type Config = types.Config
 type ClientInterface interface {
 	Sandboxes() SandboxInterface
 	Providers() ProviderInterface
+	Services() ServiceInterface
 	Exec() ExecInterface
 	Files() FileInterface
 	Health() HealthInterface
@@ -45,6 +46,7 @@ type Client struct {
 
 	sandboxes SandboxInterface
 	providers ProviderInterface
+	services  ServiceInterface
 	exec      ExecInterface
 	files     FileInterface
 	health    HealthInterface
@@ -82,6 +84,7 @@ func NewClient(cfg Config) (*Client, error) {
 
 	c.sandboxes = newSandboxClient(conn)
 	c.providers = newProviderClient(conn)
+	c.services = newServiceClient(conn)
 	c.exec = newExecClient(conn)
 	c.files = newFileClient(conn)
 	c.health = newHealthClient(conn)
@@ -94,6 +97,9 @@ func (c *Client) Sandboxes() SandboxInterface { return c.sandboxes }
 
 // Providers returns the provider sub-client.
 func (c *Client) Providers() ProviderInterface { return c.providers }
+
+// Services returns the service sub-client.
+func (c *Client) Services() ServiceInterface { return c.services }
 
 // Exec returns the exec sub-client.
 func (c *Client) Exec() ExecInterface { return c.exec }

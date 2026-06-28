@@ -15,7 +15,8 @@ type Provider = types.Provider
 // ProviderSpec holds provider-specific configuration and credentials.
 type ProviderSpec = types.ProviderSpec
 
-// ProviderInterface defines CRUD and Ensure operations on providers.
+// ProviderInterface defines CRUD and Ensure operations on providers,
+// plus sub-client accessors for profiles and credential refresh.
 type ProviderInterface interface {
 	Create(ctx context.Context, provider *Provider) (*Provider, error)
 	Get(ctx context.Context, name string) (*Provider, error)
@@ -23,4 +24,6 @@ type ProviderInterface interface {
 	Update(ctx context.Context, provider *Provider) (*Provider, error)
 	Delete(ctx context.Context, name string) error
 	Ensure(ctx context.Context, provider *Provider) (*Provider, error)
+	Profiles() ProfileInterface
+	Refresh() RefreshInterface
 }

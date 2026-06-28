@@ -34,8 +34,9 @@ type mockSandboxServer struct {
 	attachErr  error
 	detachErr  error
 	listProvErr error
-	watchEvents []*pb.SandboxStreamEvent
-	watchErr    error
+	watchEvents    []*pb.SandboxStreamEvent
+	watchErr       error
+	watchKeepOpen  chan struct{} // if non-nil, WatchSandbox blocks after sending events until closed
 }
 
 func newMockSandboxServer() *mockSandboxServer {
@@ -147,11 +148,16 @@ func (s *mockSandboxServer) WatchSandbox(_ *pb.WatchSandboxRequest, stream grpc.
 	s.mu.Lock()
 	events := make([]*pb.SandboxStreamEvent, len(s.watchEvents))
 	copy(events, s.watchEvents)
+	keepOpen := s.watchKeepOpen
 	s.mu.Unlock()
 	for _, ev := range events {
 		if err := stream.Send(ev); err != nil {
 			return err
 		}
+	}
+	// If watchKeepOpen is set, block until it is closed (simulates long-running stream)
+	if keepOpen != nil {
+		<-keepOpen
 	}
 	return nil
 }
@@ -608,4 +614,116 @@ func TestSandboxWatch_RPCError(t *testing.T) {
 
 	require.Error(t, err)
 	assert.True(t, IsNotFound(err))
+}
+
+// --- T023/T024: StopOnTerminal watch tests ---
+
+func TestSandboxWatch_StopOnTerminal_Ready(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.watchKeepOpen = make(chan struct{})
+	defer close(mock.watchKeepOpen)
+	mock.watchEvents = []*pb.SandboxStreamEvent{
+		{Payload: &pb.SandboxStreamEvent_Sandbox{Sandbox: &pb.Sandbox{
+			Metadata: &dm.ObjectMeta{Name: "sb-1", Id: "id-1"},
+			Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_PROVISIONING},
+		}}},
+		{Payload: &pb.SandboxStreamEvent_Sandbox{Sandbox: &pb.Sandbox{
+			Metadata: &dm.ObjectMeta{Name: "sb-1", Id: "id-1"},
+			Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_READY},
+		}}},
+	}
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	w, err := client.Watch(context.Background(), "sb-1", WatchOptions{StopOnTerminal: true})
+	require.NoError(t, err)
+	defer w.Stop()
+
+	// Should receive the Provisioning event
+	ev1 := <-w.ResultChan()
+	assert.Equal(t, EventModified, ev1.Type)
+	assert.Equal(t, SandboxProvisioning, ev1.Object.Status.Phase)
+
+	// Should receive the Ready event (terminal)
+	ev2 := <-w.ResultChan()
+	assert.Equal(t, EventModified, ev2.Type)
+	assert.Equal(t, SandboxReady, ev2.Object.Status.Phase)
+
+	// Channel should close automatically after terminal event (stream is still open)
+	select {
+	case _, ok := <-w.ResultChan():
+		assert.False(t, ok, "channel should close after terminal Ready event")
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for channel close after terminal Ready event")
+	}
+}
+
+func TestSandboxWatch_StopOnTerminal_Error(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.watchKeepOpen = make(chan struct{})
+	defer close(mock.watchKeepOpen)
+	mock.watchEvents = []*pb.SandboxStreamEvent{
+		{Payload: &pb.SandboxStreamEvent_Sandbox{Sandbox: &pb.Sandbox{
+			Metadata: &dm.ObjectMeta{Name: "sb-1", Id: "id-1"},
+			Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_PROVISIONING},
+		}}},
+		{Payload: &pb.SandboxStreamEvent_Sandbox{Sandbox: &pb.Sandbox{
+			Metadata: &dm.ObjectMeta{Name: "sb-1", Id: "id-1"},
+			Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_ERROR},
+		}}},
+	}
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	w, err := client.Watch(context.Background(), "sb-1", WatchOptions{StopOnTerminal: true})
+	require.NoError(t, err)
+	defer w.Stop()
+
+	// Should receive the Provisioning event
+	ev1 := <-w.ResultChan()
+	assert.Equal(t, EventModified, ev1.Type)
+	assert.Equal(t, SandboxProvisioning, ev1.Object.Status.Phase)
+
+	// Should receive the Error event (terminal)
+	ev2 := <-w.ResultChan()
+	assert.Equal(t, EventModified, ev2.Type)
+	assert.Equal(t, SandboxError, ev2.Object.Status.Phase)
+
+	// Channel should close automatically after terminal event (stream is still open)
+	select {
+	case _, ok := <-w.ResultChan():
+		assert.False(t, ok, "channel should close after terminal Error event")
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for channel close after terminal Error event")
+	}
+}
+
+func TestSandboxWatch_StopOnTerminal_False_DoesNotClose(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.watchEvents = []*pb.SandboxStreamEvent{
+		{Payload: &pb.SandboxStreamEvent_Sandbox{Sandbox: &pb.Sandbox{
+			Metadata: &dm.ObjectMeta{Name: "sb-1", Id: "id-1"},
+			Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_READY},
+		}}},
+	}
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	// Default: StopOnTerminal=false — watcher should NOT auto-close on Ready
+	w, err := client.Watch(context.Background(), "sb-1")
+	require.NoError(t, err)
+	defer w.Stop()
+
+	ev := <-w.ResultChan()
+	assert.Equal(t, EventModified, ev.Type)
+	assert.Equal(t, SandboxReady, ev.Object.Status.Phase)
+
+	// Channel closes because mock stream ends (not because of StopOnTerminal)
+	// This test verifies the existing behavior is preserved
+	select {
+	case _, ok := <-w.ResultChan():
+		assert.False(t, ok, "channel should close after stream ends")
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for channel close")
+	}
 }

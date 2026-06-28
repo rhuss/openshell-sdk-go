@@ -20,6 +20,7 @@ type Client struct {
 
 	sandboxes v1.SandboxInterface
 	providers v1.ProviderInterface
+	services  v1.ServiceInterface
 	exec      v1.ExecInterface
 	files     v1.FileInterface
 	health    v1.HealthInterface
@@ -51,6 +52,7 @@ func NewClient(opts ...ClientOption) *Client {
 
 	fc.sandboxes = newFakeSandboxClient(fc.sandboxStore, fc.sandboxBroadcaster, fc.isClosed)
 	fc.providers = newFakeProviderClient(fc.providerStore, fc.isClosed)
+	fc.services = newFakeServiceClient(fc.isClosed)
 	fc.exec = newFakeExecClient(fc.isClosed)
 	fc.files = newFakeFileClient(fc.isClosed)
 	fc.health = newFakeHealthClient(nil, fc.isClosed)
@@ -75,6 +77,9 @@ func (fc *Client) Sandboxes() v1.SandboxInterface { return fc.sandboxes }
 
 // Providers returns the provider sub-client.
 func (fc *Client) Providers() v1.ProviderInterface { return fc.providers }
+
+// Services returns the service sub-client.
+func (fc *Client) Services() v1.ServiceInterface { return fc.services }
 
 // Exec returns the exec sub-client.
 func (fc *Client) Exec() v1.ExecInterface { return fc.exec }

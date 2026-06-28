@@ -53,6 +53,8 @@ func copyTimeMap(m map[string]time.Time) map[string]time.Time {
 type fakeProviderClient struct {
 	store      *objectStore[*types.Provider]
 	closedFunc func() bool
+	profiles   *fakeProfileClient
+	refresh    *fakeRefreshClient
 }
 
 // newFakeProviderClient creates a new fakeProviderClient.
@@ -63,7 +65,19 @@ func newFakeProviderClient(
 	return &fakeProviderClient{
 		store:      store,
 		closedFunc: closedFunc,
+		profiles:   newFakeProfileClient(closedFunc),
+		refresh:    newFakeRefreshClient(closedFunc),
 	}
+}
+
+// Profiles returns a sub-client for provider profile operations.
+func (c *fakeProviderClient) Profiles() v1.ProfileInterface {
+	return c.profiles
+}
+
+// Refresh returns a sub-client for credential refresh operations.
+func (c *fakeProviderClient) Refresh() v1.RefreshInterface {
+	return c.refresh
 }
 
 // Create adds a new provider. CreatedAt and ResourceVersion are set
