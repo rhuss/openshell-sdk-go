@@ -52,7 +52,7 @@ func ProviderToProto(p *types.Provider) *dm.Provider {
 			Id:              p.ID,
 			Name:            p.Name,
 			CreatedAtMs:     MillisFromTime(p.CreatedAt),
-			Labels:          p.Labels,
+			Labels:          CopyStringMap(p.Labels),
 			ResourceVersion: p.ResourceVersion,
 		},
 		Type:        p.Type,

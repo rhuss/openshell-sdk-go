@@ -20,20 +20,20 @@ openshell/v1/internal/grpc/
 
 | Type | Kind | Fields/Values |
 |------|------|---------------|
-| `Sandbox` | struct | Name, Namespace, Labels, ResourceVersion, Spec, Status, CreatedAt, UpdatedAt |
-| `SandboxSpec` | struct | Image, Ports, Env, Command, Args, Timeout, IdleTimeout, KeepAlive, Resources |
-| `SandboxTemplate` | struct | Spec |
-| `SandboxStatus` | struct | Phase, Message, Conditions, IP, Ports, NodeName |
-| `SandboxCondition` | struct | Type, Status, LastTransitionTime, Reason, Message |
-| `AttachProviderResult` | struct | ResourceVersion |
-| `DetachProviderResult` | struct | ResourceVersion |
+| `Sandbox` | struct | ID, Name, CreatedAt, Labels, ResourceVersion, Spec, Status |
+| `SandboxSpec` | struct | LogLevel, Environment, Template, Providers, GPUCount |
+| `SandboxTemplate` | struct | Image, RuntimeClassName, AgentSocket, Labels, Annotations, Environment, UserNamespaces |
+| `SandboxStatus` | struct | SandboxName, AgentPod, AgentFd, SandboxFd, Phase, Conditions, CurrentPolicyVersion |
+| `SandboxCondition` | struct | Type, Status, Reason, Message, LastTransitionTime |
+| `AttachProviderResult` | struct | Sandbox, Attached |
+| `DetachProviderResult` | struct | Sandbox, Detached |
 
 ### From `provider.go`
 
 | Type | Kind | Fields/Values |
 |------|------|---------------|
-| `Provider` | struct | Name, Spec, CreatedAt |
-| `ProviderSpec` | struct | Type, Endpoint, Token, CredentialExpiresAt |
+| `Provider` | struct | ID, Name, Type, CreatedAt, Labels, ResourceVersion, Spec |
+| `ProviderSpec` | struct | Credentials, Config, CredentialExpiresAt |
 
 ### From `exec.go`
 
@@ -52,8 +52,8 @@ openshell/v1/internal/grpc/
 
 | Type | Kind | Fields/Values |
 |------|------|---------------|
-| `SandboxPhase` | string enum | Pending, Creating, Running, Stopping, Stopped, Failed, Unknown |
-| `EventType` | string enum | Added, Modified, Deleted, Error |
+| `SandboxPhase` | string enum | SandboxProvisioning, SandboxReady, SandboxError, SandboxDeleting, SandboxUnknown |
+| `EventType` | string enum | EventAdded, EventModified, EventDeleted, EventError |
 | `StreamType` | string enum | Stdout, Stderr |
 | `TLSConfig` | struct | CertFile, KeyFile, CAFile, InsecureSkipVerify |
 | `RetryPolicy` | struct | MaxRetries, InitialBackoff, MaxBackoff, BackoffMultiplier |

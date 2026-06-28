@@ -22,12 +22,12 @@ func ExecChunkFromEvent(event *pb.ExecSandboxEvent) (*types.ExecChunk, int, erro
 	case *pb.ExecSandboxEvent_Stdout:
 		return &types.ExecChunk{
 			Stream: types.StreamStdout,
-			Data:   p.Stdout.GetData(),
+			Data:   append([]byte(nil), p.Stdout.GetData()...),
 		}, -1, nil
 	case *pb.ExecSandboxEvent_Stderr:
 		return &types.ExecChunk{
 			Stream: types.StreamStderr,
-			Data:   p.Stderr.GetData(),
+			Data:   append([]byte(nil), p.Stderr.GetData()...),
 		}, -1, nil
 	case *pb.ExecSandboxEvent_Exit:
 		return nil, int(p.Exit.GetExitCode()), nil

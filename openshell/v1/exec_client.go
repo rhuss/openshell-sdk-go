@@ -96,6 +96,10 @@ type execStream struct {
 }
 
 func (s *execStream) Next() (*ExecChunk, error) {
+	if s.exited {
+		return nil, io.EOF
+	}
+
 	ev, err := s.stream.Recv()
 	if err == io.EOF {
 		return nil, io.EOF

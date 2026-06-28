@@ -102,7 +102,7 @@
 
 - [X] T036 Run `make ci` (lint + build + test) and fix any remaining issues
 - [X] T037 Verify no circular imports exist with `go build ./...`
-- [X] T038 Verify zero duplicated conversion functions with `rg '^func [a-z].*[Ff]rom[Pp]roto|^func [a-z].*[Tt]o[Pp]roto|^func fromGRPCError' openshell/v1/*_client.go openshell/v1/grpc_errors.go`
+- [X] T038 Verify zero duplicated conversion functions with `rg '^func [a-z].*(From|To)(Proto|Events)|^func fromGRPCError' openshell/v1/*_client.go openshell/v1/grpc_errors.go`
 - [X] T039 Update openshell/v1/internal/grpc/conn.go if it references types that moved (TLSConfig → types.TLSConfig or via v1/ alias)
 
 ---

@@ -136,7 +136,7 @@ func SandboxToProto(s *types.Sandbox) *pb.Sandbox {
 			Id:              s.ID,
 			Name:            s.Name,
 			CreatedAtMs:     MillisFromTime(s.CreatedAt),
-			Labels:          s.Labels,
+			Labels:          CopyStringMap(s.Labels),
 			ResourceVersion: s.ResourceVersion,
 		},
 		Spec: SandboxSpecToProto(&s.Spec),
@@ -151,8 +151,8 @@ func SandboxSpecToProto(spec *types.SandboxSpec) *pb.SandboxSpec {
 
 	result := &pb.SandboxSpec{
 		LogLevel:    spec.LogLevel,
-		Environment: spec.Environment,
-		Providers:   spec.Providers,
+		Environment: CopyStringMap(spec.Environment),
+		Providers:   CopyStringSlice(spec.Providers),
 	}
 
 	if spec.Template != nil {
@@ -160,10 +160,10 @@ func SandboxSpecToProto(spec *types.SandboxSpec) *pb.SandboxSpec {
 			Image:            spec.Template.Image,
 			RuntimeClassName: spec.Template.RuntimeClassName,
 			AgentSocket:      spec.Template.AgentSocket,
-			Labels:           spec.Template.Labels,
-			Annotations:      spec.Template.Annotations,
-			Environment:      spec.Template.Environment,
-			UserNamespaces:   spec.Template.UserNamespaces,
+			Labels:           CopyStringMap(spec.Template.Labels),
+			Annotations:      CopyStringMap(spec.Template.Annotations),
+			Environment:      CopyStringMap(spec.Template.Environment),
+			UserNamespaces:   CopyBoolPtr(spec.Template.UserNamespaces),
 		}
 	}
 
