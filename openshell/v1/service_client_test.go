@@ -91,7 +91,8 @@ func (s *mockServiceServer) ListServices(_ context.Context, req *pb.ListServices
 
 	var services []*pb.ServiceEndpointResponse
 	for key, ep := range s.endpoints {
-		if req.GetSandbox() == "" || key[:len(req.GetSandbox())+1] == req.GetSandbox()+"/" {
+		prefix := req.GetSandbox() + "/"
+		if req.GetSandbox() == "" || (len(key) >= len(prefix) && key[:len(prefix)] == prefix) {
 			services = append(services, ep)
 		}
 	}

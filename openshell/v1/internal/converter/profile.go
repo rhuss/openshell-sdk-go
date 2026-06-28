@@ -85,7 +85,6 @@ func NetworkEndpointToProto(ep *types.NetworkEndpoint) *sbv1.NetworkEndpoint {
 // --- NetworkBinary ---
 
 // NetworkBinaryFromProto converts a proto NetworkBinary to an SDK NetworkBinary.
-// Name has no proto equivalent and is left empty.
 func NetworkBinaryFromProto(b *sbv1.NetworkBinary) *types.NetworkBinary {
 	if b == nil {
 		return nil
@@ -96,7 +95,6 @@ func NetworkBinaryFromProto(b *sbv1.NetworkBinary) *types.NetworkBinary {
 }
 
 // NetworkBinaryToProto converts an SDK NetworkBinary to a proto NetworkBinary.
-// The Name field is not transmitted to proto (no equivalent field).
 func NetworkBinaryToProto(b *types.NetworkBinary) *sbv1.NetworkBinary {
 	if b == nil {
 		return nil

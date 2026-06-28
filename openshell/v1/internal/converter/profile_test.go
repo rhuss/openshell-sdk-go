@@ -111,7 +111,6 @@ func TestNetworkBinaryFromProto(t *testing.T) {
 
 	require.NotNil(t, bin)
 	assert.Equal(t, "/usr/local/bin/tool", bin.Path)
-	assert.Empty(t, bin.Name, "Name has no proto equivalent")
 }
 
 func TestNetworkBinaryFromProto_Nil(t *testing.T) {
@@ -121,7 +120,6 @@ func TestNetworkBinaryFromProto_Nil(t *testing.T) {
 
 func TestNetworkBinaryToProto(t *testing.T) {
 	bin := &v1.NetworkBinary{
-		Name: "my-tool",
 		Path: "/usr/local/bin/tool",
 	}
 
@@ -279,7 +277,7 @@ func TestProviderProfileToProto(t *testing.T) {
 			{Name: "api.anthropic.com", Port: 443, Protocol: "rest"},
 		},
 		Binaries: []v1.NetworkBinary{
-			{Name: "claude", Path: "/usr/bin/claude"},
+			{Path: "/usr/bin/claude"},
 		},
 		InferenceCapable: true,
 		Discovery: v1.ProfileDiscovery{

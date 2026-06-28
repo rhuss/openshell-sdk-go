@@ -253,7 +253,10 @@ func (c *fakeSandboxClient) Watch(_ context.Context, name string, opts ...v1.Wat
 	go func() {
 		defer close(out)
 		for ev := range inner.ResultChan() {
-			out <- ev
+			select {
+			case out <- ev:
+			default:
+			}
 			if ev.Object != nil &&
 				(ev.Object.Status.Phase == types.SandboxReady || ev.Object.Status.Phase == types.SandboxError) {
 				inner.Stop()

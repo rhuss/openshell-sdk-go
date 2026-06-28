@@ -49,7 +49,6 @@ type NetworkEndpoint struct {
 
 // NetworkBinary describes a binary artifact provided by a profile.
 type NetworkBinary struct {
-	Name string
 	Path string
 }
 
