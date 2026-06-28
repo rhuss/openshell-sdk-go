@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	v1 "github.com/rhuss/openshell-sdk-go/openshell/v1"
+	v1 "github.com/rhuss/openshell-sdk-go/openshell/v1/types"
 	dm "github.com/rhuss/openshell-sdk-go/proto/datamodelv1"
 	pb "github.com/rhuss/openshell-sdk-go/proto/openshellv1"
 	"github.com/stretchr/testify/assert"

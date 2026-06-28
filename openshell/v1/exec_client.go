@@ -5,10 +5,10 @@ package v1
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"sync"
 
+	"github.com/rhuss/openshell-sdk-go/openshell/v1/internal/converter"
 	pb "github.com/rhuss/openshell-sdk-go/proto/openshellv1"
 	"google.golang.org/grpc"
 )
@@ -26,11 +26,11 @@ func (e *execClient) Run(ctx context.Context, sandboxID string, command []string
 	if len(opts) > 0 {
 		opt = &opts[0]
 	}
-	req := execRequestToProto(sandboxID, command, opt)
+	req := converter.ExecRequestToProto(sandboxID, command, opt)
 
 	stream, err := e.client.ExecSandbox(ctx, req)
 	if err != nil {
-		return nil, fromGRPCError(err)
+		return nil, converter.FromGRPCError(err)
 	}
 
 	var events []*pb.ExecSandboxEvent
@@ -40,12 +40,12 @@ func (e *execClient) Run(ctx context.Context, sandboxID string, command []string
 			break
 		}
 		if recvErr != nil {
-			return nil, fromGRPCError(recvErr)
+			return nil, converter.FromGRPCError(recvErr)
 		}
 		events = append(events, ev)
 	}
 
-	return execResultFromEvents(events)
+	return converter.ExecResultFromEvents(events)
 }
 
 func (e *execClient) Stream(ctx context.Context, sandboxID string, command []string, opts ...ExecOptions) (ExecStream, error) {
@@ -53,13 +53,13 @@ func (e *execClient) Stream(ctx context.Context, sandboxID string, command []str
 	if len(opts) > 0 {
 		opt = &opts[0]
 	}
-	req := execRequestToProto(sandboxID, command, opt)
+	req := converter.ExecRequestToProto(sandboxID, command, opt)
 
 	streamCtx, cancel := context.WithCancel(ctx)
 	stream, err := e.client.ExecSandbox(streamCtx, req)
 	if err != nil {
 		cancel()
-		return nil, fromGRPCError(err)
+		return nil, converter.FromGRPCError(err)
 	}
 
 	return &execStream{stream: stream, cancel: cancel}, nil
@@ -73,14 +73,14 @@ func (e *execClient) Interactive(ctx context.Context, sandboxID string, command 
 
 	stream, err := e.client.ExecSandboxInteractive(ctx)
 	if err != nil {
-		return nil, fromGRPCError(err)
+		return nil, converter.FromGRPCError(err)
 	}
 
-	startReq := execInteractiveRequestToProto(sandboxID, command, cols, rows, opt)
+	startReq := converter.ExecInteractiveRequestToProto(sandboxID, command, cols, rows, opt)
 	if sendErr := stream.Send(&pb.ExecSandboxInput{
 		Payload: &pb.ExecSandboxInput_Start{Start: startReq},
 	}); sendErr != nil {
-		return nil, fromGRPCError(sendErr)
+		return nil, converter.FromGRPCError(sendErr)
 	}
 
 	return newInteractiveSession(stream), nil
@@ -96,29 +96,30 @@ type execStream struct {
 }
 
 func (s *execStream) Next() (*ExecChunk, error) {
-	for {
-		ev, err := s.stream.Recv()
-		if err == io.EOF {
-			return nil, io.EOF
-		}
-		if err != nil {
-			return nil, fromGRPCError(err)
-		}
-
-		chunk, code, isExit, convErr := execChunkFromEvent(ev)
-		if convErr != nil {
-			return nil, convErr
-		}
-		if chunk != nil {
-			return chunk, nil
-		}
-		if isExit {
-			s.exitCode = code
-			s.exited = true
-			s.hasExit = true
-			return nil, io.EOF
-		}
+	if s.exited {
+		return nil, io.EOF
 	}
+
+	ev, err := s.stream.Recv()
+	if err == io.EOF {
+		return nil, io.EOF
+	}
+	if err != nil {
+		return nil, converter.FromGRPCError(err)
+	}
+
+	chunk, code, convErr := converter.ExecChunkFromEvent(ev)
+	if convErr != nil {
+		return nil, convErr
+	}
+	if chunk != nil {
+		return chunk, nil
+	}
+	// nil chunk with no error means exit event
+	s.exitCode = code
+	s.exited = true
+	s.hasExit = true
+	return nil, io.EOF
 }
 
 func (s *execStream) ExitCode() (int, error) {
@@ -182,29 +183,28 @@ func (s *interactiveSession) readLoop() {
 		ev, err := s.stream.Recv()
 		if err != nil {
 			if err != io.EOF {
-				s.setErr(fromGRPCError(err))
+				s.setErr(converter.FromGRPCError(err))
 			}
 			return
 		}
 
-		chunk, code, isExit, convErr := execChunkFromEvent(ev)
+		chunk, code, convErr := converter.ExecChunkFromEvent(ev)
 		if convErr != nil {
 			s.setErr(convErr)
 			return
 		}
-		if isExit {
+		// nil chunk with no error means exit event
+		if chunk == nil {
 			select {
 			case s.exitCh <- code:
 			default:
 			}
 			return
 		}
-		if chunk != nil {
-			select {
-			case s.dataCh <- chunk.Data:
-			case <-s.done:
-				return
-			}
+		select {
+		case s.dataCh <- chunk.Data:
+		case <-s.done:
+			return
 		}
 	}
 }
@@ -237,7 +237,7 @@ func (s *interactiveSession) Write(p []byte) (int, error) {
 		Payload: &pb.ExecSandboxInput_Stdin{Stdin: p},
 	})
 	if err != nil {
-		return 0, fromGRPCError(err)
+		return 0, converter.FromGRPCError(err)
 	}
 	return len(p), nil
 }
@@ -254,7 +254,7 @@ func (s *interactiveSession) Resize(cols, rows uint32) error {
 		},
 	})
 	if err != nil {
-		return fromGRPCError(err)
+		return converter.FromGRPCError(err)
 	}
 	return nil
 }
@@ -278,86 +278,4 @@ func (s *interactiveSession) ExitCode() (int, error) {
 
 func (s *interactiveSession) Close() error {
 	return s.stream.CloseSend()
-}
-
-// Package-level converter functions to avoid circular imports
-// (internal/converter imports v1 for domain types).
-
-func execChunkFromEvent(event *pb.ExecSandboxEvent) (chunk *ExecChunk, exitCode int, isExit bool, err error) {
-	if event == nil {
-		return nil, -1, false, fmt.Errorf("nil exec event")
-	}
-
-	switch p := event.Payload.(type) {
-	case *pb.ExecSandboxEvent_Stdout:
-		return &ExecChunk{
-			Stream: StreamStdout,
-			Data:   p.Stdout.GetData(),
-		}, -1, false, nil
-	case *pb.ExecSandboxEvent_Stderr:
-		return &ExecChunk{
-			Stream: StreamStderr,
-			Data:   p.Stderr.GetData(),
-		}, -1, false, nil
-	case *pb.ExecSandboxEvent_Exit:
-		return nil, int(p.Exit.GetExitCode()), true, nil
-	default:
-		return nil, -1, false, nil
-	}
-}
-
-func execRequestToProto(sandboxID string, command []string, opts *ExecOptions) *pb.ExecSandboxRequest {
-	req := &pb.ExecSandboxRequest{
-		SandboxId: sandboxID,
-		Command:   command,
-	}
-	if opts != nil {
-		req.Workdir = opts.WorkDir
-		req.Environment = opts.Env
-	}
-	return req
-}
-
-func execInteractiveRequestToProto(sandboxID string, command []string, cols, rows uint32, opts *ExecOptions) *pb.ExecSandboxRequest {
-	req := execRequestToProto(sandboxID, command, opts)
-	req.Tty = true
-	req.Cols = cols
-	req.Rows = rows
-	return req
-}
-
-func execResultFromEvents(events []*pb.ExecSandboxEvent) (*ExecResult, error) {
-	if len(events) == 0 {
-		return nil, fmt.Errorf("no exec events received")
-	}
-
-	var stdout, stderr []byte
-	exitCode := -1
-
-	for _, event := range events {
-		chunk, code, isExit, err := execChunkFromEvent(event)
-		if err != nil {
-			return nil, err
-		}
-		if isExit {
-			exitCode = code
-		} else if chunk != nil {
-			switch chunk.Stream {
-			case StreamStdout:
-				stdout = append(stdout, chunk.Data...)
-			case StreamStderr:
-				stderr = append(stderr, chunk.Data...)
-			}
-		}
-	}
-
-	if exitCode == -1 {
-		return nil, fmt.Errorf("no exit event received")
-	}
-
-	return &ExecResult{
-		ExitCode: exitCode,
-		Stdout:   stdout,
-		Stderr:   stderr,
-	}, nil
 }

@@ -6,20 +6,20 @@ package converter
 import (
 	"time"
 
-	v1 "github.com/rhuss/openshell-sdk-go/openshell/v1"
+	"github.com/rhuss/openshell-sdk-go/openshell/v1/types"
 	dm "github.com/rhuss/openshell-sdk-go/proto/datamodelv1"
 )
 
 // ProviderFromProto converts a proto Provider to an SDK Provider.
-func ProviderFromProto(p *dm.Provider) *v1.Provider {
+func ProviderFromProto(p *dm.Provider) *types.Provider {
 	if p == nil {
 		return nil
 	}
 
-	result := &v1.Provider{
+	result := &types.Provider{
 		Type: p.GetType(),
-		Spec: v1.ProviderSpec{
-			Config: copyMap(p.GetConfig()),
+		Spec: types.ProviderSpec{
+			Config: CopyStringMap(p.GetConfig()),
 		},
 	}
 
@@ -27,7 +27,7 @@ func ProviderFromProto(p *dm.Provider) *v1.Provider {
 		result.ID = m.GetId()
 		result.Name = m.GetName()
 		result.CreatedAt = TimeFromMillis(m.GetCreatedAtMs())
-		result.Labels = copyMap(m.GetLabels())
+		result.Labels = CopyStringMap(m.GetLabels())
 		result.ResourceVersion = m.GetResourceVersion()
 	}
 
@@ -41,19 +41,8 @@ func ProviderFromProto(p *dm.Provider) *v1.Provider {
 	return result
 }
 
-func copyMap(m map[string]string) map[string]string {
-	if m == nil {
-		return nil
-	}
-	c := make(map[string]string, len(m))
-	for k, v := range m {
-		c[k] = v
-	}
-	return c
-}
-
 // ProviderToProto converts an SDK Provider to a proto Provider.
-func ProviderToProto(p *v1.Provider) *dm.Provider {
+func ProviderToProto(p *types.Provider) *dm.Provider {
 	if p == nil {
 		return nil
 	}
@@ -63,12 +52,12 @@ func ProviderToProto(p *v1.Provider) *dm.Provider {
 			Id:              p.ID,
 			Name:            p.Name,
 			CreatedAtMs:     MillisFromTime(p.CreatedAt),
-			Labels:          p.Labels,
+			Labels:          CopyStringMap(p.Labels),
 			ResourceVersion: p.ResourceVersion,
 		},
 		Type:        p.Type,
-		Credentials: p.Spec.Credentials,
-		Config:      p.Spec.Config,
+		Credentials: CopyStringMap(p.Spec.Credentials),
+		Config:      CopyStringMap(p.Spec.Config),
 	}
 
 	if len(p.Spec.CredentialExpiresAt) > 0 {

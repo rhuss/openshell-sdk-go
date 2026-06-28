@@ -5,26 +5,15 @@ package v1
 
 import (
 	"context"
-	"time"
+
+	"github.com/rhuss/openshell-sdk-go/openshell/v1/types"
 )
 
 // Provider represents an AI provider registration.
-type Provider struct {
-	ID              string
-	Name            string
-	Type            string
-	CreatedAt       time.Time
-	Labels          map[string]string
-	ResourceVersion uint64
-	Spec            ProviderSpec
-}
+type Provider = types.Provider
 
 // ProviderSpec holds provider-specific configuration and credentials.
-type ProviderSpec struct {
-	Credentials         map[string]string
-	Config              map[string]string
-	CredentialExpiresAt  map[string]time.Time
-}
+type ProviderSpec = types.ProviderSpec
 
 // ProviderInterface defines CRUD and Ensure operations on providers.
 type ProviderInterface interface {

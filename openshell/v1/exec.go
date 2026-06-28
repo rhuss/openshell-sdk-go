@@ -3,20 +3,17 @@
 
 package v1
 
-import "context"
+import (
+	"context"
+
+	"github.com/rhuss/openshell-sdk-go/openshell/v1/types"
+)
 
 // ExecResult holds the collected output of a completed command execution.
-type ExecResult struct {
-	ExitCode int
-	Stdout   []byte
-	Stderr   []byte
-}
+type ExecResult = types.ExecResult
 
 // ExecChunk represents a single chunk of output from a streaming command execution.
-type ExecChunk struct {
-	Stream StreamType
-	Data   []byte
-}
+type ExecChunk = types.ExecChunk
 
 // ExecStream provides an iterator interface over streaming command output.
 type ExecStream interface {

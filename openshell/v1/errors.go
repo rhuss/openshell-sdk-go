@@ -4,102 +4,44 @@
 package v1
 
 import (
-	"errors"
-	"fmt"
+	"github.com/rhuss/openshell-sdk-go/openshell/v1/types"
 )
 
 // ErrorCode classifies SDK errors by their gRPC origin.
-type ErrorCode int
+type ErrorCode = types.ErrorCode
 
 // ErrorCode values for classifying gRPC errors.
 const (
-	ErrorNotFound         ErrorCode = iota + 1
-	ErrorAlreadyExists
-	ErrorUnavailable
-	ErrorPermissionDenied
-	ErrorInvalidArgument
-	ErrorDeadlineExceeded
-	ErrorCancelled
-	ErrorInternal
+	ErrorNotFound         = types.ErrorNotFound
+	ErrorAlreadyExists    = types.ErrorAlreadyExists
+	ErrorUnavailable      = types.ErrorUnavailable
+	ErrorPermissionDenied = types.ErrorPermissionDenied
+	ErrorInvalidArgument  = types.ErrorInvalidArgument
+	ErrorDeadlineExceeded = types.ErrorDeadlineExceeded
+	ErrorCancelled        = types.ErrorCancelled
+	ErrorInternal         = types.ErrorInternal
 )
 
-// String returns the human-readable name of the error code.
-func (c ErrorCode) String() string {
-	switch c {
-	case ErrorNotFound:
-		return "NotFound"
-	case ErrorAlreadyExists:
-		return "AlreadyExists"
-	case ErrorUnavailable:
-		return "Unavailable"
-	case ErrorPermissionDenied:
-		return "PermissionDenied"
-	case ErrorInvalidArgument:
-		return "InvalidArgument"
-	case ErrorDeadlineExceeded:
-		return "DeadlineExceeded"
-	case ErrorCancelled:
-		return "Cancelled"
-	case ErrorInternal:
-		return "Internal"
-	default:
-		return fmt.Sprintf("Unknown(%d)", int(c))
-	}
-}
-
 // StatusError is the typed error returned by all SDK operations.
-type StatusError struct {
-	Code    ErrorCode
-	Message string
-	Details map[string]string
-}
-
-func (e *StatusError) Error() string {
-	return fmt.Sprintf("%s: %s", e.Code, e.Message)
-}
+type StatusError = types.StatusError
 
 // IsNotFound returns true if the error indicates a resource was not found.
-func IsNotFound(err error) bool {
-	return hasCode(err, ErrorNotFound)
-}
+func IsNotFound(err error) bool { return types.IsNotFound(err) }
 
 // IsAlreadyExists returns true if the error indicates a resource already exists.
-func IsAlreadyExists(err error) bool {
-	return hasCode(err, ErrorAlreadyExists)
-}
+func IsAlreadyExists(err error) bool { return types.IsAlreadyExists(err) }
 
 // IsUnavailable returns true if the error indicates the service is unavailable.
-func IsUnavailable(err error) bool {
-	return hasCode(err, ErrorUnavailable)
-}
+func IsUnavailable(err error) bool { return types.IsUnavailable(err) }
 
 // IsPermissionDenied returns true if the error indicates insufficient permissions.
-func IsPermissionDenied(err error) bool {
-	return hasCode(err, ErrorPermissionDenied)
-}
+func IsPermissionDenied(err error) bool { return types.IsPermissionDenied(err) }
 
 // IsInvalidArgument returns true if the error indicates an invalid argument.
-func IsInvalidArgument(err error) bool {
-	return hasCode(err, ErrorInvalidArgument)
-}
+func IsInvalidArgument(err error) bool { return types.IsInvalidArgument(err) }
 
 // IsDeadlineExceeded returns true if the error indicates a deadline was exceeded.
-func IsDeadlineExceeded(err error) bool {
-	return hasCode(err, ErrorDeadlineExceeded)
-}
+func IsDeadlineExceeded(err error) bool { return types.IsDeadlineExceeded(err) }
 
 // IsCancelled returns true if the error indicates the operation was cancelled.
-func IsCancelled(err error) bool {
-	return hasCode(err, ErrorCancelled)
-}
-
-func hasCode(err error, code ErrorCode) bool {
-	if err == nil {
-		return false
-	}
-	var se *StatusError
-	if errors.As(err, &se) {
-		return se.Code == code
-	}
-	return false
-}
+func IsCancelled(err error) bool { return types.IsCancelled(err) }

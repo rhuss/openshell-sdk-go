@@ -9,6 +9,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/rhuss/openshell-sdk-go/openshell/v1/internal/converter"
 	pb "github.com/rhuss/openshell-sdk-go/proto/openshellv1"
 	"google.golang.org/grpc"
 )
@@ -26,13 +27,13 @@ func newSandboxClient(conn grpc.ClientConnInterface) *sandboxClient {
 func (s *sandboxClient) Create(ctx context.Context, name string, spec *SandboxSpec, labels map[string]string) (*Sandbox, error) {
 	resp, err := s.client.CreateSandbox(ctx, &pb.CreateSandboxRequest{
 		Name:   name,
-		Spec:   sandboxSpecToProto(spec),
+		Spec:   converter.SandboxSpecToProto(spec),
 		Labels: labels,
 	})
 	if err != nil {
-		return nil, fromGRPCError(err)
+		return nil, converter.FromGRPCError(err)
 	}
-	return sandboxFromProto(resp.GetSandbox()), nil
+	return converter.SandboxFromProto(resp.GetSandbox()), nil
 }
 
 func (s *sandboxClient) Get(ctx context.Context, name string) (*Sandbox, error) {
@@ -40,9 +41,9 @@ func (s *sandboxClient) Get(ctx context.Context, name string) (*Sandbox, error) 
 		Name: name,
 	})
 	if err != nil {
-		return nil, fromGRPCError(err)
+		return nil, converter.FromGRPCError(err)
 	}
-	return sandboxFromProto(resp.GetSandbox()), nil
+	return converter.SandboxFromProto(resp.GetSandbox()), nil
 }
 
 func (s *sandboxClient) List(ctx context.Context, opts ...ListOptions) ([]*Sandbox, error) {
@@ -59,12 +60,12 @@ func (s *sandboxClient) List(ctx context.Context, opts ...ListOptions) ([]*Sandb
 
 	resp, err := s.client.ListSandboxes(ctx, req)
 	if err != nil {
-		return nil, fromGRPCError(err)
+		return nil, converter.FromGRPCError(err)
 	}
 
 	sandboxes := make([]*Sandbox, 0, len(resp.GetSandboxes()))
 	for _, proto := range resp.GetSandboxes() {
-		sandboxes = append(sandboxes, sandboxFromProto(proto))
+		sandboxes = append(sandboxes, converter.SandboxFromProto(proto))
 	}
 	return sandboxes, nil
 }
@@ -74,7 +75,7 @@ func (s *sandboxClient) Delete(ctx context.Context, name string) error {
 		Name: name,
 	})
 	if err != nil {
-		return fromGRPCError(err)
+		return converter.FromGRPCError(err)
 	}
 	return nil
 }
@@ -86,10 +87,10 @@ func (s *sandboxClient) AttachProvider(ctx context.Context, sandboxName, provide
 		ExpectedResourceVersion: expectedResourceVersion,
 	})
 	if err != nil {
-		return nil, fromGRPCError(err)
+		return nil, converter.FromGRPCError(err)
 	}
 	return &AttachProviderResult{
-		Sandbox:  sandboxFromProto(resp.GetSandbox()),
+		Sandbox:  converter.SandboxFromProto(resp.GetSandbox()),
 		Attached: resp.GetAttached(),
 	}, nil
 }
@@ -101,10 +102,10 @@ func (s *sandboxClient) DetachProvider(ctx context.Context, sandboxName, provide
 		ExpectedResourceVersion: expectedResourceVersion,
 	})
 	if err != nil {
-		return nil, fromGRPCError(err)
+		return nil, converter.FromGRPCError(err)
 	}
 	return &DetachProviderResult{
-		Sandbox:  sandboxFromProto(resp.GetSandbox()),
+		Sandbox:  converter.SandboxFromProto(resp.GetSandbox()),
 		Detached: resp.GetDetached(),
 	}, nil
 }
@@ -114,12 +115,12 @@ func (s *sandboxClient) ListProviders(ctx context.Context, sandboxName string) (
 		SandboxName: sandboxName,
 	})
 	if err != nil {
-		return nil, fromGRPCError(err)
+		return nil, converter.FromGRPCError(err)
 	}
 
 	providers := make([]*Provider, 0, len(resp.GetProviders()))
 	for _, proto := range resp.GetProviders() {
-		providers = append(providers, providerFromProto(proto))
+		providers = append(providers, converter.ProviderFromProto(proto))
 	}
 	return providers, nil
 }
@@ -164,139 +165,6 @@ func (s *sandboxClient) WaitReady(ctx context.Context, name string, opts ...Wait
 	}
 }
 
-// Package-level converter functions duplicated from internal/converter
-// to avoid circular imports (converter imports v1).
-
-func sandboxFromProto(s *pb.Sandbox) *Sandbox {
-	if s == nil {
-		return nil
-	}
-
-	result := &Sandbox{}
-
-	if m := s.GetMetadata(); m != nil {
-		result.ID = m.GetId()
-		result.Name = m.GetName()
-		result.CreatedAt = timeFromMillis(m.GetCreatedAtMs())
-		result.Labels = copyStringMap(m.GetLabels())
-		result.ResourceVersion = m.GetResourceVersion()
-	}
-
-	if spec := s.GetSpec(); spec != nil {
-		result.Spec = sandboxSpecFromProto(spec)
-	}
-
-	if status := s.GetStatus(); status != nil {
-		result.Status = sandboxStatusFromProto(status)
-	} else {
-		result.Status.Phase = SandboxUnknown
-	}
-
-	return result
-}
-
-func sandboxSpecFromProto(spec *pb.SandboxSpec) SandboxSpec {
-	result := SandboxSpec{
-		LogLevel:    spec.GetLogLevel(),
-		Environment: copyStringMap(spec.GetEnvironment()),
-		Providers:   copyStringSlice(spec.GetProviders()),
-	}
-
-	if tmpl := spec.GetTemplate(); tmpl != nil {
-		result.Template = &SandboxTemplate{
-			Image:            tmpl.GetImage(),
-			RuntimeClassName: tmpl.GetRuntimeClassName(),
-			AgentSocket:      tmpl.GetAgentSocket(),
-			Labels:           copyStringMap(tmpl.GetLabels()),
-			Annotations:      copyStringMap(tmpl.GetAnnotations()),
-			Environment:      copyStringMap(tmpl.GetEnvironment()),
-			UserNamespaces:   copyBoolPtr(tmpl.UserNamespaces),
-		}
-	}
-
-	if rr := spec.GetResourceRequirements(); rr != nil {
-		if gpu := rr.GetGpu(); gpu != nil && gpu.Count != nil {
-			result.GPUCount = gpu.Count
-		}
-	}
-
-	return result
-}
-
-func sandboxStatusFromProto(status *pb.SandboxStatus) SandboxStatus {
-	result := SandboxStatus{
-		SandboxName:          status.GetSandboxName(),
-		AgentPod:             status.GetAgentPod(),
-		AgentFd:              status.GetAgentFd(),
-		SandboxFd:            status.GetSandboxFd(),
-		Phase:                sandboxPhaseFromProto(status.GetPhase()),
-		CurrentPolicyVersion: status.GetCurrentPolicyVersion(),
-	}
-
-	for _, c := range status.GetConditions() {
-		result.Conditions = append(result.Conditions, SandboxCondition{
-			Type:               c.GetType(),
-			Status:             c.GetStatus(),
-			Reason:             c.GetReason(),
-			Message:            c.GetMessage(),
-			LastTransitionTime: c.GetLastTransitionTime(),
-		})
-	}
-
-	return result
-}
-
-func sandboxPhaseFromProto(phase pb.SandboxPhase) SandboxPhase {
-	switch phase {
-	case pb.SandboxPhase_SANDBOX_PHASE_PROVISIONING:
-		return SandboxProvisioning
-	case pb.SandboxPhase_SANDBOX_PHASE_READY:
-		return SandboxReady
-	case pb.SandboxPhase_SANDBOX_PHASE_ERROR:
-		return SandboxError
-	case pb.SandboxPhase_SANDBOX_PHASE_DELETING:
-		return SandboxDeleting
-	case pb.SandboxPhase_SANDBOX_PHASE_UNKNOWN:
-		return SandboxUnknown
-	default:
-		return SandboxUnknown
-	}
-}
-
-func sandboxSpecToProto(spec *SandboxSpec) *pb.SandboxSpec {
-	if spec == nil {
-		return nil
-	}
-
-	result := &pb.SandboxSpec{
-		LogLevel:    spec.LogLevel,
-		Environment: spec.Environment,
-		Providers:   spec.Providers,
-	}
-
-	if spec.Template != nil {
-		result.Template = &pb.SandboxTemplate{
-			Image:            spec.Template.Image,
-			RuntimeClassName: spec.Template.RuntimeClassName,
-			AgentSocket:      spec.Template.AgentSocket,
-			Labels:           spec.Template.Labels,
-			Annotations:      spec.Template.Annotations,
-			Environment:      spec.Template.Environment,
-			UserNamespaces:   spec.Template.UserNamespaces,
-		}
-	}
-
-	if spec.GPUCount != nil {
-		result.ResourceRequirements = &pb.ResourceRequirements{
-			Gpu: &pb.GpuResourceRequirements{
-				Count: spec.GPUCount,
-			},
-		}
-	}
-
-	return result
-}
-
 func (s *sandboxClient) Watch(ctx context.Context, name string, _ ...WatchOptions) (WatchInterface[*Sandbox], error) {
 	streamCtx, streamCancel := context.WithCancel(ctx)
 	stream, err := s.client.WatchSandbox(streamCtx, &pb.WatchSandboxRequest{
@@ -305,13 +173,13 @@ func (s *sandboxClient) Watch(ctx context.Context, name string, _ ...WatchOption
 	})
 	if err != nil {
 		streamCancel()
-		return nil, fromGRPCError(err)
+		return nil, converter.FromGRPCError(err)
 	}
 
 	first, err := stream.Recv()
 	if err != nil {
 		streamCancel()
-		return nil, fromGRPCError(err)
+		return nil, converter.FromGRPCError(err)
 	}
 
 	ch := make(chan Event[*Sandbox], 64)
@@ -322,7 +190,7 @@ func (s *sandboxClient) Watch(ctx context.Context, name string, _ ...WatchOption
 		ev := first
 		for {
 			if sbPayload, ok := ev.Payload.(*pb.SandboxStreamEvent_Sandbox); ok && sbPayload.Sandbox != nil {
-				sandbox := sandboxFromProto(sbPayload.Sandbox)
+				sandbox := converter.SandboxFromProto(sbPayload.Sandbox)
 				eventType := EventModified
 				if sandbox.Status.Phase == SandboxDeleting {
 					eventType = EventDeleted
@@ -353,32 +221,3 @@ func (s *sandboxClient) Watch(ctx context.Context, name string, _ ...WatchOption
 
 	return w, nil
 }
-
-func copyStringMap(m map[string]string) map[string]string {
-	if m == nil {
-		return nil
-	}
-	c := make(map[string]string, len(m))
-	for k, v := range m {
-		c[k] = v
-	}
-	return c
-}
-
-func copyBoolPtr(p *bool) *bool {
-	if p == nil {
-		return nil
-	}
-	v := *p
-	return &v
-}
-
-func copyStringSlice(s []string) []string {
-	if s == nil {
-		return nil
-	}
-	c := make([]string, len(s))
-	copy(c, s)
-	return c
-}
-

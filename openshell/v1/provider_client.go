@@ -5,9 +5,8 @@ package v1
 
 import (
 	"context"
-	"time"
 
-	dm "github.com/rhuss/openshell-sdk-go/proto/datamodelv1"
+	"github.com/rhuss/openshell-sdk-go/openshell/v1/internal/converter"
 	pb "github.com/rhuss/openshell-sdk-go/proto/openshellv1"
 	"google.golang.org/grpc"
 )
@@ -22,12 +21,12 @@ func newProviderClient(conn grpc.ClientConnInterface) *providerClient {
 
 func (p *providerClient) Create(ctx context.Context, provider *Provider) (*Provider, error) {
 	resp, err := p.client.CreateProvider(ctx, &pb.CreateProviderRequest{
-		Provider: providerToProto(provider),
+		Provider: converter.ProviderToProto(provider),
 	})
 	if err != nil {
-		return nil, fromGRPCError(err)
+		return nil, converter.FromGRPCError(err)
 	}
-	return providerFromProto(resp.GetProvider()), nil
+	return converter.ProviderFromProto(resp.GetProvider()), nil
 }
 
 func (p *providerClient) Get(ctx context.Context, name string) (*Provider, error) {
@@ -35,9 +34,9 @@ func (p *providerClient) Get(ctx context.Context, name string) (*Provider, error
 		Name: name,
 	})
 	if err != nil {
-		return nil, fromGRPCError(err)
+		return nil, converter.FromGRPCError(err)
 	}
-	return providerFromProto(resp.GetProvider()), nil
+	return converter.ProviderFromProto(resp.GetProvider()), nil
 }
 
 func (p *providerClient) List(ctx context.Context, opts ...ListOptions) ([]*Provider, error) {
@@ -49,18 +48,18 @@ func (p *providerClient) List(ctx context.Context, opts ...ListOptions) ([]*Prov
 
 	resp, err := p.client.ListProviders(ctx, req)
 	if err != nil {
-		return nil, fromGRPCError(err)
+		return nil, converter.FromGRPCError(err)
 	}
 
 	providers := make([]*Provider, 0, len(resp.GetProviders()))
 	for _, proto := range resp.GetProviders() {
-		providers = append(providers, providerFromProto(proto))
+		providers = append(providers, converter.ProviderFromProto(proto))
 	}
 	return providers, nil
 }
 
 func (p *providerClient) Update(ctx context.Context, provider *Provider) (*Provider, error) {
-	proto := providerToProto(provider)
+	proto := converter.ProviderToProto(provider)
 	req := &pb.UpdateProviderRequest{
 		Provider: proto,
 	}
@@ -70,9 +69,9 @@ func (p *providerClient) Update(ctx context.Context, provider *Provider) (*Provi
 
 	resp, err := p.client.UpdateProvider(ctx, req)
 	if err != nil {
-		return nil, fromGRPCError(err)
+		return nil, converter.FromGRPCError(err)
 	}
-	return providerFromProto(resp.GetProvider()), nil
+	return converter.ProviderFromProto(resp.GetProvider()), nil
 }
 
 func (p *providerClient) Delete(ctx context.Context, name string) error {
@@ -80,7 +79,7 @@ func (p *providerClient) Delete(ctx context.Context, name string) error {
 		Name: name,
 	})
 	if err != nil {
-		return fromGRPCError(err)
+		return converter.FromGRPCError(err)
 	}
 	return nil
 }
@@ -101,76 +100,4 @@ func (p *providerClient) Ensure(ctx context.Context, provider *Provider) (*Provi
 	updated.ID = existing.ID
 	updated.ResourceVersion = existing.ResourceVersion
 	return p.Update(ctx, &updated)
-}
-
-func providerFromProto(p *dm.Provider) *Provider {
-	if p == nil {
-		return nil
-	}
-
-	result := &Provider{
-		Type: p.GetType(),
-		Spec: ProviderSpec{
-			Config: copyStringMap(p.GetConfig()),
-		},
-	}
-
-	if m := p.GetMetadata(); m != nil {
-		result.ID = m.GetId()
-		result.Name = m.GetName()
-		result.CreatedAt = timeFromMillis(m.GetCreatedAtMs())
-		result.Labels = copyStringMap(m.GetLabels())
-		result.ResourceVersion = m.GetResourceVersion()
-	}
-
-	if expires := p.GetCredentialExpiresAtMs(); len(expires) > 0 {
-		result.Spec.CredentialExpiresAt = make(map[string]time.Time, len(expires))
-		for k, ms := range expires {
-			result.Spec.CredentialExpiresAt[k] = timeFromMillis(ms)
-		}
-	}
-
-	return result
-}
-
-func providerToProto(p *Provider) *dm.Provider {
-	if p == nil {
-		return nil
-	}
-
-	result := &dm.Provider{
-		Metadata: &dm.ObjectMeta{
-			Id:              p.ID,
-			Name:            p.Name,
-			CreatedAtMs:     millisFromTime(p.CreatedAt),
-			Labels:          p.Labels,
-			ResourceVersion: p.ResourceVersion,
-		},
-		Type:        p.Type,
-		Credentials: p.Spec.Credentials,
-		Config:      p.Spec.Config,
-	}
-
-	if len(p.Spec.CredentialExpiresAt) > 0 {
-		result.CredentialExpiresAtMs = make(map[string]int64, len(p.Spec.CredentialExpiresAt))
-		for k, t := range p.Spec.CredentialExpiresAt {
-			result.CredentialExpiresAtMs[k] = millisFromTime(t)
-		}
-	}
-
-	return result
-}
-
-func timeFromMillis(ms int64) time.Time {
-	if ms == 0 {
-		return time.Time{}
-	}
-	return time.UnixMilli(ms).UTC()
-}
-
-func millisFromTime(t time.Time) int64 {
-	if t.IsZero() {
-		return 0
-	}
-	return t.UnixMilli()
 }

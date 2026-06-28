@@ -3,13 +3,14 @@
 
 package v1
 
-import "context"
+import (
+	"context"
+
+	"github.com/rhuss/openshell-sdk-go/openshell/v1/types"
+)
 
 // HealthResult holds the result of a health check.
-type HealthResult struct {
-	Healthy bool
-	Version string
-}
+type HealthResult = types.HealthResult
 
 // HealthInterface defines health check operations.
 type HealthInterface interface {

@@ -6,6 +6,7 @@ package v1
 import (
 	"context"
 
+	"github.com/rhuss/openshell-sdk-go/openshell/v1/internal/converter"
 	pb "github.com/rhuss/openshell-sdk-go/proto/openshellv1"
 	"google.golang.org/grpc"
 )
@@ -21,7 +22,7 @@ func newHealthClient(conn grpc.ClientConnInterface) *healthClient {
 func (h *healthClient) Check(ctx context.Context) (*HealthResult, error) {
 	resp, err := h.client.Health(ctx, &pb.HealthRequest{})
 	if err != nil {
-		return nil, fromGRPCError(err)
+		return nil, converter.FromGRPCError(err)
 	}
 
 	return &HealthResult{

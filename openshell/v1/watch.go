@@ -6,20 +6,16 @@ package v1
 import (
 	"context"
 	"sync"
+
+	"github.com/rhuss/openshell-sdk-go/openshell/v1/types"
 )
 
 // Event represents a watch event carrying a resource that changed.
-type Event[T any] struct {
-	Type   EventType
-	Object T
-}
+type Event[T any] = types.Event[T]
 
 // WatchInterface delivers a stream of typed events. Modeled after
 // k8s.io/apimachinery/pkg/watch.Interface.
-type WatchInterface[T any] interface {
-	ResultChan() <-chan Event[T]
-	Stop()
-}
+type WatchInterface[T any] = types.WatchInterface[T]
 
 type watcher[T any] struct {
 	result   chan Event[T]

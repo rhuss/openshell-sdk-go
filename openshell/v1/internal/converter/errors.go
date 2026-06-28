@@ -5,20 +5,20 @@
 package converter
 
 import (
-	v1 "github.com/rhuss/openshell-sdk-go/openshell/v1"
+	"github.com/rhuss/openshell-sdk-go/openshell/v1/types"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-var grpcToSDK = map[codes.Code]v1.ErrorCode{
-	codes.NotFound:         v1.ErrorNotFound,
-	codes.AlreadyExists:    v1.ErrorAlreadyExists,
-	codes.Unavailable:      v1.ErrorUnavailable,
-	codes.PermissionDenied: v1.ErrorPermissionDenied,
-	codes.InvalidArgument:  v1.ErrorInvalidArgument,
-	codes.DeadlineExceeded: v1.ErrorDeadlineExceeded,
-	codes.Canceled:         v1.ErrorCancelled,
-	codes.Internal:         v1.ErrorInternal,
+var grpcToSDK = map[codes.Code]types.ErrorCode{
+	codes.NotFound:         types.ErrorNotFound,
+	codes.AlreadyExists:    types.ErrorAlreadyExists,
+	codes.Unavailable:      types.ErrorUnavailable,
+	codes.PermissionDenied: types.ErrorPermissionDenied,
+	codes.InvalidArgument:  types.ErrorInvalidArgument,
+	codes.DeadlineExceeded: types.ErrorDeadlineExceeded,
+	codes.Canceled:         types.ErrorCancelled,
+	codes.Internal:         types.ErrorInternal,
 }
 
 // FromGRPCError converts a gRPC error to a typed StatusError.
@@ -39,10 +39,10 @@ func FromGRPCError(err error) error {
 
 	code, mapped := grpcToSDK[st.Code()]
 	if !mapped {
-		code = v1.ErrorInternal
+		code = types.ErrorInternal
 	}
 
-	return &v1.StatusError{
+	return &types.StatusError{
 		Code:    code,
 		Message: st.Message(),
 	}

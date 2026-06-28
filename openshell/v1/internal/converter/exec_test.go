@@ -6,7 +6,7 @@ package converter
 import (
 	"testing"
 
-	v1 "github.com/rhuss/openshell-sdk-go/openshell/v1"
+	v1 "github.com/rhuss/openshell-sdk-go/openshell/v1/types"
 	pb "github.com/rhuss/openshell-sdk-go/proto/openshellv1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -5,71 +5,30 @@ package v1
 
 import (
 	"context"
-	"time"
+
+	"github.com/rhuss/openshell-sdk-go/openshell/v1/types"
 )
 
 // Sandbox represents a sandbox instance.
-type Sandbox struct {
-	ID              string
-	Name            string
-	CreatedAt       time.Time
-	Labels          map[string]string
-	ResourceVersion uint64
-	Spec            SandboxSpec
-	Status          SandboxStatus
-}
+type Sandbox = types.Sandbox
 
 // SandboxSpec holds the desired state of a sandbox.
-type SandboxSpec struct {
-	LogLevel    string
-	Environment map[string]string
-	Template    *SandboxTemplate
-	Providers   []string
-	GPUCount    *uint32
-}
+type SandboxSpec = types.SandboxSpec
 
 // SandboxTemplate defines the container template for a sandbox.
-type SandboxTemplate struct {
-	Image             string
-	RuntimeClassName  string
-	AgentSocket       string
-	Labels            map[string]string
-	Annotations       map[string]string
-	Environment       map[string]string
-	UserNamespaces    *bool
-}
+type SandboxTemplate = types.SandboxTemplate
 
 // SandboxStatus holds the observed state of a sandbox.
-type SandboxStatus struct {
-	SandboxName          string
-	AgentPod             string
-	AgentFd              string
-	SandboxFd            string
-	Phase                SandboxPhase
-	Conditions           []SandboxCondition
-	CurrentPolicyVersion uint32
-}
+type SandboxStatus = types.SandboxStatus
 
 // SandboxCondition describes an observed condition of a sandbox.
-type SandboxCondition struct {
-	Type               string
-	Status             string
-	Reason             string
-	Message            string
-	LastTransitionTime string
-}
+type SandboxCondition = types.SandboxCondition
 
 // AttachProviderResult holds the result of attaching a provider to a sandbox.
-type AttachProviderResult struct {
-	Sandbox  *Sandbox
-	Attached bool
-}
+type AttachProviderResult = types.AttachProviderResult
 
 // DetachProviderResult holds the result of detaching a provider from a sandbox.
-type DetachProviderResult struct {
-	Sandbox  *Sandbox
-	Detached bool
-}
+type DetachProviderResult = types.DetachProviderResult
 
 // SandboxInterface defines lifecycle operations on sandboxes.
 type SandboxInterface interface {
