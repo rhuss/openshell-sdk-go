@@ -173,8 +173,9 @@ func (s *sandboxClient) Watch(ctx context.Context, name string, opts ...WatchOpt
 
 	streamCtx, streamCancel := context.WithCancel(ctx)
 	stream, err := s.client.WatchSandbox(streamCtx, &pb.WatchSandboxRequest{
-		Id:           name,
-		FollowStatus: true,
+		Id:             name,
+		FollowStatus:   true,
+		StopOnTerminal: watchOpts.StopOnTerminal,
 	})
 	if err != nil {
 		streamCancel()
