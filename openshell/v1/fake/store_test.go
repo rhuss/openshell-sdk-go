@@ -13,7 +13,7 @@ import (
 	"github.com/rhuss/openshell-sdk-go/openshell/v1/types"
 )
 
-// testItem is a simple struct used for ObjectStore tests.
+// testItem is a simple struct used for objectStore tests.
 type testItem struct {
 	Name  string
 	Value string
@@ -36,11 +36,11 @@ func copyTestItem(t *testItem) *testItem {
 	return &c
 }
 
-func newTestStore() *ObjectStore[*testItem] {
-	return newObjectStore(testItemName, copyTestItem)
+func newTestStore() *objectStore[*testItem] {
+	return newobjectStore(testItemName, copyTestItem)
 }
 
-// --- T004: ObjectStore CRUD tests ---
+// --- T004: objectStore CRUD tests ---
 
 func TestObjectStore_Create(t *testing.T) {
 	s := newTestStore()

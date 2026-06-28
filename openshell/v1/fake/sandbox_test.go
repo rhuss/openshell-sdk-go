@@ -18,7 +18,7 @@ import (
 
 // helper to build a minimal fake sandbox client for testing.
 func newTestSandboxClient() *fakeSandboxClient {
-	store := newObjectStore(sandboxName, copySandbox)
+	store := newobjectStore(sandboxName, copySandbox)
 	broadcaster := newWatchBroadcaster[*types.Sandbox]()
 	return newFakeSandboxClient(store, broadcaster, func() bool { return false })
 }

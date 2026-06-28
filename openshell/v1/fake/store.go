@@ -10,20 +10,20 @@ import (
 	"github.com/rhuss/openshell-sdk-go/openshell/v1/types"
 )
 
-// ObjectStore is a generic, thread-safe, in-memory store for named objects.
+// objectStore is a generic, thread-safe, in-memory store for named objects.
 // It deep-copies objects at all boundaries (insert and retrieval) to prevent
 // callers from mutating internal state.
-type ObjectStore[T any] struct {
+type objectStore[T any] struct {
 	mu       sync.RWMutex
 	items    map[string]T
 	nameFunc func(T) string
 	copyFunc func(T) T
 }
 
-// newObjectStore creates a new ObjectStore with the given name-extraction
+// newobjectStore creates a new objectStore with the given name-extraction
 // and deep-copy functions.
-func newObjectStore[T any](nameFunc func(T) string, copyFunc func(T) T) *ObjectStore[T] {
-	return &ObjectStore[T]{
+func newobjectStore[T any](nameFunc func(T) string, copyFunc func(T) T) *objectStore[T] {
+	return &objectStore[T]{
 		items:    make(map[string]T),
 		nameFunc: nameFunc,
 		copyFunc: copyFunc,
@@ -33,7 +33,7 @@ func newObjectStore[T any](nameFunc func(T) string, copyFunc func(T) T) *ObjectS
 // Create adds a new object to the store. Returns AlreadyExists if an object
 // with the same name already exists. The object is deep-copied on insert and
 // a deep copy is returned.
-func (s *ObjectStore[T]) Create(obj T) (T, error) {
+func (s *objectStore[T]) Create(obj T) (T, error) {
 	name := s.nameFunc(obj)
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -53,7 +53,7 @@ func (s *ObjectStore[T]) Create(obj T) (T, error) {
 
 // Get retrieves an object by name. Returns NotFound if the object does not exist.
 // The returned object is a deep copy.
-func (s *ObjectStore[T]) Get(name string) (T, error) {
+func (s *objectStore[T]) Get(name string) (T, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -70,7 +70,7 @@ func (s *ObjectStore[T]) Get(name string) (T, error) {
 
 // List returns deep copies of all objects in the store. The order is not
 // guaranteed.
-func (s *ObjectStore[T]) List() []T {
+func (s *objectStore[T]) List() []T {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -84,7 +84,7 @@ func (s *ObjectStore[T]) List() []T {
 // Update replaces an existing object in the store. Returns NotFound if the
 // object does not exist. The object is deep-copied on insert and a deep copy
 // is returned.
-func (s *ObjectStore[T]) Update(obj T) (T, error) {
+func (s *objectStore[T]) Update(obj T) (T, error) {
 	name := s.nameFunc(obj)
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -104,7 +104,7 @@ func (s *ObjectStore[T]) Update(obj T) (T, error) {
 
 // Delete removes an object from the store by name. The operation is
 // idempotent — deleting a non-existent object is a no-op.
-func (s *ObjectStore[T]) Delete(name string) {
+func (s *objectStore[T]) Delete(name string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.items, name)
@@ -113,7 +113,7 @@ func (s *ObjectStore[T]) Delete(name string) {
 // DeleteAndGet atomically removes an object from the store and returns a
 // deep copy of the removed object. Returns the zero value and false if the
 // object did not exist. This avoids the race between a separate Get+Delete.
-func (s *ObjectStore[T]) DeleteAndGet(name string) (T, bool) {
+func (s *objectStore[T]) DeleteAndGet(name string) (T, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -129,7 +129,7 @@ func (s *ObjectStore[T]) DeleteAndGet(name string) (T, bool) {
 // Insert directly places an object into the store without checking for
 // duplicates. This is intended for pre-seeding test fixtures. The object
 // is deep-copied on insert.
-func (s *ObjectStore[T]) Insert(obj T) {
+func (s *objectStore[T]) Insert(obj T) {
 	name := s.nameFunc(obj)
 	s.mu.Lock()
 	defer s.mu.Unlock()

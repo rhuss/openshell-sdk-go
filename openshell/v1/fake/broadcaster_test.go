@@ -12,7 +12,7 @@ import (
 	"github.com/rhuss/openshell-sdk-go/openshell/v1/types"
 )
 
-// --- T005: WatchBroadcaster tests ---
+// --- T005: watchBroadcaster tests ---
 
 func TestWatchBroadcaster_Watch_ReceivesEvents(t *testing.T) {
 	b := newWatchBroadcaster[*testItem]()

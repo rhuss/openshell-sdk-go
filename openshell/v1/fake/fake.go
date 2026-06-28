@@ -14,9 +14,9 @@ import (
 // designed for testing consumers of the OpenShell SDK without requiring a
 // real gRPC connection. Create one with NewClient.
 type Client struct {
-	sandboxStore       *ObjectStore[*types.Sandbox]
-	providerStore      *ObjectStore[*types.Provider]
-	sandboxBroadcaster *WatchBroadcaster[*types.Sandbox]
+	sandboxStore       *objectStore[*types.Sandbox]
+	providerStore      *objectStore[*types.Provider]
+	sandboxBroadcaster *watchBroadcaster[*types.Sandbox]
 
 	sandboxes v1.SandboxInterface
 	providers v1.ProviderInterface
@@ -44,8 +44,8 @@ func WithHealthResult(r *types.HealthResult) ClientOption {
 // Options (e.g., WithHealthResult) are applied after the default setup.
 func NewClient(opts ...ClientOption) *Client {
 	fc := &Client{
-		sandboxStore:       newObjectStore(sandboxName, copySandbox),
-		providerStore:      newObjectStore(providerName, copyProvider),
+		sandboxStore:       newobjectStore(sandboxName, copySandbox),
+		providerStore:      newobjectStore(providerName, copyProvider),
 		sandboxBroadcaster: newWatchBroadcaster[*types.Sandbox](),
 	}
 

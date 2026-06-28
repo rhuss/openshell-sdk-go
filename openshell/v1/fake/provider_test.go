@@ -18,7 +18,7 @@ import (
 
 // helper to build a minimal fake provider client for testing.
 func newTestProviderClient() *fakeProviderClient {
-	store := newObjectStore(providerName, copyProvider)
+	store := newobjectStore(providerName, copyProvider)
 	return newFakeProviderClient(store, func() bool { return false })
 }
 

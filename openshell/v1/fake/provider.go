@@ -12,7 +12,7 @@ import (
 )
 
 // providerName extracts the name from a Provider pointer for use as the
-// ObjectStore key function.
+// objectStore key function.
 func providerName(p *types.Provider) string {
 	return p.Name
 }
@@ -49,15 +49,15 @@ func copyTimeMap(m map[string]time.Time) map[string]time.Time {
 }
 
 // fakeProviderClient implements v1.ProviderInterface backed by an in-memory
-// ObjectStore.
+// objectStore.
 type fakeProviderClient struct {
-	store      *ObjectStore[*types.Provider]
+	store      *objectStore[*types.Provider]
 	closedFunc func() bool
 }
 
 // newFakeProviderClient creates a new fakeProviderClient.
 func newFakeProviderClient(
-	store *ObjectStore[*types.Provider],
+	store *objectStore[*types.Provider],
 	closedFunc func() bool,
 ) *fakeProviderClient {
 	return &fakeProviderClient{

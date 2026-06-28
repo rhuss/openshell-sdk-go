@@ -13,7 +13,7 @@ import (
 )
 
 // sandboxName extracts the name from a Sandbox pointer for use as the
-// ObjectStore key function.
+// objectStore key function.
 func sandboxName(sb *types.Sandbox) string {
 	return sb.Name
 }
@@ -88,17 +88,17 @@ func copyStringSlice(s []string) []string {
 }
 
 // fakeSandboxClient implements v1.SandboxInterface backed by an in-memory
-// ObjectStore and WatchBroadcaster.
+// objectStore and watchBroadcaster.
 type fakeSandboxClient struct {
-	store       *ObjectStore[*types.Sandbox]
-	broadcaster *WatchBroadcaster[*types.Sandbox]
+	store       *objectStore[*types.Sandbox]
+	broadcaster *watchBroadcaster[*types.Sandbox]
 	closedFunc  func() bool
 }
 
 // newFakeSandboxClient creates a new fakeSandboxClient.
 func newFakeSandboxClient(
-	store *ObjectStore[*types.Sandbox],
-	broadcaster *WatchBroadcaster[*types.Sandbox],
+	store *objectStore[*types.Sandbox],
+	broadcaster *watchBroadcaster[*types.Sandbox],
 	closedFunc func() bool,
 ) *fakeSandboxClient {
 	return &fakeSandboxClient{

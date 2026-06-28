@@ -11,22 +11,22 @@ import (
 
 const watchChannelBuffer = 100
 
-// WatchBroadcaster manages a set of watchers and broadcasts events to them.
+// watchBroadcaster manages a set of watchers and broadcasts events to them.
 // Each watcher can optionally filter events by resource name.
-type WatchBroadcaster[T any] struct {
+type watchBroadcaster[T any] struct {
 	mu       sync.Mutex
 	watchers []*fakeWatcher[T]
 }
 
-// newWatchBroadcaster creates a new WatchBroadcaster.
-func newWatchBroadcaster[T any]() *WatchBroadcaster[T] {
-	return &WatchBroadcaster[T]{}
+// newWatchBroadcaster creates a new watchBroadcaster.
+func newWatchBroadcaster[T any]() *watchBroadcaster[T] {
+	return &watchBroadcaster[T]{}
 }
 
 // Watch registers a new watcher. If name is non-empty, the watcher only
 // receives events matching that name. If name is empty, all events are
 // delivered. The returned WatchInterface must be stopped by the caller.
-func (b *WatchBroadcaster[T]) Watch(name string) types.WatchInterface[T] {
+func (b *watchBroadcaster[T]) Watch(name string) types.WatchInterface[T] {
 	ch := make(chan types.Event[T], watchChannelBuffer)
 	w := &fakeWatcher[T]{
 		ch:   ch,
@@ -43,7 +43,7 @@ func (b *WatchBroadcaster[T]) Watch(name string) types.WatchInterface[T] {
 // Broadcast sends an event to all registered watchers whose name filter
 // matches (or whose filter is empty). Stopped watchers are skipped and
 // cleaned up lazily.
-func (b *WatchBroadcaster[T]) Broadcast(event types.Event[T], name string) {
+func (b *watchBroadcaster[T]) Broadcast(event types.Event[T], name string) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
@@ -58,17 +58,13 @@ func (b *WatchBroadcaster[T]) Broadcast(event types.Event[T], name string) {
 			continue
 		}
 
-		// Non-blocking send: drop event if the watcher's buffer is full.
-		select {
-		case w.ch <- event:
-		default:
-		}
+		w.send(event)
 	}
 	b.watchers = active
 }
 
 // StopAll closes all active watchers.
-func (b *WatchBroadcaster[T]) StopAll() {
+func (b *watchBroadcaster[T]) StopAll() {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
@@ -93,12 +89,26 @@ func (w *fakeWatcher[T]) ResultChan() <-chan types.Event[T] {
 	return w.ch
 }
 
+// send delivers an event to the watcher under its lock, preventing a
+// race between Broadcast (send) and Stop (close) on w.ch.
+func (w *fakeWatcher[T]) send(event types.Event[T]) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.stopped {
+		return
+	}
+	select {
+	case w.ch <- event:
+	default:
+	}
+}
+
 // Stop closes the event channel. It is safe to call multiple times.
 func (w *fakeWatcher[T]) Stop() {
 	w.once.Do(func() {
 		w.mu.Lock()
+		defer w.mu.Unlock()
 		w.stopped = true
-		w.mu.Unlock()
 		close(w.ch)
 	})
 }
