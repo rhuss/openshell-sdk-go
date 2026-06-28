@@ -124,14 +124,15 @@ A consumer runs parallel test cases that share a FakeClient. The fake is thread-
 - **FR-005**: Delete operations MUST be idempotent — deleting a non-existent object succeeds silently.
 - **FR-006**: Sandbox.WaitReady MUST simulate phase transition from Pending to Ready, returning the updated sandbox. The transition MUST be immediate (no artificial delay) by default.
 - **FR-007**: Watch MUST broadcast typed events (ADDED, MODIFIED, DELETED) to all active watchers when Create, Update, or Delete operations occur.
-- **FR-008**: Watch MUST support Stop to close the event channel and stop receiving events.
+- **FR-008**: Watch MUST support Stop to close the event channel and stop receiving events. Watch accepts a name parameter: if non-empty, only events for the named sandbox are delivered; if empty, events for all sandboxes are delivered.
 - **FR-009**: The fake MUST provide AddSandbox and AddProvider pre-seed helpers that insert objects into the store without triggering watch events.
 - **FR-010**: Health.Check MUST return a configurable HealthResult (defaults to healthy).
-- **FR-011**: ExecInterface and FileInterface methods MUST return an Unimplemented StatusError.
+- **FR-011**: ExecInterface and FileInterface methods MUST return an Unimplemented StatusError. If no `ErrorUnimplemented` constant exists in the SDK's ErrorCode enum, it MUST be added as a prerequisite.
 - **FR-012**: All fake operations MUST be safe for concurrent use from multiple goroutines.
-- **FR-013**: Close MUST stop all active watchers and prevent further operations.
+- **FR-013**: Close MUST stop all active watchers and prevent further operations. Subsequent calls to any method after Close MUST return an Unavailable StatusError.
 - **FR-014**: The fake package MUST reside at `openshell/v1/fake/`.
 - **FR-015**: The fake MUST have no external dependencies beyond the SDK itself and the Go standard library.
+- **FR-016**: Sandbox.AttachProvider, DetachProvider, and ListProviders MUST be implemented with basic in-memory semantics, tracking provider-to-sandbox associations in the store.
 
 ### Key Entities
 

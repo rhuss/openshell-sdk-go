@@ -1,0 +1,348 @@
+// SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
+package fake
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	v1 "github.com/rhuss/openshell-sdk-go/openshell/v1"
+	"github.com/rhuss/openshell-sdk-go/openshell/v1/types"
+)
+
+// sandboxName extracts the name from a Sandbox pointer for use as the
+// ObjectStore key function.
+func sandboxName(sb *types.Sandbox) string {
+	return sb.Name
+}
+
+// copySandbox returns a deep copy of a Sandbox pointer. All maps, slices,
+// and nested pointer fields are duplicated to prevent aliasing.
+func copySandbox(sb *types.Sandbox) *types.Sandbox {
+	if sb == nil {
+		return nil
+	}
+	cp := *sb
+	cp.Labels = copyStringMap(sb.Labels)
+	cp.Spec = copySandboxSpec(sb.Spec)
+	cp.Status = copySandboxStatus(sb.Status)
+	return &cp
+}
+
+func copySandboxSpec(s types.SandboxSpec) types.SandboxSpec {
+	s.Environment = copyStringMap(s.Environment)
+	s.Providers = copyStringSlice(s.Providers)
+	if s.Template != nil {
+		t := copySandboxTemplate(*s.Template)
+		s.Template = &t
+	}
+	if s.GPUCount != nil {
+		v := *s.GPUCount
+		s.GPUCount = &v
+	}
+	return s
+}
+
+func copySandboxTemplate(t types.SandboxTemplate) types.SandboxTemplate {
+	t.Labels = copyStringMap(t.Labels)
+	t.Annotations = copyStringMap(t.Annotations)
+	t.Environment = copyStringMap(t.Environment)
+	if t.UserNamespaces != nil {
+		v := *t.UserNamespaces
+		t.UserNamespaces = &v
+	}
+	return t
+}
+
+func copySandboxStatus(s types.SandboxStatus) types.SandboxStatus {
+	if s.Conditions != nil {
+		conds := make([]types.SandboxCondition, len(s.Conditions))
+		copy(conds, s.Conditions)
+		s.Conditions = conds
+	}
+	return s
+}
+
+// copyStringMap returns a shallow copy of a string-to-string map.
+func copyStringMap(m map[string]string) map[string]string {
+	if m == nil {
+		return nil
+	}
+	cp := make(map[string]string, len(m))
+	for k, v := range m {
+		cp[k] = v
+	}
+	return cp
+}
+
+// copyStringSlice returns a copy of a string slice.
+func copyStringSlice(s []string) []string {
+	if s == nil {
+		return nil
+	}
+	cp := make([]string, len(s))
+	copy(cp, s)
+	return cp
+}
+
+// fakeSandboxClient implements v1.SandboxInterface backed by an in-memory
+// ObjectStore and WatchBroadcaster.
+type fakeSandboxClient struct {
+	store       *ObjectStore[*types.Sandbox]
+	broadcaster *WatchBroadcaster[*types.Sandbox]
+	closedFunc  func() bool
+}
+
+// newFakeSandboxClient creates a new fakeSandboxClient.
+func newFakeSandboxClient(
+	store *ObjectStore[*types.Sandbox],
+	broadcaster *WatchBroadcaster[*types.Sandbox],
+	closedFunc func() bool,
+) *fakeSandboxClient {
+	return &fakeSandboxClient{
+		store:       store,
+		broadcaster: broadcaster,
+		closedFunc:  closedFunc,
+	}
+}
+
+// Create creates a new sandbox with Provisioning phase.
+func (c *fakeSandboxClient) Create(_ context.Context, name string, spec *types.SandboxSpec, labels map[string]string) (*types.Sandbox, error) {
+	if c.closedFunc() {
+		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
+	}
+
+	if spec == nil {
+		spec = &types.SandboxSpec{}
+	}
+
+	sb := &types.Sandbox{
+		Name:            name,
+		CreatedAt:       time.Now(),
+		Labels:          copyStringMap(labels),
+		ResourceVersion: 1,
+		Spec:            copySandboxSpec(*spec),
+		Status: types.SandboxStatus{
+			SandboxName: name,
+			Phase:       types.SandboxProvisioning,
+		},
+	}
+
+	result, err := c.store.Create(sb)
+	if err != nil {
+		return nil, err
+	}
+
+	c.broadcaster.Broadcast(types.Event[*types.Sandbox]{
+		Type:   types.EventAdded,
+		Object: copySandbox(result),
+	}, name)
+
+	return result, nil
+}
+
+// Get retrieves a sandbox by name.
+func (c *fakeSandboxClient) Get(_ context.Context, name string) (*types.Sandbox, error) {
+	if c.closedFunc() {
+		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
+	}
+	return c.store.Get(name)
+}
+
+// List returns all sandboxes. ListOptions are accepted for interface
+// compatibility but filtering is not implemented.
+func (c *fakeSandboxClient) List(_ context.Context, _ ...v1.ListOptions) ([]*types.Sandbox, error) {
+	if c.closedFunc() {
+		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
+	}
+	return c.store.List(), nil
+}
+
+// Delete removes a sandbox by name. The operation is idempotent.
+func (c *fakeSandboxClient) Delete(_ context.Context, name string) error {
+	if c.closedFunc() {
+		return &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
+	}
+
+	// Atomically remove and retrieve the last-known object for the DELETED event.
+	deleted, existed := c.store.DeleteAndGet(name)
+	if !existed {
+		// Not found — idempotent delete
+		return nil
+	}
+
+	c.broadcaster.Broadcast(types.Event[*types.Sandbox]{
+		Type:   types.EventDeleted,
+		Object: deleted,
+	}, name)
+
+	return nil
+}
+
+// WaitReady transitions a sandbox to the Ready phase. In the fake
+// implementation this happens synchronously — context cancellation is
+// checked first to support timeout testing.
+func (c *fakeSandboxClient) WaitReady(ctx context.Context, name string, _ ...v1.WaitOptions) (*types.Sandbox, error) {
+	if c.closedFunc() {
+		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
+	}
+
+	// Check context before proceeding
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
+
+	sb, err := c.store.Get(name)
+	if err != nil {
+		return nil, err
+	}
+
+	// If already ready, return immediately
+	if sb.Status.Phase == types.SandboxReady {
+		return sb, nil
+	}
+
+	// Transition to Ready
+	sb.Status.Phase = types.SandboxReady
+	sb.ResourceVersion++
+
+	updated, err := c.store.Update(sb)
+	if err != nil {
+		return nil, fmt.Errorf("updating sandbox phase: %w", err)
+	}
+
+	c.broadcaster.Broadcast(types.Event[*types.Sandbox]{
+		Type:   types.EventModified,
+		Object: copySandbox(updated),
+	}, name)
+
+	return updated, nil
+}
+
+// Watch registers a watcher for sandbox events. If name is non-empty, only
+// events for that sandbox are delivered.
+func (c *fakeSandboxClient) Watch(_ context.Context, name string, _ ...v1.WatchOptions) (types.WatchInterface[*types.Sandbox], error) {
+	if c.closedFunc() {
+		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
+	}
+	return c.broadcaster.Watch(name), nil
+}
+
+// AttachProvider adds a provider name to the sandbox's Spec.Providers list.
+// If the provider is already attached, Attached is false (idempotent).
+// The sandbox's ResourceVersion is incremented and a MODIFIED event is
+// broadcast.
+func (c *fakeSandboxClient) AttachProvider(_ context.Context, sandboxName, providerName string, _ uint64) (*types.AttachProviderResult, error) {
+	if c.closedFunc() {
+		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
+	}
+
+	sb, err := c.store.Get(sandboxName)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if already attached
+	for _, p := range sb.Spec.Providers {
+		if p == providerName {
+			return &types.AttachProviderResult{
+				Sandbox:  sb,
+				Attached: false,
+			}, nil
+		}
+	}
+
+	sb.Spec.Providers = append(sb.Spec.Providers, providerName)
+	sb.ResourceVersion++
+
+	updated, err := c.store.Update(sb)
+	if err != nil {
+		return nil, err
+	}
+
+	c.broadcaster.Broadcast(types.Event[*types.Sandbox]{
+		Type:   types.EventModified,
+		Object: copySandbox(updated),
+	}, sandboxName)
+
+	return &types.AttachProviderResult{
+		Sandbox:  updated,
+		Attached: true,
+	}, nil
+}
+
+// DetachProvider removes a provider name from the sandbox's Spec.Providers
+// list. If the provider is not attached, Detached is false (idempotent).
+// The sandbox's ResourceVersion is incremented and a MODIFIED event is
+// broadcast when a provider is actually removed.
+func (c *fakeSandboxClient) DetachProvider(_ context.Context, sandboxName, providerName string, _ uint64) (*types.DetachProviderResult, error) {
+	if c.closedFunc() {
+		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
+	}
+
+	sb, err := c.store.Get(sandboxName)
+	if err != nil {
+		return nil, err
+	}
+
+	// Find and remove the provider
+	found := false
+	providers := make([]string, 0, len(sb.Spec.Providers))
+	for _, p := range sb.Spec.Providers {
+		if p == providerName {
+			found = true
+			continue
+		}
+		providers = append(providers, p)
+	}
+
+	if !found {
+		return &types.DetachProviderResult{
+			Sandbox:  sb,
+			Detached: false,
+		}, nil
+	}
+
+	sb.Spec.Providers = providers
+	sb.ResourceVersion++
+
+	updated, err := c.store.Update(sb)
+	if err != nil {
+		return nil, err
+	}
+
+	c.broadcaster.Broadcast(types.Event[*types.Sandbox]{
+		Type:   types.EventModified,
+		Object: copySandbox(updated),
+	}, sandboxName)
+
+	return &types.DetachProviderResult{
+		Sandbox:  updated,
+		Detached: true,
+	}, nil
+}
+
+// ListProviders returns stub Provider objects for each provider name
+// attached to the sandbox. The returned providers contain only the Name
+// field, since the fake client does not maintain a full provider registry
+// per sandbox.
+func (c *fakeSandboxClient) ListProviders(_ context.Context, sandboxName string) ([]*types.Provider, error) {
+	if c.closedFunc() {
+		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
+	}
+
+	sb, err := c.store.Get(sandboxName)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*types.Provider, len(sb.Spec.Providers))
+	for i, name := range sb.Spec.Providers {
+		result[i] = &types.Provider{Name: name}
+	}
+	return result, nil
+}
