@@ -31,14 +31,11 @@ Last updated: 2026-06-28
 ## Open Threads
 - Repo ownership: `rhuss` now, transfer to NVIDIA later (from #001, #002)
 - SDK versioning: track gateway versions or independent semver? (from #001)
-- Auth patterns: what OIDC/OAuth flows out of the box? (from #001)
-- Should `Ensure` (idempotent create-or-update) be on every sub-client or just Provider? (from #004)
+- Auth patterns: OIDC/OAuth flows deferred to dedicated brainstorm, separate from credential refresh (from #001)
 - Multi-gateway client support (multi-cluster)? (from #004)
 - Policy draft operations: transaction pattern vs. individual chunk ops? (from #005)
 - When to brainstorm Phase 3 (operator support)? (from #005)
 - File transfer: API exists but defaultSSHTransport is a stub. Add golang.org/x/crypto/ssh or defer? (from #004, reopened after PR #1 review)
-- Types package path: `openshell/types/` vs `openshell/v1/types/`? (from #006)
-- Should v1/ re-export types via aliases to avoid breaking consumers? (from #006)
 - Should reactors be included in fake v1 or deferred? (from #007)
 - Should fake Exec return configurable ExecResult or leave to consumer mocking? (from #007)
 - Fake package path: `openshell/v1/fake/` vs `openshell/fake/`? (from #007)
@@ -50,6 +47,9 @@ Last updated: 2026-06-28
 - Proto as separate Go module or packages in main module? (from #003, resolved: packages in main module)
 - Minimum Go version to support (from #002, resolved: Go 1.23+)
 - Fake package: yes, in-memory object store following client-go pattern (from #001, #004, resolved in #007)
+- Ensure: Provider only, not on every sub-client. Services are ephemeral. (from #004)
+- Types package: `openshell/v1/types/` following k8s.io/api pattern, consumers import directly, no re-exports (from #006)
+- Auth/credential refresh: refresh mechanism in Phase 2a, OIDC/OAuth flows deferred to separate brainstorm (from #001)
 
 ## Parked Ideas
 (none)
