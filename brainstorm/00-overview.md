@@ -11,7 +11,7 @@ Last updated: 2026-06-28
 | 003 | 2026-06-27 | proto-generation | active | - | - |
 | 004 | 2026-06-27 | core-sdk | spec-created | 003 | - |
 | 005 | 2026-06-27 | full-api | active | - | - |
-| 006 | 2026-06-28 | converter-refactor | active | - | - |
+| 006 | 2026-06-28 | converter-refactor | done | 004 | - |
 | 007 | 2026-06-28 | fake-client | active | - | - |
 
 ## Dependency Chain
