@@ -42,7 +42,7 @@ type ProfileCredential struct {
 
 // NetworkEndpoint describes a network endpoint provided by a profile.
 type NetworkEndpoint struct {
-	Name     string
+	Host     string
 	Port     uint32
 	Protocol string
 }

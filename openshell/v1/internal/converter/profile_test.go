@@ -70,7 +70,7 @@ func TestNetworkEndpointFromProto(t *testing.T) {
 	ep := NetworkEndpointFromProto(proto)
 
 	require.NotNil(t, ep)
-	assert.Equal(t, "api.example.com", ep.Name)
+	assert.Equal(t, "api.example.com", ep.Host)
 	assert.Equal(t, uint32(443), ep.Port)
 	assert.Equal(t, "rest", ep.Protocol)
 }
@@ -82,7 +82,7 @@ func TestNetworkEndpointFromProto_Nil(t *testing.T) {
 
 func TestNetworkEndpointToProto(t *testing.T) {
 	ep := &v1.NetworkEndpoint{
-		Name:     "api.example.com",
+		Host:     "api.example.com",
 		Port:     443,
 		Protocol: "rest",
 	}
@@ -239,7 +239,7 @@ func TestProviderProfileFromProto(t *testing.T) {
 	assert.True(t, profile.Credentials[0].Required)
 
 	require.Len(t, profile.Endpoints, 1)
-	assert.Equal(t, "api.anthropic.com", profile.Endpoints[0].Name)
+	assert.Equal(t, "api.anthropic.com", profile.Endpoints[0].Host)
 	assert.Equal(t, uint32(443), profile.Endpoints[0].Port)
 
 	require.Len(t, profile.Binaries, 1)
@@ -274,7 +274,7 @@ func TestProviderProfileToProto(t *testing.T) {
 			{Name: "API_KEY", Description: "key", Required: true, Secret: true},
 		},
 		Endpoints: []v1.NetworkEndpoint{
-			{Name: "api.anthropic.com", Port: 443, Protocol: "rest"},
+			{Host: "api.anthropic.com", Port: 443, Protocol: "rest"},
 		},
 		Binaries: []v1.NetworkBinary{
 			{Path: "/usr/bin/claude"},
@@ -373,7 +373,7 @@ func TestProviderProfileRoundTrip(t *testing.T) {
 			{Name: "TOKEN", Description: "auth token", Required: true, Secret: false},
 		},
 		Endpoints: []v1.NetworkEndpoint{
-			{Name: "agent.example.com", Port: 8080, Protocol: "websocket"},
+			{Host: "agent.example.com", Port: 8080, Protocol: "websocket"},
 		},
 		Binaries: []v1.NetworkBinary{
 			{Path: "/bin/agent"},
@@ -401,7 +401,7 @@ func TestProviderProfileRoundTrip(t *testing.T) {
 	assert.Equal(t, original.Credentials[0].Required, back.Credentials[0].Required)
 
 	require.Len(t, back.Endpoints, 1)
-	assert.Equal(t, original.Endpoints[0].Name, back.Endpoints[0].Name)
+	assert.Equal(t, original.Endpoints[0].Host, back.Endpoints[0].Host)
 	assert.Equal(t, original.Endpoints[0].Port, back.Endpoints[0].Port)
 
 	require.Len(t, back.Binaries, 1)

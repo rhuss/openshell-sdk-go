@@ -58,13 +58,13 @@ func ProfileCategoryToProto(c types.ProfileCategory) pb.ProviderProfileCategory 
 // --- NetworkEndpoint ---
 
 // NetworkEndpointFromProto converts a proto NetworkEndpoint to an SDK NetworkEndpoint.
-// Only Host (→Name), Port, and Protocol are mapped; additional proto fields are ignored.
+// Only Host, Port, and Protocol are mapped; additional proto fields are ignored.
 func NetworkEndpointFromProto(ep *sbv1.NetworkEndpoint) *types.NetworkEndpoint {
 	if ep == nil {
 		return nil
 	}
 	return &types.NetworkEndpoint{
-		Name:     ep.GetHost(),
+		Host:     ep.GetHost(),
 		Port:     ep.GetPort(),
 		Protocol: ep.GetProtocol(),
 	}
@@ -76,7 +76,7 @@ func NetworkEndpointToProto(ep *types.NetworkEndpoint) *sbv1.NetworkEndpoint {
 		return nil
 	}
 	return &sbv1.NetworkEndpoint{
-		Host:     ep.Name,
+		Host:     ep.Host,
 		Port:     ep.Port,
 		Protocol: ep.Protocol,
 	}

@@ -54,15 +54,14 @@
 
 | Field | Type | Description |
 |-------|------|-------------|
-| Name | string | Endpoint name |
+| Host | string | Hostname or host glob pattern |
 | Port | uint32 | TCP port |
-| Protocol | string | Protocol (e.g., "http", "grpc") |
+| Protocol | string | Protocol (e.g., "rest", "websocket", "graphql") |
 
 ### NetworkBinary
 
 | Field | Type | Description |
 |-------|------|-------------|
-| Name | string | Binary name |
 | Path | string | Path within sandbox |
 
 ### ProfileDiscovery

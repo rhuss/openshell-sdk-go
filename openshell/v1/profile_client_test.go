@@ -281,7 +281,7 @@ func TestProfileGet(t *testing.T) {
 	assert.True(t, profile.Credentials[0].Secret) // derived from Refresh != nil
 	// Verify endpoint deep copy
 	require.Len(t, profile.Endpoints, 1)
-	assert.Equal(t, "localhost", profile.Endpoints[0].Name)
+	assert.Equal(t, "localhost", profile.Endpoints[0].Host)
 	assert.Equal(t, uint32(8080), profile.Endpoints[0].Port)
 	// Verify binary deep copy
 	require.Len(t, profile.Binaries, 1)
