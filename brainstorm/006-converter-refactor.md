@@ -1,7 +1,7 @@
 # Brainstorm: Converter Code Deduplication
 
 **Date:** 2026-06-28
-**Status:** active
+**Status:** done (implemented as spec 004-converter-dedup)
 
 ## Problem Framing
 

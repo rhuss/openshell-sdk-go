@@ -20,6 +20,7 @@ const (
 	ErrorDeadlineExceeded = types.ErrorDeadlineExceeded
 	ErrorCancelled        = types.ErrorCancelled
 	ErrorInternal         = types.ErrorInternal
+	ErrorUnimplemented    = types.ErrorUnimplemented
 )
 
 // StatusError is the typed error returned by all SDK operations.
@@ -45,3 +46,6 @@ func IsDeadlineExceeded(err error) bool { return types.IsDeadlineExceeded(err) }
 
 // IsCancelled returns true if the error indicates the operation was cancelled.
 func IsCancelled(err error) bool { return types.IsCancelled(err) }
+
+// IsUnimplemented returns true if the error indicates the operation is not implemented.
+func IsUnimplemented(err error) bool { return types.IsUnimplemented(err) }

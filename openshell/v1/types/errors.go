@@ -21,6 +21,7 @@ const (
 	ErrorDeadlineExceeded
 	ErrorCancelled
 	ErrorInternal
+	ErrorUnimplemented
 )
 
 // String returns the human-readable name of the error code.
@@ -42,6 +43,8 @@ func (c ErrorCode) String() string {
 		return "Cancelled"
 	case ErrorInternal:
 		return "Internal"
+	case ErrorUnimplemented:
+		return "Unimplemented"
 	default:
 		return fmt.Sprintf("Unknown(%d)", int(c))
 	}
@@ -91,6 +94,11 @@ func IsDeadlineExceeded(err error) bool {
 // IsCancelled returns true if the error indicates the operation was cancelled.
 func IsCancelled(err error) bool {
 	return hasCode(err, ErrorCancelled)
+}
+
+// IsUnimplemented returns true if the error indicates the operation is not implemented.
+func IsUnimplemented(err error) bool {
+	return hasCode(err, ErrorUnimplemented)
 }
 
 func hasCode(err error, code ErrorCode) bool {
