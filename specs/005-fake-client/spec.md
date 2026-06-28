@@ -17,8 +17,8 @@ A consumer writes a test that creates a sandbox, waits for it to become ready, t
 
 **Acceptance Scenarios**:
 
-1. **Given** a FakeClient with no pre-seeded data, **When** the consumer calls Sandbox.Create with name "test-sb", **Then** the returned Sandbox has phase Pending and the sandbox is retrievable via Get.
-2. **Given** a sandbox "test-sb" exists with phase Pending, **When** the consumer calls WaitReady, **Then** the sandbox transitions to phase Ready and is returned.
+1. **Given** a FakeClient with no pre-seeded data, **When** the consumer calls Sandbox.Create with name "test-sb", **Then** the returned Sandbox has phase Provisioning and the sandbox is retrievable via Get.
+2. **Given** a sandbox "test-sb" exists with phase Provisioning, **When** the consumer calls WaitReady, **Then** the sandbox transitions to phase Ready and is returned.
 3. **Given** a sandbox "test-sb" exists, **When** the consumer calls Delete, **Then** a subsequent Get returns a NotFound StatusError.
 4. **Given** a FakeClient, **When** the consumer calls Create with a name that already exists, **Then** an AlreadyExists StatusError is returned.
 
@@ -122,7 +122,7 @@ A consumer runs parallel test cases that share a FakeClient. The fake is thread-
 - **FR-003**: Create operations MUST return an AlreadyExists StatusError when an object with the same name already exists.
 - **FR-004**: Get operations MUST return a NotFound StatusError when no object with the given name exists.
 - **FR-005**: Delete operations MUST be idempotent — deleting a non-existent object succeeds silently.
-- **FR-006**: Sandbox.WaitReady MUST simulate phase transition from Pending to Ready, returning the updated sandbox. The transition MUST be immediate (no artificial delay) by default.
+- **FR-006**: Sandbox.WaitReady MUST simulate phase transition from Provisioning to Ready, returning the updated sandbox. The transition MUST be immediate (no artificial delay) by default.
 - **FR-007**: Watch MUST broadcast typed events (ADDED, MODIFIED, DELETED) to all active watchers when Create, Update, or Delete operations occur.
 - **FR-008**: Watch MUST support Stop to close the event channel and stop receiving events. Watch accepts a name parameter: if non-empty, only events for the named sandbox are delivered; if empty, events for all sandboxes are delivered.
 - **FR-009**: The fake MUST provide AddSandbox and AddProvider pre-seed helpers that insert objects into the store without triggering watch events.

@@ -21,7 +21,7 @@ Distributes typed events to registered watchers.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| mu | sync.RWMutex | Protects the watchers slice |
+| mu | sync.Mutex | Protects the watchers slice |
 | watchers | []*watcher[T] | Active watchers receiving events |
 
 ### watcher[T]
@@ -32,7 +32,9 @@ Single registered watch consumer.
 |-------|------|-------------|
 | ch | chan Event[T] | Buffered event channel (capacity 100) |
 | name | string | Filter: empty = all events, non-empty = filter by name |
-| stopped | atomic.Bool | Whether this watcher has been stopped |
+| once | sync.Once | Ensures Stop is idempotent |
+| stopped | bool | Whether this watcher has been stopped |
+| mu | sync.Mutex | Protects stopped flag and channel close |
 
 ### FakeClient
 

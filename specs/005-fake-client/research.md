@@ -30,7 +30,7 @@
 
 ## R4: Watch Broadcaster Design
 
-**Decision**: Use a `sync.RWMutex`-protected slice of watcher channels. Each watcher gets a buffered channel. Broadcast iterates the slice, non-blocking send to each channel (drop events if buffer full, matching k8s watch semantics). Stop removes the watcher from the slice and closes its channel.
+**Decision**: Use a `sync.Mutex`-protected slice of watcher channels. Each watcher gets a buffered channel. Broadcast iterates the slice, non-blocking send to each channel (drop events if buffer full, matching k8s watch semantics). Stop removes the watcher from the slice and closes its channel.
 
 **Rationale**: This matches the client-go `watch.Broadcaster` pattern. Buffered channels prevent slow consumers from blocking mutations. The buffer size (default 100) matches k8s conventions.
 
