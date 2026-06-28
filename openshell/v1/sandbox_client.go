@@ -210,7 +210,7 @@ func sandboxSpecFromProto(spec *pb.SandboxSpec) SandboxSpec {
 			Labels:           copyStringMap(tmpl.GetLabels()),
 			Annotations:      copyStringMap(tmpl.GetAnnotations()),
 			Environment:      copyStringMap(tmpl.GetEnvironment()),
-			UserNamespaces:   tmpl.UserNamespaces,
+			UserNamespaces:   copyBoolPtr(tmpl.UserNamespaces),
 		}
 	}
 
@@ -363,6 +363,14 @@ func copyStringMap(m map[string]string) map[string]string {
 		c[k] = v
 	}
 	return c
+}
+
+func copyBoolPtr(p *bool) *bool {
+	if p == nil {
+		return nil
+	}
+	v := *p
+	return &v
 }
 
 func copyStringSlice(s []string) []string {
