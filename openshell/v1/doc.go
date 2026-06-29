@@ -163,7 +163,7 @@
 //	}
 //	defer conn.Close()
 //
-//	// conn implements io.ReadWriteCloser — use it like a net.Conn.
+//	// conn implements io.ReadWriteCloser, use it like a net.Conn.
 //	_, err = conn.Write([]byte("PING\n"))
 //	if err != nil {
 //	    log.Fatal(err)
@@ -174,6 +174,44 @@
 //	    log.Fatal(err)
 //	}
 //	fmt.Printf("Response: %s\n", buf[:n])
+//
+// Use WithForwardServiceID to tag the forwarding session with a service
+// identifier for audit logging:
+//
+//	conn, err := client.TCP().Forward(ctx, "my-sandbox", 5432,
+//	    v1.WithForwardServiceID("billing-db"),
+//	)
+//
+// # SSH Tunneling
+//
+// Create an SSH tunnel to a sandbox port in a single call. Tunnel combines
+// session creation, TCP forwarding with an SSH relay target, and automatic
+// session cleanup into one operation:
+//
+//	tunnel, err := client.SSH().Tunnel(ctx, "my-sandbox", 22)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	defer tunnel.Close()
+//
+//	// tunnel implements io.ReadWriteCloser. The underlying SSH session
+//	// is automatically revoked when Close is called.
+//	_, err = tunnel.Write([]byte("SSH-2.0-client\r\n"))
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	buf := make([]byte, 256)
+//	n, err := tunnel.Read(buf)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	fmt.Printf("Server banner: %s\n", buf[:n])
+//
+// Use WithTunnelServiceID to associate a service identifier with the tunnel:
+//
+//	tunnel, err := client.SSH().Tunnel(ctx, "my-sandbox", 22,
+//	    v1.WithTunnelServiceID("dev-ssh"),
+//	)
 //
 // # Configuration Management
 //

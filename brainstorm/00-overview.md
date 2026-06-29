@@ -15,6 +15,7 @@ Last updated: 2026-06-29
 | 007 | 2026-06-28 | fake-client | active | - | - |
 | 008 | 2026-06-29 | ssh-tcp-config | active | - | - |
 | 009 | 2026-06-29 | policy-logs | active | - | - |
+| 010 | 2026-06-29 | ssh-tunnel-forward-opts | active | - | - |
 
 ## Dependency Chain
 
@@ -27,6 +28,7 @@ Last updated: 2026-06-29
                  ├─ 007-fake-client (testing support)
                  └─ 005-full-api (Phase 2a: services, profiles, refresh)
                       ├─ 008-ssh-tcp-config (Phase 2b-1: SSH, TCP, config)
+                      │    └─ 010-ssh-tunnel-forward-opts (Phase 2b-3: SSH tunnel, forward opts)
                       └─ 009-policy-logs (Phase 2b-2: policy, draft policy, logs)
 ```
 
@@ -39,6 +41,8 @@ Last updated: 2026-06-29
 - ListSandboxPolicies `global` flag: should SDK expose this or keep sandbox-scoped only? (from #009)
 - Doc comment coverage: bring all exported symbols to 80%+ per Constitution IX (from PR #4 review)
 - Proto-to-SDK naming verification: add lint rule or converter test pattern (from PR #4 review, Constitution X)
+- Tunnel() sandbox name vs ID: does Tunnel need name->ID resolution like GetLogs? (from #010)
+- WithServiceID shared vs per-interface option type? (from #010)
 
 ## Resolved Threads
 - Interface evolution: follow client-go pattern — accept interface growth, provide fake, use concrete `*Client` in production
@@ -69,6 +73,11 @@ Last updated: 2026-06-29
 - PolicyChunk: full fidelity (18 fields), flat struct (from #009)
 - GetLogs ID resolution: accept sandbox name, resolve to ID internally (from #009)
 - GetDraft status filter: functional option pattern (from #009)
+- SSH tunnel API: SSH().Tunnel() with auto-lifecycle, not Forward() options (from #010)
+- Tunnel return type: io.ReadWriteCloser, not richer TunnelConn struct (from #010)
+- Tunnel close behavior: auto-revoke session on Close() (from #010)
+- Forward() gap fix: WithServiceID() only, SSH target options deferred (from #010)
+- WithServiceID on Tunnel: yes, for symmetry with Forward() (from #010)
 
 ## Parked Ideas
 (none)
