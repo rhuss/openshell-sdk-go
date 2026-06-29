@@ -37,7 +37,8 @@ Last updated: 2026-06-28
 - When to brainstorm Phase 3 (operator support)? (from #005)
 - File transfer: SSH transport stub → real `golang.org/x/crypto/ssh` (from #004, scoped to Phase 2b SSHInterface)
 - Enhanced watch event model: unified vs split streams for status/logs/events (from #008)
-- Proto-to-SDK naming verification: add lint rule or converter test pattern to catch field name divergence (from PR #4 review — NetworkEndpoint.Name vs proto Host)
+- Proto-to-SDK naming verification: add lint rule or converter test pattern to catch field name divergence (from PR #4 review — NetworkEndpoint.Name vs proto Host, now Constitution X)
+- Doc comment coverage: bring all exported symbols to 80%+ with agent-friendly doc comments per Constitution IX (CodeRabbit flagged 33.96% on PR #4)
 
 ## Resolved Threads
 - Interface evolution: follow client-go pattern — accept interface growth, provide fake, use concrete `*Client` in production (explored in session, decided no special handling needed)
