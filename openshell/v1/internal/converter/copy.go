@@ -36,3 +36,14 @@ func CopyStringSlice(s []string) []string {
 	copy(c, s)
 	return c
 }
+
+// CopyByteSlice returns a copy of a byte slice.
+// Returns nil for nil input.
+func CopyByteSlice(b []byte) []byte {
+	if b == nil {
+		return nil
+	}
+	c := make([]byte, len(b))
+	copy(c, b)
+	return c
+}

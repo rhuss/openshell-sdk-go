@@ -108,9 +108,29 @@ counterparts.
 
 ## Governance
 
+### XI. Fake-Real Parity
+
+Fake implementations MUST mirror the real client's client-side
+validation (nil checks, range validation, empty-string rejection) so
+that tests using fakes catch the same caller bugs that production would
+reject. When a real client method validates input before making an RPC
+call, the corresponding fake method must perform the same validation
+and return the same error type. Stubs that only return Unimplemented
+without validation hide bugs that surface only in production.
+
+### XII. Graceful Shutdown Order
+
+When closing resources that combine context cancellation with
+protocol-level close operations (e.g., gRPC CloseSend), the
+protocol-level close MUST execute before context cancellation. Cancelling
+the context first can cause the protocol-level close to fail with a
+spurious context-cancelled error, which then propagates to the caller as
+the Close() result. The correct order is: graceful close, then cancel,
+then wait for background goroutines.
+
 This constitution governs all design decisions for the OpenShell SDK
 for Go. Amendments require documentation and a clear migration plan for
 any breaking changes. All pull requests must verify compliance with these
 principles.
 
-**Version**: 1.3.0 | **Ratified**: 2026-06-27 | **Last Amended**: 2026-06-29
+**Version**: 1.4.0 | **Ratified**: 2026-06-27 | **Last Amended**: 2026-06-29

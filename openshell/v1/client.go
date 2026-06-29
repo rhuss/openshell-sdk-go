@@ -23,6 +23,9 @@ type ClientInterface interface {
 	Exec() ExecInterface
 	Files() FileInterface
 	Health() HealthInterface
+	SSH() SSHInterface
+	TCP() TCPInterface
+	Config() ConfigInterface
 	Close() error
 }
 
@@ -50,6 +53,9 @@ type Client struct {
 	exec      ExecInterface
 	files     FileInterface
 	health    HealthInterface
+	ssh       SSHInterface
+	tcp       TCPInterface
+	cfg       ConfigInterface
 }
 
 // NewClient creates a new SDK client connected to the given gateway.
@@ -88,6 +94,9 @@ func NewClient(cfg Config) (*Client, error) {
 	c.exec = newExecClient(conn)
 	c.files = newFileClient(conn)
 	c.health = newHealthClient(conn)
+	c.ssh = newSSHClient(conn)
+	c.tcp = newTCPClient(conn)
+	c.cfg = newConfigClient(conn)
 
 	return c, nil
 }
@@ -109,6 +118,15 @@ func (c *Client) Files() FileInterface { return c.files }
 
 // Health returns the health sub-client.
 func (c *Client) Health() HealthInterface { return c.health }
+
+// SSH returns the SSH session sub-client.
+func (c *Client) SSH() SSHInterface { return c.ssh }
+
+// TCP returns the TCP port forwarding sub-client.
+func (c *Client) TCP() TCPInterface { return c.tcp }
+
+// Config returns the configuration sub-client.
+func (c *Client) Config() ConfigInterface { return c.cfg }
 
 // Close closes the underlying gRPC connection. Safe to call multiple times.
 func (c *Client) Close() error {
