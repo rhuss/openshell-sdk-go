@@ -16,6 +16,7 @@ Last updated: 2026-06-29
 | 008 | 2026-06-29 | ssh-tcp-config | active | - | - |
 | 009 | 2026-06-29 | policy-logs | active | - | - |
 | 010 | 2026-06-29 | ssh-tunnel-forward-opts | active | - | - |
+| 011 | 2026-06-29 | api-docs | active | - | - |
 
 ## Dependency Chain
 
