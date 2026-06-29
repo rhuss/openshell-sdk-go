@@ -485,15 +485,40 @@ func TestWatchEvents(t *testing.T) {
 func TestUnhealthyGateway(t *testing.T) {
     fc := fake.NewClient(
         fake.WithHealthResult(&types.HealthResult{
-            Status: "UNHEALTHY",
+            Healthy: false,
+            Version: "1.2.3",
         }),
     )
     defer fc.Close()
 
     result, err := fc.Health().Check(ctx)
     require.NoError(t, err)
-    assert.Equal(t, "UNHEALTHY", result.Status)
+    assert.False(t, result.Healthy)
 }
+```
+
+## Documentation
+
+Full API documentation is available at the [OpenShell Go SDK Docs](docs/src/SUMMARY.md) site, built with [mdBook](https://rust-lang.github.io/mdBook/).
+
+Key sections:
+
+- **[Getting Started](docs/src/getting-started.md)** - Installation, connecting, first sandbox
+- **[Error Handling](docs/src/error-handling.md)** - `StatusError`, predicate functions, retry patterns
+- **[Testing](docs/src/testing.md)** - Fake client, fixture seeding, watch events
+- **[API Reference](docs/src/api/overview.md)** - Per-resource method tables and code examples
+
+To build the docs locally:
+
+```bash
+# Install mdBook and the admonish preprocessor
+cargo install mdbook mdbook-admonish
+
+# Build the docs
+mdbook build docs
+
+# Serve locally with live reload
+mdbook serve docs
 ```
 
 ## Quick Start
