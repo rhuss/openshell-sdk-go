@@ -35,14 +35,15 @@ execution policies as native Kubernetes resources.
 
 ```
 Client
-  ├── Sandboxes()   → SandboxInterface    (create, get, list, delete, watch, wait)
+  ├── Sandboxes()   → SandboxInterface    (create, get, list, delete, watch, wait, logs)
   ├── Exec()        → ExecInterface       (run, stream, interactive)
   ├── Files()       → FileInterface       (upload, download)
   ├── Health()      → HealthInterface     (gateway health check)
   ├── Services()    → ServiceInterface    (expose, get, list, delete)
-  └── Providers()   → ProviderInterface   (CRUD + ensure)
-        ├── Profiles() → ProfileInterface (list, get, import, update, lint, delete)
-        └── Refresh()  → RefreshInterface (configure, status, rotate, delete)
+  ├── Providers()   → ProviderInterface   (CRUD + ensure)
+  │     ├── Profiles() → ProfileInterface (list, get, import, update, lint, delete)
+  │     └── Refresh()  → RefreshInterface (configure, status, rotate, delete)
+  └── Policy()      → PolicyInterface     (draft review, approve, reject, merge, status)
 ```
 
 All domain types live in `openshell/v1/types/`. Proto-to-Go conversions happen in
@@ -61,7 +62,7 @@ consumers import a single package.
 | **File transfer** | `FileInterface` | `Upload`, `Download` |
 | **Health checking** | `HealthInterface` | `Check` |
 | **Real-time watch** | `WatchInterface[T]` | Generic typed event channel with `ResultChan()` and `Stop()` |
-| **Typed errors** | `StatusError` | `IsNotFound`, `IsAlreadyExists`, `IsConflict`, `IsUnavailable` |
+| **Typed errors** | `StatusError` | `IsNotFound`, `IsAlreadyExists`, `IsConflict`, `IsUnavailable`, `IsUnimplemented` |
 | **Authentication** | `AuthProvider` | `NoAuth()`, `StaticToken()` |
 
 ### Operator API Extensions (Phase 2a) ✓
@@ -72,6 +73,17 @@ consumers import a single package.
 | **Provider profiles** | `ProfileInterface` | `List`, `Get`, `Import`, `Update`, `Lint`, `Delete` |
 | **Credential refresh** | `RefreshInterface` | `GetStatus`, `Configure`, `Rotate`, `Delete` |
 | **StopOnTerminal watch** | `WatchOptions` | Auto-close watcher on terminal phase (Ready/Error) |
+
+### Policy Management & Logs (Phase 2b-2) ✓
+
+| Feature | Interface | Methods |
+|---------|-----------|---------|
+| **Draft policy review** | `PolicyInterface` | `GetDraft`, `ApproveDraftChunk`, `RejectDraftChunk`, `ApproveAllDraftChunks` |
+| **Draft policy editing** | `PolicyInterface` | `ClearDraftChunks`, `EditDraftChunk`, `UndoDraftChunk`, `GetDraftHistory` |
+| **Policy status & versions** | `PolicyInterface` | `GetStatus`, `List` |
+| **Sandbox logs** | `SandboxInterface` | `GetLogs` (streaming log retrieval) |
+| **Config merge operations** | `ConfigInterface` | `Update` with typed `PolicyMergeOperation` (6 variants) |
+| **Conflict detection** | `IsConflict` | Covers optimistic concurrency and invalid state transitions |
 
 ### Fake Client for Testing ✓
 
@@ -85,10 +97,11 @@ controller test suites.
 | **In-memory object stores** | Thread-safe stores with deep copy at boundaries |
 | **Watch event broadcasting** | Mutations emit ADDED/MODIFIED/DELETED events to active watchers |
 | **Automatic phase transitions** | `Create` → Provisioning, `WaitReady` → Ready |
-| **Test fixture seeding** | `AddSandbox()`, `AddProvider()` for pre-populating state |
+| **Test fixture seeding** | `AddSandbox()`, `AddProvider()`, `AddPolicyDraft()` for pre-populating state |
 | **StopOnTerminal support** | Fake watch auto-closes on terminal phases |
 | **Race-detector safe** | All stores and broadcasters are `sync.Mutex`-protected |
 | **Configurable health** | `WithHealthResult()` option for simulating unhealthy gateways |
+| **Policy draft simulation** | In-memory draft chunks with approve/reject/undo lifecycle |
 
 ### Build and CI ✓
 
@@ -97,7 +110,7 @@ controller test suites.
 - Proto sync pipeline that pulls `.proto` files from upstream OpenShell and
   generates Go bindings
 - `mise`-based task runner with a `Makefile` shim
-- 32 test files, 368 test functions
+- 40+ test files, 597 test functions
 
 ## Roadmap
 
@@ -106,8 +119,10 @@ controller test suites.
 - [x] **Phase 1b** — Converter deduplication and domain type extraction
 - [x] **Phase 1c** — Fake client package with in-memory stores and watch broadcaster
 - [x] **Phase 2a** — Operator API: Services, Profiles, Credential Refresh, StopOnTerminal
-- [ ] **Phase 2b** — Policy, Config, SSH tunneling, TCP forwarding
-- [ ] **Phase 3** — Enhanced watch: log/event streaming, server-side filtering
+- [x] **Phase 2b-1** — Config management: Get, Update with typed merge operations
+- [x] **Phase 2b-2** — Policy management, logs, merge operations, ErrorConflict
+- [ ] **Phase 2b-3** — SSH tunneling, TCP forwarding
+- [ ] **Phase 3** — Enhanced watch: event streaming, server-side filtering
 
 ## Usage Examples
 
@@ -327,6 +342,46 @@ fmt.Printf("Refresh status: %s (next: %s)\n", status.Status, status.NextRefreshA
 status, err = client.Providers().Refresh().Rotate(ctx, "openai", "api-key")
 ```
 
+### Review and Approve Draft Policy Chunks
+
+```go
+// Get the draft policy with pending chunks
+draft, err := client.Policy().GetDraft(ctx, "my-sandbox")
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("Draft has %d pending chunks\n", len(draft.Chunks))
+
+// Review and approve individual chunks
+for _, chunk := range draft.Chunks {
+    fmt.Printf("Chunk %s: %s\n", chunk.ID, chunk.Summary)
+    result, err := client.Policy().ApproveDraftChunk(ctx, "my-sandbox", chunk.ID)
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Printf("Approved, new version: %d\n", result.Version)
+}
+
+// Or approve all pending chunks at once
+result, err := client.Policy().ApproveAllDraftChunks(ctx, "my-sandbox")
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("Approved %d chunks\n", result.ApprovedCount)
+```
+
+### Retrieve Sandbox Logs
+
+```go
+logs, err := client.Sandboxes().GetLogs(ctx, "my-sandbox")
+if err != nil {
+    log.Fatal(err)
+}
+for _, entry := range logs {
+    fmt.Printf("[%s] %s\n", entry.Timestamp.Format(time.RFC3339), entry.Message)
+}
+```
+
 ### Error Handling
 
 ```go
@@ -338,6 +393,12 @@ if v1.IsNotFound(err) {
 _, err = client.Providers().Create(ctx, existingProvider)
 if v1.IsAlreadyExists(err) {
     fmt.Println("Provider already exists, use Ensure() for idempotent upsert")
+}
+
+// Conflict covers both version conflicts and invalid state transitions
+_, err = client.Policy().ApproveDraftChunk(ctx, "my-sandbox", alreadyApprovedChunkID)
+if v1.IsConflict(err) {
+    fmt.Println("Chunk already approved or rejected")
 }
 ```
 
