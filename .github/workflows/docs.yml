@@ -37,6 +37,9 @@ jobs:
           chmod +x /tmp/mdbook-admonish/mdbook-admonish
           sudo mv /tmp/mdbook-admonish/mdbook-admonish /usr/local/bin/
 
+      - name: Install admonish assets
+        run: mdbook-admonish install docs/
+
       - name: Build documentation
         run: mdbook build docs/
 
