@@ -33,6 +33,8 @@ type mockProfileServer struct {
 	updateErr error
 	lintErr   error
 	deleteErr error
+
+	lastListReq *pb.ListProviderProfilesRequest
 }
 
 func newMockProfileServer() *mockProfileServer {
@@ -41,9 +43,10 @@ func newMockProfileServer() *mockProfileServer {
 	}
 }
 
-func (s *mockProfileServer) ListProviderProfiles(_ context.Context, _ *pb.ListProviderProfilesRequest) (*pb.ListProviderProfilesResponse, error) {
+func (s *mockProfileServer) ListProviderProfiles(_ context.Context, req *pb.ListProviderProfilesRequest) (*pb.ListProviderProfilesResponse, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.lastListReq = req
 	if s.listErr != nil {
 		return nil, s.listErr
 	}
@@ -239,10 +242,13 @@ func TestProfileList_WithOptions(t *testing.T) {
 	client, cleanup := setupProfileTest(t, mock)
 	defer cleanup()
 
-	profiles, err := client.List(context.Background(), ListOptions{Limit: 10, Offset: 0})
+	profiles, err := client.List(context.Background(), ListOptions{Limit: 10, Offset: 5})
 
 	require.NoError(t, err)
 	assert.Len(t, profiles, 1)
+	require.NotNil(t, mock.lastListReq)
+	assert.Equal(t, uint32(10), mock.lastListReq.GetLimit())
+	assert.Equal(t, uint32(5), mock.lastListReq.GetOffset())
 }
 
 func TestProfileList_Error(t *testing.T) {
