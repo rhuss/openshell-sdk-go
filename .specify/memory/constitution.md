@@ -67,6 +67,30 @@ a public API signature changes, all documentation examples referencing
 it must be updated in the same commit. Stale examples that do not
 compile are treated as bugs.
 
+### IX. Agent-Friendly Documentation
+
+Every exported type, function, interface, and method MUST have a Go
+doc comment. Doc comments MUST describe what the symbol does, not how
+it is implemented. Interface method comments MUST list the error codes
+the method can return (NotFound, AlreadyExists, InvalidArgument, etc.)
+so that agents can write correct error handling without reading the
+implementation. Non-obvious struct fields MUST have inline comments
+explaining their purpose and valid values. Package-level `doc.go`
+files MUST include runnable examples demonstrating primary use cases.
+These conventions enable AI agents to understand the SDK via `go doc`,
+LSP hover, and symbol search without reading source files.
+
+### X. Proto-SDK Naming Fidelity
+
+SDK domain type field names must reflect the semantic meaning of the
+corresponding proto fields they map from. When a proto field is named
+`host` (a hostname pattern), the SDK field must not be named `Name`.
+Converter round-trip tests must assert that SDK field names match the
+proto field semantics, not just that values are preserved. Misnamed
+fields mislead consumers even when the converter works correctly.
+This principle applies to all types in `v1/types/` that have proto
+counterparts.
+
 ## Development Standards
 
 - All `.go` files carry SPDX Apache-2.0 license headers
@@ -89,4 +113,4 @@ for Go. Amendments require documentation and a clear migration plan for
 any breaking changes. All pull requests must verify compliance with these
 principles.
 
-**Version**: 1.1.0 | **Ratified**: 2026-06-27 | **Last Amended**: 2026-06-27
+**Version**: 1.3.0 | **Ratified**: 2026-06-27 | **Last Amended**: 2026-06-29
