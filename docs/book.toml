@@ -18,4 +18,3 @@ edit-url-template = "https://github.com/rhuss/openshell-sdk-go/edit/main/docs/sr
 [output.html.search]
 enable = true
 limit-results = 20
-use-hierarchical-headings = true
