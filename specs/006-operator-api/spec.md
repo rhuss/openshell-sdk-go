@@ -195,5 +195,5 @@ A consumer writing tests against the SDK uses the fake client. After the Phase 2
 - Provider profiles are a read-heavy workload (List/Get frequent, Import/Update/Delete rare). No caching is needed in the SDK — the gateway handles caching.
 - Optimistic concurrency for profile updates uses the resource_version field returned by the gateway. The SDK passes the version through without enforcing it locally.
 - The RefreshConfig structure mirrors the proto's ConfigureProviderRefreshRequest fields. The exact fields are determined during planning when the proto messages are analyzed in detail.
-- StopOnTerminal is implemented in the SDK's Watch client (not on the server side), by monitoring incoming events and closing the channel when a terminal phase is detected. The proto's stop_on_terminal field is also passed to the server for server-side optimization.
+- StopOnTerminal is implemented at both the SDK and server level (defense-in-depth). The SDK passes stop_on_terminal to the server via the proto field AND monitors incoming events client-side, closing the channel when a terminal phase is detected.
 - Phase 2b and enhanced watch capabilities are excluded (see Out of Scope section above).
