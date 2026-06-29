@@ -11,25 +11,25 @@ operator, controller, or any automation that manages OpenShell resources as
 native Kubernetes objects, you need a Go client.
 
 This SDK is modeled after
-[`k8s.io/client-go`](https://github.com/kubernetes/client-go) — the standard
+[`k8s.io/client-go`](https://github.com/kubernetes/client-go), the standard
 Kubernetes client library that every Go operator developer already knows. The
-patterns are intentionally familiar:
+patterns will look familiar:
 
-- **Typed sub-clients per resource** — `client.Sandboxes()`, `client.Providers()`,
+- **Typed sub-clients per resource**: `client.Sandboxes()`, `client.Providers()`,
   `client.Exec()`, just like `clientset.CoreV1().Pods()`
-- **Domain types separated from wire formats** — clean Go structs in a `types`
+- **Domain types separated from wire formats**: clean Go structs in a `types`
   package, no proto leakage into the public API (like `k8s.io/api`)
-- **Watch primitives** — channel-based watchers with `ResultChan()` and `Stop()`,
+- **Watch primitives**: channel-based watchers with `ResultChan()` and `Stop()`,
   identical to `watch.Interface` in client-go
-- **Functional options** — variadic option patterns for list filtering,
+- **Functional options**: variadic option patterns for list filtering,
   pagination, and watch configuration
-- **Fake client for testing** — an in-memory implementation of the full client
+- **Fake client for testing**: an in-memory implementation of the full client
   interface (like `k8s.io/client-go/kubernetes/fake`), so operators can be tested
   without a real gateway
 
-The primary use case driving this SDK: building an OpenShell operator for
-OpenShift/Kubernetes that manages sandbox lifecycles, provider configurations,
-and execution policies as native Kubernetes resources.
+The primary use case driving this SDK: building a Kubernetes operator for
+OpenShell that manages sandbox lifecycles, provider configurations, and
+execution policies as native Kubernetes resources.
 
 ## Architecture
 
@@ -76,7 +76,7 @@ consumers import a single package.
 ### Fake Client for Testing ✓
 
 The `fake` package provides a complete in-memory implementation of
-`ClientInterface` — no gRPC server required. Designed for operator and
+`ClientInterface` that needs no gRPC server. Built for operator and
 controller test suites.
 
 | Feature | Description |
