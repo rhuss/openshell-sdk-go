@@ -24,6 +24,9 @@ type Client struct {
 	exec      v1.ExecInterface
 	files     v1.FileInterface
 	health    v1.HealthInterface
+	ssh       v1.SSHInterface
+	tcp       v1.TCPInterface
+	cfg       v1.ConfigInterface
 
 	closeOnce sync.Once
 	closed    bool
@@ -56,6 +59,9 @@ func NewClient(opts ...ClientOption) *Client {
 	fc.exec = newFakeExecClient(fc.isClosed)
 	fc.files = newFakeFileClient(fc.isClosed)
 	fc.health = newFakeHealthClient(nil, fc.isClosed)
+	fc.ssh = newFakeSSHClient(fc.isClosed)
+	fc.tcp = newFakeTCPClient(fc.isClosed)
+	fc.cfg = newFakeConfigClient(fc.isClosed)
 
 	for _, opt := range opts {
 		opt(fc)
@@ -89,6 +95,15 @@ func (fc *Client) Files() v1.FileInterface { return fc.files }
 
 // Health returns the health sub-client.
 func (fc *Client) Health() v1.HealthInterface { return fc.health }
+
+// SSH returns the SSH session sub-client.
+func (fc *Client) SSH() v1.SSHInterface { return fc.ssh }
+
+// TCP returns the TCP port forwarding sub-client.
+func (fc *Client) TCP() v1.TCPInterface { return fc.tcp }
+
+// Config returns the configuration sub-client.
+func (fc *Client) Config() v1.ConfigInterface { return fc.cfg }
 
 // Close marks the client as closed, stops all active watchers, and causes
 // subsequent sub-client calls to return Unavailable. Safe to call multiple

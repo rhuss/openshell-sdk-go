@@ -5,7 +5,7 @@
 //
 // The SDK follows the Kubernetes client-go sub-client pattern: a single Client
 // provides typed accessors for each resource domain (Sandboxes, Providers, Exec,
-// Files, Health). All operations accept a context.Context and return idiomatic
+// Files, Health, Services, SSH, TCP, Config). All operations accept a context.Context and return idiomatic
 // Go types. Proto-generated types never appear in the public API.
 //
 // # Quick Start
@@ -133,4 +133,77 @@
 //	    log.Fatal(err)
 //	}
 //	fmt.Printf("Refresh status: %s (next: %s)\n", status.Status, status.NextRefreshAt)
+//
+// # SSH Session Management
+//
+// Create an SSH session for a sandbox and use the returned connection details:
+//
+//	session, err := client.SSH().CreateSession(ctx, "my-sandbox")
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	fmt.Printf("SSH to %s:%d (scheme: %s)\n",
+//	    session.GatewayHost, session.GatewayPort, session.GatewayScheme)
+//	fmt.Printf("Host key: %s\n", session.HostKeyFingerprint)
+//	// Use session.Token to authenticate the SSH connection.
+//
+//	revoked, err := client.SSH().RevokeSession(ctx, session.Token)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	fmt.Printf("Session revoked: %v\n", revoked)
+//
+// # TCP Port Forwarding
+//
+// Forward a local connection to a port inside a sandbox:
+//
+//	conn, err := client.TCP().Forward(ctx, "my-sandbox", 5432)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	defer conn.Close()
+//
+//	// conn implements io.ReadWriteCloser — use it like a net.Conn.
+//	_, err = conn.Write([]byte("PING\n"))
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	buf := make([]byte, 1024)
+//	n, err := conn.Read(buf)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	fmt.Printf("Response: %s\n", buf[:n])
+//
+// # Configuration Management
+//
+// Read sandbox and gateway configuration, and update settings:
+//
+//	sbCfg, err := client.Config().GetSandbox(ctx, "my-sandbox")
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	fmt.Printf("Config revision: %d\n", sbCfg.ConfigRevision)
+//	for name, setting := range sbCfg.Settings {
+//	    fmt.Printf("  %s = %v (scope: %s)\n", name, setting.Value, setting.Scope)
+//	}
+//
+//	gwCfg, err := client.Config().GetGateway(ctx)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	fmt.Printf("Gateway settings revision: %d\n", gwCfg.SettingsRevision)
+//
+//	result, err := client.Config().Update(ctx, &v1.ConfigUpdate{
+//	    Name:       "my-sandbox",
+//	    SettingKey:  "max_tokens",
+//	    SettingValue: &v1.SettingValue{
+//	        Type:   v1.SettingValueInt,
+//	        IntVal: 8192,
+//	    },
+//	})
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	fmt.Printf("New settings revision: %d\n", result.SettingsRevision)
 package v1

@@ -108,7 +108,6 @@ controller test suites.
 - [x] **Phase 2a** — Operator API: Services, Profiles, Credential Refresh, StopOnTerminal
 - [ ] **Phase 2b** — Policy, Config, SSH tunneling, TCP forwarding
 - [ ] **Phase 3** — Enhanced watch: log/event streaming, server-side filtering
-- [ ] **Phase 4** — Operator building blocks: informers, listers, reconciler helpers
 
 ## Usage Examples
 
