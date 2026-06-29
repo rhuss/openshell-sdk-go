@@ -25,7 +25,7 @@ func newFakeTCPClient(closedFunc func() bool) *fakeTCPClient {
 
 // Forward returns Unimplemented. Ports outside 1-65535 are rejected with
 // InvalidArgument to match the real client's behavior.
-func (c *fakeTCPClient) Forward(_ context.Context, _ string, port uint32) (io.ReadWriteCloser, error) {
+func (c *fakeTCPClient) Forward(_ context.Context, _ string, port uint32, _ ...v1.ForwardOption) (io.ReadWriteCloser, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}

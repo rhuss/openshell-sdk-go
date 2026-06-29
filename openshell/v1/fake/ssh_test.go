@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	v1 "github.com/rhuss/openshell-sdk-go/openshell/v1"
 	"github.com/rhuss/openshell-sdk-go/openshell/v1/types"
 )
 
@@ -39,6 +40,48 @@ func TestFakeSSH_CreateSession_ClosedReturnsUnavailable(t *testing.T) {
 func TestFakeSSH_RevokeSession_ClosedReturnsUnavailable(t *testing.T) {
 	c := newFakeSSHClient(func() bool { return true })
 	_, err := c.RevokeSession(context.Background(), "tok-abc")
+	require.Error(t, err)
+	assert.True(t, types.IsUnavailable(err))
+}
+
+// --- T014: Fake Tunnel tests ---
+
+func TestFakeSSH_Tunnel_ReturnsUnimplemented(t *testing.T) {
+	c := newFakeSSHClient(func() bool { return false })
+	_, err := c.Tunnel(context.Background(), "my-sandbox", 22)
+	require.Error(t, err)
+	assert.True(t, types.IsUnimplemented(err))
+}
+
+func TestFakeSSH_Tunnel_WithTunnelOption(t *testing.T) {
+	c := newFakeSSHClient(func() bool { return false })
+	_, err := c.Tunnel(context.Background(), "my-sandbox", 22, v1.WithTunnelServiceID("audit-svc"))
+	require.Error(t, err)
+	assert.True(t, types.IsUnimplemented(err))
+}
+
+func TestFakeSSH_Tunnel_InvalidPort(t *testing.T) {
+	c := newFakeSSHClient(func() bool { return false })
+
+	_, err := c.Tunnel(context.Background(), "my-sandbox", 0)
+	require.Error(t, err)
+	assert.True(t, types.IsInvalidArgument(err))
+
+	_, err = c.Tunnel(context.Background(), "my-sandbox", 65536)
+	require.Error(t, err)
+	assert.True(t, types.IsInvalidArgument(err))
+}
+
+func TestFakeSSH_Tunnel_EmptySandboxName(t *testing.T) {
+	c := newFakeSSHClient(func() bool { return false })
+	_, err := c.Tunnel(context.Background(), "", 22)
+	require.Error(t, err)
+	assert.True(t, types.IsInvalidArgument(err))
+}
+
+func TestFakeSSH_Tunnel_ClosedReturnsUnavailable(t *testing.T) {
+	c := newFakeSSHClient(func() bool { return true })
+	_, err := c.Tunnel(context.Background(), "my-sandbox", 22)
 	require.Error(t, err)
 	assert.True(t, types.IsUnavailable(err))
 }

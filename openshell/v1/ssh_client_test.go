@@ -5,6 +5,7 @@ package v1
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"sync"
 	"testing"
@@ -28,7 +29,9 @@ type mockSSHServer struct {
 	tokens     map[string]bool                         // track active tokens
 	createErr  error
 	revokeErr  error
+	forwardErr error
 	nextToken  string // override token for testing
+	lastInit   *pb.TcpForwardInit
 }
 
 func newMockSSHServer() *mockSSHServer {
@@ -81,9 +84,97 @@ func (s *mockSSHServer) RevokeSshSession(_ context.Context, req *pb.RevokeSshSes
 	return &pb.RevokeSshSessionResponse{Revoked: false}, nil
 }
 
+func (s *mockSSHServer) ForwardTcp(stream grpc.BidiStreamingServer[pb.TcpForwardFrame, pb.TcpForwardFrame]) error { //nolint:revive // proto-generated method name
+	s.mu.Lock()
+	earlyErr := s.forwardErr
+	s.mu.Unlock()
+	if earlyErr != nil {
+		return earlyErr
+	}
+
+	frame, err := stream.Recv()
+	if err != nil {
+		return err
+	}
+	init := frame.GetInit()
+	if init == nil {
+		return status.Errorf(codes.InvalidArgument, "first frame must be init")
+	}
+
+	s.mu.Lock()
+	s.lastInit = init
+	s.mu.Unlock()
+
+	for {
+		frame, err = stream.Recv()
+		if err != nil {
+			return err
+		}
+		data := frame.GetData()
+		if data == nil {
+			continue
+		}
+		if err := stream.Send(&pb.TcpForwardFrame{
+			Payload: &pb.TcpForwardFrame_Data{Data: data},
+		}); err != nil {
+			return err
+		}
+	}
+}
+
+// --- Mock sandbox resolver ---
+
+type mockSandboxResolver struct {
+	sandboxes map[string]*Sandbox
+	err       error
+}
+
+func (m *mockSandboxResolver) Create(_ context.Context, _ string, _ *SandboxSpec, _ map[string]string) (*Sandbox, error) {
+	return nil, nil
+}
+
+func (m *mockSandboxResolver) Get(_ context.Context, name string) (*Sandbox, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	sb, ok := m.sandboxes[name]
+	if !ok {
+		return nil, &StatusError{Code: ErrorNotFound, Message: "sandbox not found: " + name}
+	}
+	return sb, nil
+}
+
+func (m *mockSandboxResolver) List(_ context.Context, _ ...ListOptions) ([]*Sandbox, error) {
+	return nil, nil
+}
+func (m *mockSandboxResolver) Delete(_ context.Context, _ string) error { return nil }
+func (m *mockSandboxResolver) AttachProvider(_ context.Context, _, _ string, _ uint64) (*AttachProviderResult, error) {
+	return nil, nil
+}
+func (m *mockSandboxResolver) DetachProvider(_ context.Context, _, _ string, _ uint64) (*DetachProviderResult, error) {
+	return nil, nil
+}
+func (m *mockSandboxResolver) ListProviders(_ context.Context, _ string) ([]*Provider, error) {
+	return nil, nil
+}
+func (m *mockSandboxResolver) WaitReady(_ context.Context, _ string, _ ...WaitOptions) (*Sandbox, error) {
+	return nil, nil
+}
+func (m *mockSandboxResolver) Watch(_ context.Context, _ string, _ ...WatchOptions) (WatchInterface[*Sandbox], error) {
+	return nil, nil
+}
+func (m *mockSandboxResolver) GetLogs(_ context.Context, _ string, _ ...LogOption) (*LogResult, error) {
+	return nil, nil
+}
+
 // --- Test setup ---
 
 func setupSSHTest(t *testing.T, mock *mockSSHServer) (*sshClient, func()) {
+	t.Helper()
+	return setupSSHTestWithSandboxes(t, mock, nil)
+}
+
+func setupSSHTestWithSandboxes(t *testing.T, mock *mockSSHServer, sandboxes SandboxInterface) (*sshClient, func()) {
 	t.Helper()
 	lis := bufconn.Listen(bufSize)
 	srv := grpc.NewServer()
@@ -98,7 +189,7 @@ func setupSSHTest(t *testing.T, mock *mockSSHServer) (*sshClient, func()) {
 	)
 	require.NoError(t, err)
 
-	return newSSHClient(conn), func() {
+	return newSSHClient(conn, sandboxes), func() {
 		_ = conn.Close()
 		srv.Stop()
 	}
@@ -184,4 +275,232 @@ func TestSSHRevokeSession_Error(t *testing.T) {
 	var se *StatusError
 	require.ErrorAs(t, err, &se)
 	assert.Equal(t, ErrorInternal, se.Code)
+}
+
+// --- Tunnel tests (T012) ---
+
+func defaultSandboxResolver() *mockSandboxResolver {
+	return &mockSandboxResolver{
+		sandboxes: map[string]*Sandbox{
+			"my-sandbox": {ID: "sb-123", Name: "my-sandbox"},
+		},
+	}
+}
+
+func TestSSHTunnel_Success(t *testing.T) {
+	mock := newMockSSHServer()
+	resolver := defaultSandboxResolver()
+	client, cleanup := setupSSHTestWithSandboxes(t, mock, resolver)
+	defer cleanup()
+
+	rwc, err := client.Tunnel(context.Background(), "my-sandbox", 22)
+	require.NoError(t, err)
+	require.NotNil(t, rwc)
+	defer func() { _ = rwc.Close() }()
+
+	// Round-trip to verify the stream works.
+	_, err = rwc.Write([]byte("hello"))
+	require.NoError(t, err)
+
+	buf := make([]byte, 64)
+	n, err := rwc.Read(buf)
+	require.NoError(t, err)
+	assert.Equal(t, "hello", string(buf[:n]))
+
+	// Verify init frame sent to server.
+	mock.mu.Lock()
+	init := mock.lastInit
+	mock.mu.Unlock()
+
+	require.NotNil(t, init)
+	assert.Equal(t, "sb-123", init.GetSandboxId())
+	assert.NotEmpty(t, init.GetAuthorizationToken())
+	assert.NotNil(t, init.GetSsh(), "target should be SshRelayTarget")
+}
+
+func TestSSHTunnel_WithServiceID(t *testing.T) {
+	mock := newMockSSHServer()
+	resolver := defaultSandboxResolver()
+	client, cleanup := setupSSHTestWithSandboxes(t, mock, resolver)
+	defer cleanup()
+
+	rwc, err := client.Tunnel(context.Background(), "my-sandbox", 22, WithTunnelServiceID("audit-svc"))
+	require.NoError(t, err)
+	require.NotNil(t, rwc)
+	defer func() { _ = rwc.Close() }()
+
+	_, err = rwc.Write([]byte("ping"))
+	require.NoError(t, err)
+	buf := make([]byte, 64)
+	_, err = rwc.Read(buf)
+	require.NoError(t, err)
+
+	mock.mu.Lock()
+	init := mock.lastInit
+	mock.mu.Unlock()
+
+	require.NotNil(t, init)
+	assert.Equal(t, "audit-svc", init.GetServiceId())
+}
+
+func TestSSHTunnel_InvalidPort(t *testing.T) {
+	mock := newMockSSHServer()
+	resolver := defaultSandboxResolver()
+	client, cleanup := setupSSHTestWithSandboxes(t, mock, resolver)
+	defer cleanup()
+
+	tests := []struct {
+		name string
+		port uint32
+	}{
+		{"port zero", 0},
+		{"port too high", 65536},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rwc, err := client.Tunnel(context.Background(), "my-sandbox", tt.port)
+			assert.Nil(t, rwc)
+			require.Error(t, err)
+			assert.True(t, IsInvalidArgument(err))
+		})
+	}
+}
+
+func TestSSHTunnel_EmptySandboxName(t *testing.T) {
+	mock := newMockSSHServer()
+	resolver := defaultSandboxResolver()
+	client, cleanup := setupSSHTestWithSandboxes(t, mock, resolver)
+	defer cleanup()
+
+	rwc, err := client.Tunnel(context.Background(), "", 22)
+	assert.Nil(t, rwc)
+	require.Error(t, err)
+	assert.True(t, IsInvalidArgument(err))
+}
+
+func TestSSHTunnel_SandboxNotFound(t *testing.T) {
+	mock := newMockSSHServer()
+	resolver := defaultSandboxResolver()
+	client, cleanup := setupSSHTestWithSandboxes(t, mock, resolver)
+	defer cleanup()
+
+	rwc, err := client.Tunnel(context.Background(), "nonexistent", 22)
+	assert.Nil(t, rwc)
+	require.Error(t, err)
+	assert.True(t, IsNotFound(err))
+}
+
+func TestSSHTunnel_SessionRevokedOnForwardFailure(t *testing.T) {
+	mock := newMockSSHServer()
+	mock.forwardErr = status.Errorf(codes.Internal, "forward failed")
+	resolver := defaultSandboxResolver()
+	client, cleanup := setupSSHTestWithSandboxes(t, mock, resolver)
+	defer cleanup()
+
+	rwc, err := client.Tunnel(context.Background(), "my-sandbox", 22)
+
+	if err != nil {
+		assert.Nil(t, rwc)
+	} else {
+		require.NotNil(t, rwc)
+		buf := make([]byte, 64)
+		_, err = rwc.Read(buf)
+		assert.Error(t, err)
+		_ = rwc.Close()
+	}
+
+	// Session should have been revoked since the forward failed.
+	mock.mu.Lock()
+	tokenRevoked := false
+	for _, active := range mock.tokens {
+		if !active {
+			tokenRevoked = true
+			break
+		}
+	}
+	mock.mu.Unlock()
+	assert.True(t, tokenRevoked, "session token should be revoked after forward failure")
+}
+
+func TestSSHTunnel_SessionRevokedOnClose(t *testing.T) {
+	mock := newMockSSHServer()
+	resolver := defaultSandboxResolver()
+	client, cleanup := setupSSHTestWithSandboxes(t, mock, resolver)
+	defer cleanup()
+
+	rwc, err := client.Tunnel(context.Background(), "my-sandbox", 22)
+	require.NoError(t, err)
+
+	// Close the tunnel, which should revoke the session.
+	err = rwc.Close()
+	require.NoError(t, err)
+
+	mock.mu.Lock()
+	tokenRevoked := false
+	for _, active := range mock.tokens {
+		if !active {
+			tokenRevoked = true
+			break
+		}
+	}
+	mock.mu.Unlock()
+	assert.True(t, tokenRevoked, "session token should be revoked after tunnel close")
+}
+
+func TestSSHTunnel_DoubleClose(t *testing.T) {
+	mock := newMockSSHServer()
+	resolver := defaultSandboxResolver()
+	client, cleanup := setupSSHTestWithSandboxes(t, mock, resolver)
+	defer cleanup()
+
+	rwc, err := client.Tunnel(context.Background(), "my-sandbox", 22)
+	require.NoError(t, err)
+
+	err = rwc.Close()
+	require.NoError(t, err)
+
+	// Second close should not panic or return a different error.
+	err = rwc.Close()
+	assert.NoError(t, err)
+}
+
+func TestSSHTunnel_ContextCancellation(t *testing.T) {
+	mock := newMockSSHServer()
+	resolver := defaultSandboxResolver()
+	client, cleanup := setupSSHTestWithSandboxes(t, mock, resolver)
+	defer cleanup()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	rwc, err := client.Tunnel(ctx, "my-sandbox", 22)
+	require.NoError(t, err)
+	require.NotNil(t, rwc)
+
+	cancel()
+
+	buf := make([]byte, 64)
+	_, err = rwc.Read(buf)
+	assert.Error(t, err)
+
+	_, err = rwc.Write([]byte("should fail"))
+	assert.Error(t, err)
+
+	_ = rwc.Close()
+}
+
+func TestSSHTunnel_TokenNotExposed(t *testing.T) {
+	mock := newMockSSHServer()
+	mock.nextToken = "secret-tunnel-token-xyz"
+	resolver := defaultSandboxResolver()
+	client, cleanup := setupSSHTestWithSandboxes(t, mock, resolver)
+	defer cleanup()
+
+	rwc, err := client.Tunnel(context.Background(), "my-sandbox", 22)
+	require.NoError(t, err)
+	require.NotNil(t, rwc)
+	defer func() { _ = rwc.Close() }()
+
+	repr := fmt.Sprintf("%v", rwc)
+	assert.NotContains(t, repr, "secret-tunnel-token-xyz",
+		"token must not leak through the returned value's string representation")
 }

@@ -310,6 +310,56 @@ func TestTCPForward_ContextCancellation(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestTCPForward_WithServiceID(t *testing.T) {
+	mock := newMockTCPServer()
+	client, cleanup := setupTCPTest(t, mock)
+	defer cleanup()
+
+	rwc, err := client.Forward(context.Background(), "my-sandbox", 8080, WithForwardServiceID("audit-svc"))
+	require.NoError(t, err)
+	require.NotNil(t, rwc)
+	defer func() { _ = rwc.Close() }()
+
+	// Trigger a round-trip so the server has processed the init frame.
+	_, err = rwc.Write([]byte("ping"))
+	require.NoError(t, err)
+	buf := make([]byte, 64)
+	_, err = rwc.Read(buf)
+	require.NoError(t, err)
+
+	mock.mu.Lock()
+	init := mock.lastInit
+	mock.mu.Unlock()
+
+	require.NotNil(t, init)
+	assert.Equal(t, "audit-svc", init.GetServiceId())
+	assert.Equal(t, "my-sandbox", init.GetSandboxId())
+}
+
+func TestTCPForward_WithoutOptions_BackwardCompat(t *testing.T) {
+	mock := newMockTCPServer()
+	client, cleanup := setupTCPTest(t, mock)
+	defer cleanup()
+
+	rwc, err := client.Forward(context.Background(), "my-sandbox", 8080)
+	require.NoError(t, err)
+	require.NotNil(t, rwc)
+	defer func() { _ = rwc.Close() }()
+
+	_, err = rwc.Write([]byte("ping"))
+	require.NoError(t, err)
+	buf := make([]byte, 64)
+	_, err = rwc.Read(buf)
+	require.NoError(t, err)
+
+	mock.mu.Lock()
+	init := mock.lastInit
+	mock.mu.Unlock()
+
+	require.NotNil(t, init)
+	assert.Empty(t, init.GetServiceId(), "service_id should be empty when no option provided")
+}
+
 func TestTCPForward_ServerError(t *testing.T) {
 	mock := newMockTCPServer()
 	mock.err = status.Errorf(codes.NotFound, "sandbox not found")

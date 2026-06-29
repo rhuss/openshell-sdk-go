@@ -96,7 +96,7 @@ func NewClient(cfg Config) (*Client, error) {
 	c.exec = newExecClient(conn)
 	c.files = newFileClient(conn)
 	c.health = newHealthClient(conn)
-	c.ssh = newSSHClient(conn)
+	c.ssh = newSSHClient(conn, c.sandboxes)
 	c.tcp = newTCPClient(conn)
 	c.cfg = newConfigClient(conn)
 	c.policy = newPolicyClient(conn)
