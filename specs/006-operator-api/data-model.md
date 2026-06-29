@@ -169,22 +169,22 @@ client.Services() → ServiceInterface
 
 ```
 client.Providers().Profiles() → ProfileInterface
-  .List(ctx) → []*ProviderProfile
-  .Get(ctx, id) → *ProviderProfile
+  .List(ctx, opts ...ListOptions) → []*ProviderProfile
+  .Get(ctx, id string) → *ProviderProfile
   .Import(ctx, items []ProfileImportItem) → *ImportResult
-  .Update(ctx, item ProfileImportItem, id string, expectedVersion uint64) → *UpdateResult
+  .Update(ctx, id string, expectedResourceVersion uint64, item ProfileImportItem) → *UpdateResult
   .Lint(ctx, items []ProfileImportItem) → *LintResult
-  .Delete(ctx, id) → error
+  .Delete(ctx, id string) → (bool, error)
 ```
 
 ### RefreshInterface (nested under Providers)
 
 ```
 client.Providers().Refresh() → RefreshInterface
-  .GetStatus(ctx, provider, credentialKey) → *RefreshStatus
-  .Configure(ctx, config RefreshConfig) → *RefreshStatus
-  .Rotate(ctx, provider, credentialKey) → *RefreshStatus
-  .Delete(ctx, provider, credentialKey) → error
+  .GetStatus(ctx, provider, credentialKey string) → []*RefreshStatus
+  .Configure(ctx, config *RefreshConfig) → *RefreshStatus
+  .Rotate(ctx, provider, credentialKey string) → *RefreshStatus
+  .Delete(ctx, provider, credentialKey string) → (bool, error)
 ```
 
 ## Relationships

@@ -56,7 +56,7 @@ An operator needs to set up automatic credential refresh for a specific provider
 **Acceptance Scenarios**:
 
 1. **Given** a provider "openai-prod" with credential key "api-key", **When** the operator calls Providers().Refresh().Configure with provider name, credential key, and a refresh configuration, **Then** the configuration is accepted and a RefreshStatus is returned.
-2. **Given** a configured refresh for "openai-prod" credential "api-key", **When** the operator calls Providers().Refresh().GetStatus with provider name and credential key, **Then** the refresh status reflects the active configuration.
+2. **Given** a configured refresh for "openai-prod" credential "api-key", **When** the operator calls Providers().Refresh().GetStatus with provider name and credential key, **Then** a list containing the active refresh status is returned.
 3. **Given** a configured refresh for "openai-prod" credential "api-key", **When** the operator calls Providers().Refresh().Rotate with provider name and credential key, **Then** a credential rotation is triggered and an updated RefreshStatus is returned.
 4. **Given** a configured refresh for "openai-prod" credential "api-key", **When** the operator calls Providers().Refresh().Delete with provider name and credential key, **Then** the refresh configuration is removed and subsequent GetStatus reflects no active refresh.
 5. **Given** no refresh configured for "new-provider" credential "api-key", **When** the operator calls Providers().Refresh().GetStatus, **Then** the status indicates no refresh is configured (returns empty credentials list, not an error).
