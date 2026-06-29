@@ -19,6 +19,3 @@ edit-url-template = "https://github.com/rhuss/openshell-sdk-go/edit/main/docs/sr
 enable = true
 limit-results = 20
 use-hierarchical-headings = true
-
-[preprocessor.admonish]
-command = "mdbook-admonish"
