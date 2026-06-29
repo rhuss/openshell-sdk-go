@@ -35,8 +35,8 @@ Last updated: 2026-06-29
 - SDK versioning: track gateway versions or independent semver? (from #001)
 - Auth patterns: OIDC/OAuth flows deferred to dedicated brainstorm, separate from credential refresh (from #001)
 - Multi-gateway client support (multi-cluster)? (from #004)
-- TCP Forward: local port binding option or raw ReadWriteCloser sufficient for v1? (from #008)
-- ApproveAllDraftChunks: should Force be a parameter for security-flagged chunks? (from #009)
+- NetworkPolicyRule and related sandbox.v1 types: inspect sandbox proto for exact SDK type shape (from #009)
+- ListSandboxPolicies `global` flag: should SDK expose this or keep sandbox-scoped only? (from #009)
 - Doc comment coverage: bring all exported symbols to 80%+ per Constitution IX (from PR #4 review)
 - Proto-to-SDK naming verification: add lint rule or converter test pattern (from PR #4 review, Constitution X)
 
@@ -62,6 +62,13 @@ Last updated: 2026-06-29
 - Policy interface: flat, not nested DraftPolicyInterface (from #009)
 - GetLogs: added to SandboxInterface, not a standalone LogsInterface (from #009)
 - Phase 4 (operator building blocks): removed — informers/listers/reconciler helpers belong in the operator repo, not the SDK
+- TCP Forward: local port binding option or raw ReadWriteCloser sufficient for v1? (from #008, resolved: ReadWriteCloser)
+- ApproveAllDraftChunks: `include_security_flagged` via functional option, not Force param (from #009)
+- ErrorConflict: map `codes.Aborted` only, leave `FAILED_PRECONDITION` as ErrorInternal (from #009)
+- MergeOperations: typed struct-per-variant, not raw bytes or interface polymorphism (from #009)
+- PolicyChunk: full fidelity (18 fields), flat struct (from #009)
+- GetLogs ID resolution: accept sandbox name, resolve to ID internally (from #009)
+- GetDraft status filter: functional option pattern (from #009)
 
 ## Parked Ideas
 (none)
