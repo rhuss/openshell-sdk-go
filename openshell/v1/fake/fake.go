@@ -27,6 +27,7 @@ type Client struct {
 	ssh       v1.SSHInterface
 	tcp       v1.TCPInterface
 	cfg       v1.ConfigInterface
+	policy    v1.PolicyInterface
 
 	closeOnce sync.Once
 	closed    bool
@@ -62,6 +63,7 @@ func NewClient(opts ...ClientOption) *Client {
 	fc.ssh = newFakeSSHClient(fc.isClosed)
 	fc.tcp = newFakeTCPClient(fc.isClosed)
 	fc.cfg = newFakeConfigClient(fc.isClosed)
+	fc.policy = newFakePolicyClient(fc.isClosed)
 
 	for _, opt := range opts {
 		opt(fc)
@@ -104,6 +106,9 @@ func (fc *Client) TCP() v1.TCPInterface { return fc.tcp }
 
 // Config returns the configuration sub-client.
 func (fc *Client) Config() v1.ConfigInterface { return fc.cfg }
+
+// Policy returns the policy management sub-client.
+func (fc *Client) Policy() v1.PolicyInterface { return fc.policy }
 
 // Close marks the client as closed, stops all active watchers, and causes
 // subsequent sub-client calls to return Unavailable. Safe to call multiple

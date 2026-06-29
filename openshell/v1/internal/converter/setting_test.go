@@ -548,6 +548,250 @@ func TestConfigUpdateResultFromProto_Nil(t *testing.T) {
 	assert.Nil(t, result)
 }
 
+// --- PolicyMergeOperationToProto ---
+
+func TestPolicyMergeOperationToProto_Nil(t *testing.T) {
+	pmo, err := PolicyMergeOperationToProto(nil)
+	assert.NoError(t, err)
+	assert.Nil(t, pmo)
+}
+
+func TestPolicyMergeOperationToProto_Empty(t *testing.T) {
+	op := &v1.PolicyMergeOperation{}
+	_, err := PolicyMergeOperationToProto(op)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "got 0")
+}
+
+func TestPolicyMergeOperationToProto_MultipleSet(t *testing.T) {
+	op := &v1.PolicyMergeOperation{
+		AddRule:    &v1.AddNetworkRule{RuleName: "r1"},
+		RemoveRule: &v1.RemoveNetworkRule{RuleName: "r2"},
+	}
+	_, err := PolicyMergeOperationToProto(op)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "got 2")
+}
+
+func TestPolicyMergeOperationToProto_AddRule(t *testing.T) {
+	op := &v1.PolicyMergeOperation{
+		AddRule: &v1.AddNetworkRule{
+			RuleName: "allow-api",
+			Rule: v1.NetworkPolicyRule{
+				Name: "allow-api",
+				Endpoints: []v1.PolicyNetworkEndpoint{
+					{Host: "api.example.com", Port: 443, Protocol: "tcp"},
+				},
+				Binaries: []v1.PolicyNetworkBinary{
+					{Path: "/usr/bin/curl"},
+				},
+			},
+		},
+	}
+
+	pmo, err := PolicyMergeOperationToProto(op)
+	require.NoError(t, err)
+
+	require.NotNil(t, pmo)
+	ar := pmo.GetAddRule()
+	require.NotNil(t, ar, "expected AddRule variant")
+	assert.Equal(t, "allow-api", ar.GetRuleName())
+	require.NotNil(t, ar.GetRule())
+	assert.Equal(t, "allow-api", ar.GetRule().GetName())
+	require.Len(t, ar.GetRule().GetEndpoints(), 1)
+	assert.Equal(t, "api.example.com", ar.GetRule().GetEndpoints()[0].GetHost())
+	assert.Equal(t, uint32(443), ar.GetRule().GetEndpoints()[0].GetPort())
+	require.Len(t, ar.GetRule().GetBinaries(), 1)
+	assert.Equal(t, "/usr/bin/curl", ar.GetRule().GetBinaries()[0].GetPath())
+}
+
+func TestPolicyMergeOperationToProto_RemoveEndpoint(t *testing.T) {
+	op := &v1.PolicyMergeOperation{
+		RemoveEndpoint: &v1.RemoveNetworkEndpoint{
+			RuleName: "allow-api",
+			Host:     "old.example.com",
+			Port:     8080,
+		},
+	}
+
+	pmo, err := PolicyMergeOperationToProto(op)
+	require.NoError(t, err)
+
+	require.NotNil(t, pmo)
+	re := pmo.GetRemoveEndpoint()
+	require.NotNil(t, re, "expected RemoveEndpoint variant")
+	assert.Equal(t, "allow-api", re.GetRuleName())
+	assert.Equal(t, "old.example.com", re.GetHost())
+	assert.Equal(t, uint32(8080), re.GetPort())
+}
+
+func TestPolicyMergeOperationToProto_RemoveRule(t *testing.T) {
+	op := &v1.PolicyMergeOperation{
+		RemoveRule: &v1.RemoveNetworkRule{
+			RuleName: "obsolete-rule",
+		},
+	}
+
+	pmo, err := PolicyMergeOperationToProto(op)
+	require.NoError(t, err)
+
+	require.NotNil(t, pmo)
+	rr := pmo.GetRemoveRule()
+	require.NotNil(t, rr, "expected RemoveRule variant")
+	assert.Equal(t, "obsolete-rule", rr.GetRuleName())
+}
+
+func TestPolicyMergeOperationToProto_AddDenyRules(t *testing.T) {
+	op := &v1.PolicyMergeOperation{
+		AddDenyRules: &v1.AddDenyRules{
+			Host: "blocked.example.com",
+			Port: 443,
+			DenyRules: []v1.L7DenyRule{
+				{
+					Method: "POST",
+					Path:   "/admin",
+				},
+				{
+					Method:        "GET",
+					OperationType: "query",
+					OperationName: "InternalData",
+				},
+			},
+		},
+	}
+
+	pmo, err := PolicyMergeOperationToProto(op)
+	require.NoError(t, err)
+
+	require.NotNil(t, pmo)
+	adr := pmo.GetAddDenyRules()
+	require.NotNil(t, adr, "expected AddDenyRules variant")
+	assert.Equal(t, "blocked.example.com", adr.GetHost())
+	assert.Equal(t, uint32(443), adr.GetPort())
+	require.Len(t, adr.GetDenyRules(), 2)
+	assert.Equal(t, "POST", adr.GetDenyRules()[0].GetMethod())
+	assert.Equal(t, "/admin", adr.GetDenyRules()[0].GetPath())
+	assert.Equal(t, "InternalData", adr.GetDenyRules()[1].GetOperationName())
+}
+
+func TestPolicyMergeOperationToProto_AddAllowRules(t *testing.T) {
+	op := &v1.PolicyMergeOperation{
+		AddAllowRules: &v1.AddAllowRules{
+			Host: "api.example.com",
+			Port: 443,
+			Rules: []v1.L7Rule{
+				{
+					Allow: &v1.L7Allow{
+						Method: "GET",
+						Path:   "/health",
+					},
+				},
+			},
+		},
+	}
+
+	pmo, err := PolicyMergeOperationToProto(op)
+	require.NoError(t, err)
+
+	require.NotNil(t, pmo)
+	aar := pmo.GetAddAllowRules()
+	require.NotNil(t, aar, "expected AddAllowRules variant")
+	assert.Equal(t, "api.example.com", aar.GetHost())
+	assert.Equal(t, uint32(443), aar.GetPort())
+	require.Len(t, aar.GetRules(), 1)
+	require.NotNil(t, aar.GetRules()[0].GetAllow())
+	assert.Equal(t, "GET", aar.GetRules()[0].GetAllow().GetMethod())
+	assert.Equal(t, "/health", aar.GetRules()[0].GetAllow().GetPath())
+}
+
+func TestPolicyMergeOperationToProto_RemoveBinary(t *testing.T) {
+	op := &v1.PolicyMergeOperation{
+		RemoveBinary: &v1.RemoveNetworkBinary{
+			RuleName:   "allow-api",
+			BinaryPath: "/usr/bin/wget",
+		},
+	}
+
+	pmo, err := PolicyMergeOperationToProto(op)
+	require.NoError(t, err)
+
+	require.NotNil(t, pmo)
+	rb := pmo.GetRemoveBinary()
+	require.NotNil(t, rb, "expected RemoveBinary variant")
+	assert.Equal(t, "allow-api", rb.GetRuleName())
+	assert.Equal(t, "/usr/bin/wget", rb.GetBinaryPath())
+}
+
+// --- ConfigUpdateToProto with MergeOperations ---
+
+func TestConfigUpdateToProto_WithMergeOperations(t *testing.T) {
+	cu := &v1.ConfigUpdate{
+		Name: "my-sandbox",
+		MergeOperations: []v1.PolicyMergeOperation{
+			{
+				RemoveRule: &v1.RemoveNetworkRule{RuleName: "old-rule"},
+			},
+			{
+				AddRule: &v1.AddNetworkRule{
+					RuleName: "new-rule",
+					Rule: v1.NetworkPolicyRule{
+						Name: "new-rule",
+						Endpoints: []v1.PolicyNetworkEndpoint{
+							{Host: "svc.local", Port: 8080},
+						},
+					},
+				},
+			},
+			{
+				RemoveBinary: &v1.RemoveNetworkBinary{
+					RuleName:   "new-rule",
+					BinaryPath: "/tmp/bad",
+				},
+			},
+		},
+	}
+
+	req, err := ConfigUpdateToProto(cu)
+	require.NoError(t, err)
+
+	require.NotNil(t, req)
+	assert.Equal(t, "my-sandbox", req.GetName())
+	require.Len(t, req.GetMergeOperations(), 3)
+
+	// First: RemoveRule
+	rr := req.GetMergeOperations()[0].GetRemoveRule()
+	require.NotNil(t, rr)
+	assert.Equal(t, "old-rule", rr.GetRuleName())
+
+	// Second: AddRule
+	ar := req.GetMergeOperations()[1].GetAddRule()
+	require.NotNil(t, ar)
+	assert.Equal(t, "new-rule", ar.GetRuleName())
+	require.NotNil(t, ar.GetRule())
+	require.Len(t, ar.GetRule().GetEndpoints(), 1)
+	assert.Equal(t, "svc.local", ar.GetRule().GetEndpoints()[0].GetHost())
+
+	// Third: RemoveBinary
+	rb := req.GetMergeOperations()[2].GetRemoveBinary()
+	require.NotNil(t, rb)
+	assert.Equal(t, "/tmp/bad", rb.GetBinaryPath())
+}
+
+func TestConfigUpdateToProto_EmptyMergeOperations(t *testing.T) {
+	cu := &v1.ConfigUpdate{
+		Name:            "sb",
+		MergeOperations: []v1.PolicyMergeOperation{},
+	}
+
+	req, err := ConfigUpdateToProto(cu)
+	require.NoError(t, err)
+
+	require.NotNil(t, req)
+	assert.Empty(t, req.GetMergeOperations())
+}
+
 // --- CopyByteSlice helper ---
 
 func TestCopyByteSlice(t *testing.T) {

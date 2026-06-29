@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/rhuss/openshell-sdk-go/openshell/v1/internal/converter"
+	"github.com/rhuss/openshell-sdk-go/openshell/v1/types"
 	pb "github.com/rhuss/openshell-sdk-go/proto/openshellv1"
 	"google.golang.org/grpc"
 )
@@ -231,4 +232,29 @@ func (s *sandboxClient) Watch(ctx context.Context, name string, opts ...WatchOpt
 	}()
 
 	return w, nil
+}
+
+func (s *sandboxClient) GetLogs(ctx context.Context, sandboxName string, opts ...LogOption) (*LogResult, error) {
+	// Resolve sandbox name to ID — the proto RPC takes SandboxId, not name.
+	sb, err := s.Get(ctx, sandboxName)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg := types.ApplyLogOptions(opts)
+	req := &pb.GetSandboxLogsRequest{
+		SandboxId: sb.ID,
+		Lines:     cfg.Lines(),
+		Sources:   cfg.Sources(),
+		MinLevel:  cfg.MinLevel(),
+	}
+	if !cfg.Since().IsZero() {
+		req.SinceMs = converter.MillisFromTime(cfg.Since())
+	}
+
+	resp, err := s.client.GetSandboxLogs(ctx, req)
+	if err != nil {
+		return nil, converter.FromGRPCError(err)
+	}
+	return converter.LogResultFromProto(resp), nil
 }

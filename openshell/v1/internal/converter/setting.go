@@ -200,7 +200,97 @@ func ConfigUpdateToProto(cu *v1.ConfigUpdate) (*pb.UpdateConfigRequest, error) {
 		req.Policy = policy
 	}
 
+	// Convert typed merge operations with validation.
+	if len(cu.MergeOperations) > 0 {
+		req.MergeOperations = make([]*pb.PolicyMergeOperation, len(cu.MergeOperations))
+		for i := range cu.MergeOperations {
+			converted, err := PolicyMergeOperationToProto(&cu.MergeOperations[i])
+			if err != nil {
+				return nil, fmt.Errorf("merge operation [%d]: %w", i, err)
+			}
+			req.MergeOperations[i] = converted
+		}
+	}
+
 	return req, nil
+}
+
+// --- PolicyMergeOperation ---
+
+// PolicyMergeOperationToProto converts an SDK PolicyMergeOperation to a proto PolicyMergeOperation.
+// Exactly one of the pointer fields must be non-nil. Returns an error if zero or multiple are set.
+func PolicyMergeOperationToProto(op *v1.PolicyMergeOperation) (*pb.PolicyMergeOperation, error) {
+	if op == nil {
+		return nil, nil
+	}
+	set := boolCount(op.AddRule != nil, op.RemoveEndpoint != nil, op.RemoveRule != nil,
+		op.AddDenyRules != nil, op.AddAllowRules != nil, op.RemoveBinary != nil)
+	if set != 1 {
+		return nil, fmt.Errorf("PolicyMergeOperation: exactly one variant must be set, got %d", set)
+	}
+	pmo := &pb.PolicyMergeOperation{}
+	switch {
+	case op.AddRule != nil:
+		rule := NetworkPolicyRuleToProto(&op.AddRule.Rule)
+		pmo.Operation = &pb.PolicyMergeOperation_AddRule{
+			AddRule: &pb.AddNetworkRule{
+				RuleName: op.AddRule.RuleName,
+				Rule:     rule,
+			},
+		}
+	case op.RemoveEndpoint != nil:
+		pmo.Operation = &pb.PolicyMergeOperation_RemoveEndpoint{
+			RemoveEndpoint: &pb.RemoveNetworkEndpoint{
+				RuleName: op.RemoveEndpoint.RuleName,
+				Host:     op.RemoveEndpoint.Host,
+				Port:     op.RemoveEndpoint.Port,
+			},
+		}
+	case op.RemoveRule != nil:
+		pmo.Operation = &pb.PolicyMergeOperation_RemoveRule{
+			RemoveRule: &pb.RemoveNetworkRule{
+				RuleName: op.RemoveRule.RuleName,
+			},
+		}
+	case op.AddDenyRules != nil:
+		var denyRules []*sbv1.L7DenyRule
+		if len(op.AddDenyRules.DenyRules) > 0 {
+			denyRules = make([]*sbv1.L7DenyRule, len(op.AddDenyRules.DenyRules))
+			for i := range op.AddDenyRules.DenyRules {
+				denyRules[i] = l7DenyRuleToProto(&op.AddDenyRules.DenyRules[i])
+			}
+		}
+		pmo.Operation = &pb.PolicyMergeOperation_AddDenyRules{
+			AddDenyRules: &pb.AddDenyRules{
+				Host:      op.AddDenyRules.Host,
+				Port:      op.AddDenyRules.Port,
+				DenyRules: denyRules,
+			},
+		}
+	case op.AddAllowRules != nil:
+		var rules []*sbv1.L7Rule
+		if len(op.AddAllowRules.Rules) > 0 {
+			rules = make([]*sbv1.L7Rule, len(op.AddAllowRules.Rules))
+			for i := range op.AddAllowRules.Rules {
+				rules[i] = l7RuleToProto(&op.AddAllowRules.Rules[i])
+			}
+		}
+		pmo.Operation = &pb.PolicyMergeOperation_AddAllowRules{
+			AddAllowRules: &pb.AddAllowRules{
+				Host:  op.AddAllowRules.Host,
+				Port:  op.AddAllowRules.Port,
+				Rules: rules,
+			},
+		}
+	case op.RemoveBinary != nil:
+		pmo.Operation = &pb.PolicyMergeOperation_RemoveBinary{
+			RemoveBinary: &pb.RemoveNetworkBinary{
+				RuleName:   op.RemoveBinary.RuleName,
+				BinaryPath: op.RemoveBinary.BinaryPath,
+			},
+		}
+	}
+	return pmo, nil
 }
 
 // --- ConfigUpdateResult ---

@@ -46,9 +46,6 @@ func (c *fakeConfigClient) Update(_ context.Context, update *types.ConfigUpdate)
 	if update == nil {
 		return nil, &types.StatusError{Code: types.ErrorInvalidArgument, Message: "update must not be nil"}
 	}
-	if update.MergeOperations != nil {
-		return nil, &types.StatusError{Code: types.ErrorInvalidArgument, Message: "MergeOperations is not yet supported"}
-	}
 	return nil, &types.StatusError{Code: types.ErrorUnimplemented, Message: "Update is not supported by the fake client"}
 }
 

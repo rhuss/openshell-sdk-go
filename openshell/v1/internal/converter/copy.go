@@ -47,3 +47,13 @@ func CopyByteSlice(b []byte) []byte {
 	copy(c, b)
 	return c
 }
+
+func boolCount(flags ...bool) int {
+	n := 0
+	for _, f := range flags {
+		if f {
+			n++
+		}
+	}
+	return n
+}

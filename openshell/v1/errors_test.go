@@ -70,6 +70,12 @@ func TestIsCancelled(t *testing.T) {
 	assert.True(t, IsCancelled(err))
 }
 
+func TestIsConflict(t *testing.T) {
+	err := &StatusError{Code: ErrorConflict, Message: "version conflict"}
+	assert.True(t, IsConflict(err))
+	assert.False(t, IsNotFound(err))
+}
+
 func TestIsHelpers_NonStatusError(t *testing.T) {
 	err := errors.New("plain error")
 	assert.False(t, IsNotFound(err))
@@ -79,10 +85,12 @@ func TestIsHelpers_NonStatusError(t *testing.T) {
 	assert.False(t, IsInvalidArgument(err))
 	assert.False(t, IsDeadlineExceeded(err))
 	assert.False(t, IsCancelled(err))
+	assert.False(t, IsConflict(err))
 }
 
 func TestIsHelpers_NilError(t *testing.T) {
 	assert.False(t, IsNotFound(nil))
+	assert.False(t, IsConflict(nil))
 }
 
 func TestStatusError_WrappedError(t *testing.T) {
@@ -108,6 +116,8 @@ func TestErrorCode_String(t *testing.T) {
 		{ErrorDeadlineExceeded, "DeadlineExceeded"},
 		{ErrorCancelled, "Cancelled"},
 		{ErrorInternal, "Internal"},
+		{ErrorUnimplemented, "Unimplemented"},
+		{ErrorConflict, "Conflict"},
 	}
 	for _, tt := range tests {
 		assert.Equal(t, tt.want, tt.code.String())

@@ -695,3 +695,21 @@ func TestSandbox_Watch_StopOnTerminal_False_DoesNotClose(t *testing.T) {
 		// No event and not closed — correct behavior
 	}
 }
+
+// --- T032: GetLogs stub tests ---
+
+func TestSandbox_GetLogs_ReturnsUnimplemented(t *testing.T) {
+	sc := newTestSandboxClient()
+	_, err := sc.GetLogs(context.Background(), "sb-1")
+	require.Error(t, err)
+	assert.True(t, types.IsUnimplemented(err))
+}
+
+func TestSandbox_GetLogs_ClosedReturnsUnavailable(t *testing.T) {
+	store := newobjectStore(sandboxName, copySandbox)
+	broadcaster := newWatchBroadcaster[*types.Sandbox]()
+	sc := newFakeSandboxClient(store, broadcaster, func() bool { return true })
+	_, err := sc.GetLogs(context.Background(), "sb-1")
+	require.Error(t, err)
+	assert.True(t, types.IsUnavailable(err))
+}

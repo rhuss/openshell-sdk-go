@@ -22,6 +22,7 @@ const (
 	ErrorCancelled
 	ErrorInternal
 	ErrorUnimplemented
+	ErrorConflict
 )
 
 // String returns the human-readable name of the error code.
@@ -45,6 +46,8 @@ func (c ErrorCode) String() string {
 		return "Internal"
 	case ErrorUnimplemented:
 		return "Unimplemented"
+	case ErrorConflict:
+		return "Conflict"
 	default:
 		return fmt.Sprintf("Unknown(%d)", int(c))
 	}
@@ -99,6 +102,12 @@ func IsCancelled(err error) bool {
 // IsUnimplemented returns true if the error indicates the operation is not implemented.
 func IsUnimplemented(err error) bool {
 	return hasCode(err, ErrorUnimplemented)
+}
+
+// IsConflict returns true if the error indicates a conflict, such as
+// optimistic concurrency or an invalid state transition.
+func IsConflict(err error) bool {
+	return hasCode(err, ErrorConflict)
 }
 
 func hasCode(err error, code ErrorCode) bool {

@@ -30,6 +30,27 @@ type AttachProviderResult = types.AttachProviderResult
 // DetachProviderResult holds the result of detaching a provider from a sandbox.
 type DetachProviderResult = types.DetachProviderResult
 
+// LogLine represents a single log entry from a sandbox.
+type LogLine = types.LogLine
+
+// LogResult contains the result of a GetLogs call.
+type LogResult = types.LogResult
+
+// LogOption configures a GetLogs call.
+type LogOption = types.LogOption
+
+// WithLogLines sets the maximum number of log lines to return.
+var WithLogLines = types.WithLogLines
+
+// WithLogSince filters logs to entries at or after the given time.
+var WithLogSince = types.WithLogSince
+
+// WithLogSources filters logs by source (e.g., "gateway", "sandbox").
+var WithLogSources = types.WithLogSources
+
+// WithLogMinLevel sets the minimum log level to include.
+var WithLogMinLevel = types.WithLogMinLevel
+
 // SandboxInterface defines lifecycle operations on sandboxes.
 type SandboxInterface interface {
 	Create(ctx context.Context, name string, spec *SandboxSpec, labels map[string]string) (*Sandbox, error)
@@ -41,4 +62,12 @@ type SandboxInterface interface {
 	ListProviders(ctx context.Context, sandboxName string) ([]*Provider, error)
 	WaitReady(ctx context.Context, name string, opts ...WaitOptions) (*Sandbox, error)
 	Watch(ctx context.Context, name string, opts ...WatchOptions) (WatchInterface[*Sandbox], error)
+	// GetLogs retrieves log entries for a sandbox. The sandbox is resolved
+	// by name (an internal Get call translates name to ID). Use
+	// WithLogLines, WithLogSince, WithLogSources, and WithLogMinLevel to
+	// filter the results.
+	//
+	// Errors: NotFound if the sandbox does not exist; InvalidArgument if
+	// the sandbox name is empty; Unimplemented by the fake client.
+	GetLogs(ctx context.Context, sandboxName string, opts ...LogOption) (*LogResult, error)
 }

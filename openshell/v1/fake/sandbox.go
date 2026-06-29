@@ -378,6 +378,14 @@ func (c *fakeSandboxClient) DetachProvider(_ context.Context, sandboxName, provi
 	}, nil
 }
 
+// GetLogs returns Unimplemented — fake log retrieval is not yet supported.
+func (c *fakeSandboxClient) GetLogs(_ context.Context, _ string, _ ...v1.LogOption) (*types.LogResult, error) {
+	if c.closedFunc() {
+		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
+	}
+	return nil, &types.StatusError{Code: types.ErrorUnimplemented, Message: "GetLogs not implemented in fake client"}
+}
+
 // ListProviders returns stub Provider objects for each provider name
 // attached to the sandbox. The returned providers contain only the Name
 // field, since the fake client does not maintain a full provider registry
