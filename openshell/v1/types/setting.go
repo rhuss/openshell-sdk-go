@@ -95,8 +95,8 @@ type ConfigUpdate struct {
 	DeleteSetting bool
 	// Global applies the update at gateway-global scope when true.
 	Global bool
-	// MergeOperations is raw proto-encoded PolicyMergeOperation list.
-	MergeOperations []byte
+	// MergeOperations is a list of typed policy merge operations.
+	MergeOperations []PolicyMergeOperation
 	// ExpectedResourceVersion is for optimistic concurrency (0 = skip check).
 	ExpectedResourceVersion uint64
 }

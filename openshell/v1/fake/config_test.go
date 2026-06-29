@@ -62,3 +62,17 @@ func TestFakeConfig_Update_ClosedReturnsUnavailable(t *testing.T) {
 	require.Error(t, err)
 	assert.True(t, types.IsUnavailable(err))
 }
+
+// --- T033: MergeOperations acceptance test ---
+
+func TestFakeConfig_Update_MergeOperationsAccepted(t *testing.T) {
+	c := newFakeConfigClient(func() bool { return false })
+	_, err := c.Update(context.Background(), &types.ConfigUpdate{
+		Name:            "sandbox-1",
+		MergeOperations: []types.PolicyMergeOperation{{RemoveRule: &types.RemoveNetworkRule{RuleName: "test"}}},
+	})
+	require.Error(t, err)
+	// Should return Unimplemented (not InvalidArgument) — MergeOperations are now accepted
+	assert.True(t, types.IsUnimplemented(err))
+	assert.False(t, types.IsInvalidArgument(err))
+}

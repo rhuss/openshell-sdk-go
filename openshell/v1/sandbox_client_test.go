@@ -37,6 +37,11 @@ type mockSandboxServer struct {
 	watchEvents    []*pb.SandboxStreamEvent
 	watchErr       error
 	watchKeepOpen  chan struct{} // if non-nil, WatchSandbox blocks after sending events until closed
+
+	// GetLogs fields
+	getLogsResp    *pb.GetSandboxLogsResponse
+	getLogsErr     error
+	getLogsRequest *pb.GetSandboxLogsRequest // recorded request
 }
 
 func newMockSandboxServer() *mockSandboxServer {
@@ -160,6 +165,19 @@ func (s *mockSandboxServer) WatchSandbox(_ *pb.WatchSandboxRequest, stream grpc.
 		<-keepOpen
 	}
 	return nil
+}
+
+func (s *mockSandboxServer) GetSandboxLogs(_ context.Context, req *pb.GetSandboxLogsRequest) (*pb.GetSandboxLogsResponse, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.getLogsRequest = req
+	if s.getLogsErr != nil {
+		return nil, s.getLogsErr
+	}
+	if s.getLogsResp != nil {
+		return s.getLogsResp, nil
+	}
+	return &pb.GetSandboxLogsResponse{}, nil
 }
 
 func setupSandboxTest(t *testing.T, mock *mockSandboxServer) (*sandboxClient, func()) {
@@ -726,4 +744,143 @@ func TestSandboxWatch_StopOnTerminal_False_DoesNotClose(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("timed out waiting for channel close")
 	}
+}
+
+// --- T027: GetLogs tests ---
+
+func TestSandboxGetLogs(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.sandboxes["log-sb"] = &pb.Sandbox{
+		Metadata: &dm.ObjectMeta{Id: "sb-id-123", Name: "log-sb"},
+		Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_READY},
+	}
+	mock.getLogsResp = &pb.GetSandboxLogsResponse{
+		Logs: []*pb.SandboxLogLine{
+			{TimestampMs: 1700000000000, Level: "INFO", Target: "gateway", Message: "connected", Source: "gateway"},
+			{TimestampMs: 1700000001000, Level: "DEBUG", Target: "sandbox", Message: "init done", Source: "sandbox"},
+		},
+		BufferTotal: 42,
+	}
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	result, err := client.GetLogs(context.Background(), "log-sb")
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Len(t, result.Lines, 2)
+	assert.Equal(t, uint32(42), result.BufferTotal)
+	assert.Equal(t, "INFO", result.Lines[0].Level)
+	assert.Equal(t, "connected", result.Lines[0].Message)
+	assert.Equal(t, "gateway", result.Lines[0].Source)
+	assert.Equal(t, "DEBUG", result.Lines[1].Level)
+	assert.Equal(t, "init done", result.Lines[1].Message)
+
+	// Verify name→id resolution: the proto request should contain the sandbox ID
+	mock.mu.Lock()
+	assert.Equal(t, "sb-id-123", mock.getLogsRequest.GetSandboxId())
+	mock.mu.Unlock()
+}
+
+func TestSandboxGetLogs_WithOptions(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.sandboxes["opts-sb"] = &pb.Sandbox{
+		Metadata: &dm.ObjectMeta{Id: "sb-id-opts", Name: "opts-sb"},
+		Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_READY},
+	}
+	mock.getLogsResp = &pb.GetSandboxLogsResponse{
+		Logs:        []*pb.SandboxLogLine{{TimestampMs: 1700000000000, Level: "WARN", Message: "high cpu"}},
+		BufferTotal: 100,
+	}
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	since := time.Date(2023, 11, 14, 0, 0, 0, 0, time.UTC)
+	result, err := client.GetLogs(context.Background(), "opts-sb",
+		WithLogLines(50),
+		WithLogSince(since),
+		WithLogSources("gateway", "sandbox"),
+		WithLogMinLevel("WARN"),
+	)
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Len(t, result.Lines, 1)
+	assert.Equal(t, "WARN", result.Lines[0].Level)
+
+	// Verify all options were passed to the proto request
+	mock.mu.Lock()
+	req := mock.getLogsRequest
+	mock.mu.Unlock()
+	assert.Equal(t, "sb-id-opts", req.GetSandboxId())
+	assert.Equal(t, uint32(50), req.GetLines())
+	assert.Equal(t, since.UnixMilli(), req.GetSinceMs())
+	assert.Equal(t, []string{"gateway", "sandbox"}, req.GetSources())
+	assert.Equal(t, "WARN", req.GetMinLevel())
+}
+
+func TestSandboxGetLogs_SandboxNotFound(t *testing.T) {
+	mock := newMockSandboxServer()
+	// No sandbox registered — Get will return NotFound
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	_, err := client.GetLogs(context.Background(), "nonexistent")
+
+	require.Error(t, err)
+	assert.True(t, IsNotFound(err))
+}
+
+func TestSandboxGetLogs_RPCError(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.sandboxes["rpc-err-sb"] = &pb.Sandbox{
+		Metadata: &dm.ObjectMeta{Id: "sb-id-rpc", Name: "rpc-err-sb"},
+		Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_READY},
+	}
+	mock.getLogsErr = status.Error(codes.Unavailable, "log service down")
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	_, err := client.GetLogs(context.Background(), "rpc-err-sb")
+
+	require.Error(t, err)
+	assert.True(t, IsUnavailable(err))
+}
+
+func TestSandboxGetLogs_EmptyResult(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.sandboxes["empty-sb"] = &pb.Sandbox{
+		Metadata: &dm.ObjectMeta{Id: "sb-id-empty", Name: "empty-sb"},
+		Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_READY},
+	}
+	mock.getLogsResp = &pb.GetSandboxLogsResponse{
+		BufferTotal: 0,
+	}
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	result, err := client.GetLogs(context.Background(), "empty-sb")
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Empty(t, result.Lines)
+	assert.Equal(t, uint32(0), result.BufferTotal)
+}
+
+func TestSandboxGetLogs_SinceZeroNotSent(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.sandboxes["zero-sb"] = &pb.Sandbox{
+		Metadata: &dm.ObjectMeta{Id: "sb-id-zero", Name: "zero-sb"},
+		Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_READY},
+	}
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	// Call without WithLogSince — SinceMs should be 0 (not set)
+	_, err := client.GetLogs(context.Background(), "zero-sb")
+
+	require.NoError(t, err)
+	mock.mu.Lock()
+	assert.Equal(t, int64(0), mock.getLogsRequest.GetSinceMs())
+	mock.mu.Unlock()
 }

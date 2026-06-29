@@ -9,6 +9,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/rhuss/openshell-sdk-go/openshell/v1/types"
 	pb "github.com/rhuss/openshell-sdk-go/proto/openshellv1"
 	sbv1 "github.com/rhuss/openshell-sdk-go/proto/sandboxv1"
 	"github.com/stretchr/testify/assert"
@@ -447,20 +448,49 @@ func TestConfigUpdate_NilUpdate(t *testing.T) {
 	assert.True(t, IsInvalidArgument(err))
 }
 
-func TestConfigUpdate_MergeOperationsRejected(t *testing.T) {
+func TestConfigUpdate_MergeOperationsAccepted(t *testing.T) {
 	mock := newMockConfigServer()
+	mock.updateResp = &pb.UpdateConfigResponse{
+		Version:    3,
+		PolicyHash: "abc123",
+	}
 	client, cleanup := setupConfigTest(t, mock)
 	defer cleanup()
 
 	update := &ConfigUpdate{
 		Name:            "my-sandbox",
-		MergeOperations: []byte{0x01, 0x02},
+		MergeOperations: []types.PolicyMergeOperation{{RemoveRule: &types.RemoveNetworkRule{RuleName: "test"}}},
+	}
+
+	result, err := client.Update(context.Background(), update)
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, uint32(3), result.Version)
+	assert.Equal(t, "abc123", result.PolicyHash)
+
+	// Verify the merge operations were serialized in the proto request
+	mock.mu.Lock()
+	req := mock.lastUpdateReq
+	mock.mu.Unlock()
+	require.NotNil(t, req)
+	assert.NotEmpty(t, req.GetMergeOperations(), "MergeOperations should be serialized to proto")
+}
+
+func TestConfigUpdate_ErrorConflict(t *testing.T) {
+	mock := newMockConfigServer()
+	mock.updateErr = status.Error(codes.Aborted, "resource version conflict")
+	client, cleanup := setupConfigTest(t, mock)
+	defer cleanup()
+
+	update := &ConfigUpdate{
+		Name:                    "my-sandbox",
+		ExpectedResourceVersion: 5,
 	}
 
 	result, err := client.Update(context.Background(), update)
 
 	assert.Nil(t, result)
 	require.Error(t, err)
-	assert.True(t, IsInvalidArgument(err))
-	assert.Contains(t, err.Error(), "MergeOperations")
+	assert.True(t, IsConflict(err))
 }

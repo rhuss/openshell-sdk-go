@@ -45,13 +45,6 @@ func (c *configClient) Update(ctx context.Context, update *ConfigUpdate) (*Confi
 			Message: "update must not be nil",
 		}
 	}
-	if update.MergeOperations != nil {
-		return nil, &StatusError{
-			Code:    ErrorInvalidArgument,
-			Message: "MergeOperations is not yet supported; full policy merge support is planned for a future release",
-		}
-	}
-
 	req, convErr := converter.ConfigUpdateToProto(update)
 	if convErr != nil {
 		return nil, &StatusError{Code: ErrorInvalidArgument, Message: convErr.Error()}

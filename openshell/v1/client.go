@@ -26,6 +26,7 @@ type ClientInterface interface {
 	SSH() SSHInterface
 	TCP() TCPInterface
 	Config() ConfigInterface
+	Policy() PolicyInterface
 	Close() error
 }
 
@@ -56,6 +57,7 @@ type Client struct {
 	ssh       SSHInterface
 	tcp       TCPInterface
 	cfg       ConfigInterface
+	policy    PolicyInterface
 }
 
 // NewClient creates a new SDK client connected to the given gateway.
@@ -97,6 +99,7 @@ func NewClient(cfg Config) (*Client, error) {
 	c.ssh = newSSHClient(conn)
 	c.tcp = newTCPClient(conn)
 	c.cfg = newConfigClient(conn)
+	c.policy = newPolicyClient(conn)
 
 	return c, nil
 }
@@ -127,6 +130,9 @@ func (c *Client) TCP() TCPInterface { return c.tcp }
 
 // Config returns the configuration sub-client.
 func (c *Client) Config() ConfigInterface { return c.cfg }
+
+// Policy returns the policy management sub-client.
+func (c *Client) Policy() PolicyInterface { return c.policy }
 
 // Close closes the underlying gRPC connection. Safe to call multiple times.
 func (c *Client) Close() error {

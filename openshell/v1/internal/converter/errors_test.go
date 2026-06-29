@@ -82,6 +82,18 @@ func TestFromGRPCError_Unimplemented(t *testing.T) {
 	assert.Equal(t, v1.ErrorUnimplemented, se.Code)
 }
 
+func TestFromGRPCError_Aborted(t *testing.T) {
+	grpcErr := status.Error(codes.Aborted, "version conflict")
+	err := FromGRPCError(grpcErr)
+	require.Error(t, err)
+	assert.True(t, v1.IsConflict(err))
+
+	var se *v1.StatusError
+	require.ErrorAs(t, err, &se)
+	assert.Equal(t, v1.ErrorConflict, se.Code)
+	assert.Equal(t, "version conflict", se.Message)
+}
+
 func TestFromGRPCError_UnmappedCode(t *testing.T) {
 	grpcErr := status.Error(codes.DataLoss, "data loss")
 	err := FromGRPCError(grpcErr)
