@@ -2,15 +2,6 @@
 
 Ideas captured from code reviews for future brainstorming.
 
-### log-id-vs-name-mismatch
-
-- **Source**: brainstorm
-- **Date**: 2026-06-29
-- **Reference**: brainstorm #009 (Phase 2b-2 revisit)
-- **Summary**: GetSandboxLogs proto takes sandbox_id while the rest of the SDK uses sandbox name as the primary key. The SDK will resolve name→id internally for consistency, but this asymmetry in the proto may indicate a broader pattern worth auditing across all RPCs.
-
-> brainstorm-009: "The proto GetSandboxLogs takes sandbox_id (not name). The rest of the SDK uses sandbox name everywhere. GetLogs will accept name and resolve internally."
-
 ### local-port-listener
 
 - **Source**: brainstorm
@@ -26,4 +17,13 @@ Ideas captured from code reviews for future brainstorming.
 - **Date**: 2026-06-29
 - **Reference**: brainstorm #010 (Phase 2b-3)
 - **Summary**: Remote-to-local forwarding where the sandbox connects back to the client through the gateway (like `ssh -R`). Requires proto support investigation. May not be feasible with current ForwardTcp RPC which is client-initiated only.
+
+### sandbox-session
+
+- **Source**: discussion
+- **Date**: 2026-06-30
+- **Reference**: PR #16 (sandbox name resolution), Python SDK pattern
+- **Summary**: Add a SandboxSession convenience type that caches the resolved sandbox ID after a single Get() call. Methods like Exec, Upload, Forward hang off the session, avoiding redundant name-to-ID resolution on every call. Coexists with the existing sub-client API as a higher-level layer. Especially valuable for operator reconciler loops doing multiple operations per sandbox per cycle.
+
+> Python SDK uses `SandboxSession` returned by `get_session(name)`. Go SDK currently resolves name-to-ID independently on every sub-client call. Session would cache the ID and provide shorthand methods: `session.Exec(cmd)`, `session.Upload(local, remote)`, etc.
 

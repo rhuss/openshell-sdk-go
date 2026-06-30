@@ -94,7 +94,7 @@ func setupConfigTest(t *testing.T, mock *mockConfigServer) (*configClient, func(
 	)
 	require.NoError(t, err)
 
-	return newConfigClient(conn), func() {
+	return newConfigClient(conn, &stubSandboxResolver{}), func() {
 		_ = conn.Close()
 		srv.Stop()
 	}
@@ -141,9 +141,9 @@ func TestConfigGetSandbox(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, sc)
 
-	// Verify request was forwarded.
+	// Verify request was forwarded with resolved ID (stubSandboxResolver returns "sb-<name>").
 	mock.mu.Lock()
-	assert.Equal(t, "my-sandbox", mock.lastSandboxReq.GetSandboxId())
+	assert.Equal(t, "sb-my-sandbox", mock.lastSandboxReq.GetSandboxId())
 	mock.mu.Unlock()
 
 	// Scalar fields.
@@ -208,13 +208,62 @@ func TestConfigGetSandbox_DeepCopy(t *testing.T) {
 
 func TestConfigGetSandbox_Error(t *testing.T) {
 	mock := newMockConfigServer()
-	mock.sandboxErr = status.Errorf(codes.NotFound, "sandbox not found")
+	mock.sandboxErr = status.Errorf(codes.Unavailable, "server unavailable")
 
 	client, cleanup := setupConfigTest(t, mock)
 	defer cleanup()
 
-	sc, err := client.GetSandbox(context.Background(), "missing")
+	sc, err := client.GetSandbox(context.Background(), "my-sandbox")
 
+	assert.Nil(t, sc)
+	require.Error(t, err)
+	assert.True(t, IsUnavailable(err))
+}
+
+// --- Name-to-ID resolution tests ---
+
+func TestConfigGetSandbox_ResolvesNameToID(t *testing.T) {
+	mock := newMockConfigServer()
+	mock.sandboxResp = &sbv1.GetSandboxConfigResponse{Version: 1}
+
+	client, cleanup := setupConfigTest(t, mock)
+	defer cleanup()
+
+	sc, err := client.GetSandbox(context.Background(), "my-sandbox")
+	require.NoError(t, err)
+	require.NotNil(t, sc)
+
+	// stubSandboxResolver returns ID "sb-<name>" — verify the proto has the resolved ID, not the name.
+	mock.mu.Lock()
+	assert.Equal(t, "sb-my-sandbox", mock.lastSandboxReq.GetSandboxId(), "GetSandbox should send resolved sandbox ID, not the name")
+	mock.mu.Unlock()
+}
+
+func TestConfigGetSandbox_ResolutionError(t *testing.T) {
+	mock := newMockConfigServer()
+	lis := bufconn.Listen(bufSize)
+	srv := grpc.NewServer()
+	pb.RegisterOpenShellServer(srv, mock)
+	go func() { _ = srv.Serve(lis) }()
+
+	conn, err := grpc.NewClient("passthrough:///bufconn",
+		grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {
+			return lis.Dial()
+		}),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	require.NoError(t, err)
+	defer func() {
+		_ = conn.Close()
+		srv.Stop()
+	}()
+
+	resolver := &stubSandboxResolver{
+		getErr: &StatusError{Code: ErrorNotFound, Message: "sandbox not found"},
+	}
+	client := newConfigClient(conn, resolver)
+
+	sc, err := client.GetSandbox(context.Background(), "nonexistent")
 	assert.Nil(t, sc)
 	require.Error(t, err)
 	assert.True(t, IsNotFound(err))
@@ -497,4 +546,15 @@ func TestConfigUpdate_ErrorConflict(t *testing.T) {
 	assert.Nil(t, result)
 	require.Error(t, err)
 	assert.True(t, IsConflict(err))
+}
+
+func TestConfigGetSandbox_EmptySandboxName(t *testing.T) {
+	mock := newMockConfigServer()
+	client, cleanup := setupConfigTest(t, mock)
+	defer cleanup()
+
+	cfg, err := client.GetSandbox(context.Background(), "")
+	assert.Nil(t, cfg)
+	require.Error(t, err)
+	assert.True(t, IsInvalidArgument(err))
 }

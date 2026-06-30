@@ -10,6 +10,8 @@ import (
 	"github.com/rhuss/openshell-sdk-go/openshell/v1/types"
 )
 
+var _ v1.ExecInterface = (*fakeExecClient)(nil)
+
 // fakeExecClient implements v1.ExecInterface. All methods return
 // Unimplemented because command execution requires a real sandbox runtime.
 type fakeExecClient struct {

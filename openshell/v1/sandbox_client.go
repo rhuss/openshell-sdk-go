@@ -167,14 +167,24 @@ func (s *sandboxClient) WaitReady(ctx context.Context, name string, opts ...Wait
 }
 
 func (s *sandboxClient) Watch(ctx context.Context, name string, opts ...WatchOptions) (WatchInterface[*Sandbox], error) {
+	if name == "" {
+		return nil, &StatusError{Code: ErrorInvalidArgument, Message: "sandbox name must not be empty"}
+	}
+
 	var watchOpts WatchOptions
 	if len(opts) > 0 {
 		watchOpts = opts[0]
 	}
 
+	// Resolve sandbox name to ID — the proto RPC takes Id, not name.
+	sb, err := s.Get(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+
 	streamCtx, streamCancel := context.WithCancel(ctx)
 	stream, err := s.client.WatchSandbox(streamCtx, &pb.WatchSandboxRequest{
-		Id:             name,
+		Id:             sb.ID,
 		FollowStatus:   true,
 		StopOnTerminal: watchOpts.StopOnTerminal,
 	})

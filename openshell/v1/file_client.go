@@ -16,6 +16,7 @@ import (
 
 type fileClient struct {
 	client    pb.OpenShellClient
+	sandboxes SandboxInterface
 	transport sshTransport
 }
 
@@ -24,16 +25,17 @@ type sshTransport interface {
 	download(ctx context.Context, session *pb.CreateSshSessionResponse, remotePath, localPath string) error
 }
 
-func newFileClient(conn grpc.ClientConnInterface) *fileClient {
+func newFileClient(conn grpc.ClientConnInterface, sandboxes SandboxInterface) *fileClient {
 	return &fileClient{
 		client:    pb.NewOpenShellClient(conn),
+		sandboxes: sandboxes,
 		transport: &defaultSSHTransport{},
 	}
 }
 
-func (f *fileClient) Upload(ctx context.Context, sandboxID string, localPath string, remotePath string) error {
-	if sandboxID == "" {
-		return &StatusError{Code: ErrorInvalidArgument, Message: "sandbox ID must not be empty"}
+func (f *fileClient) Upload(ctx context.Context, sandboxName string, localPath string, remotePath string) error {
+	if sandboxName == "" {
+		return &StatusError{Code: ErrorInvalidArgument, Message: "sandbox name must not be empty"}
 	}
 	if remotePath == "" {
 		return &StatusError{Code: ErrorInvalidArgument, Message: "remote path must not be empty"}
@@ -47,8 +49,13 @@ func (f *fileClient) Upload(ctx context.Context, sandboxID string, localPath str
 		return fmt.Errorf("local path is a directory, not a file: %s", localPath)
 	}
 
+	sb, err := f.sandboxes.Get(ctx, sandboxName)
+	if err != nil {
+		return err
+	}
+
 	session, err := f.client.CreateSshSession(ctx, &pb.CreateSshSessionRequest{
-		SandboxId: sandboxID,
+		SandboxId: sb.ID,
 	})
 	if err != nil {
 		return converter.FromGRPCError(err)
@@ -65,16 +72,21 @@ func (f *fileClient) Upload(ctx context.Context, sandboxID string, localPath str
 	return f.transport.upload(ctx, session, localPath, remotePath)
 }
 
-func (f *fileClient) Download(ctx context.Context, sandboxID string, remotePath string, localPath string) error {
-	if sandboxID == "" {
-		return &StatusError{Code: ErrorInvalidArgument, Message: "sandbox ID must not be empty"}
+func (f *fileClient) Download(ctx context.Context, sandboxName string, remotePath string, localPath string) error {
+	if sandboxName == "" {
+		return &StatusError{Code: ErrorInvalidArgument, Message: "sandbox name must not be empty"}
 	}
 	if remotePath == "" {
 		return &StatusError{Code: ErrorInvalidArgument, Message: "remote path must not be empty"}
 	}
 
+	sb, err := f.sandboxes.Get(ctx, sandboxName)
+	if err != nil {
+		return err
+	}
+
 	session, err := f.client.CreateSshSession(ctx, &pb.CreateSshSessionRequest{
-		SandboxId: sandboxID,
+		SandboxId: sb.ID,
 	})
 	if err != nil {
 		return converter.FromGRPCError(err)

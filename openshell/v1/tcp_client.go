@@ -15,19 +15,29 @@ import (
 )
 
 type tcpClient struct {
-	client pb.OpenShellClient
+	client    pb.OpenShellClient
+	sandboxes SandboxInterface
 }
 
-func newTCPClient(conn grpc.ClientConnInterface) *tcpClient {
-	return &tcpClient{client: pb.NewOpenShellClient(conn)}
+func newTCPClient(conn grpc.ClientConnInterface, sandboxes SandboxInterface) *tcpClient {
+	return &tcpClient{client: pb.NewOpenShellClient(conn), sandboxes: sandboxes}
 }
 
-func (t *tcpClient) Forward(ctx context.Context, sandboxID string, port uint32, opts ...ForwardOption) (io.ReadWriteCloser, error) {
+func (t *tcpClient) Forward(ctx context.Context, sandboxName string, port uint32, opts ...ForwardOption) (io.ReadWriteCloser, error) {
+	if sandboxName == "" {
+		return nil, &StatusError{Code: ErrorInvalidArgument, Message: "sandbox name must not be empty"}
+	}
 	if port == 0 || port > 65535 {
 		return nil, &StatusError{
 			Code:    ErrorInvalidArgument,
 			Message: fmt.Sprintf("port must be in range 1-65535, got %d", port),
 		}
+	}
+
+	// Resolve sandbox name to ID — the proto RPC takes SandboxId, not name.
+	sb, err := t.sandboxes.Get(ctx, sandboxName)
+	if err != nil {
+		return nil, err
 	}
 
 	var cfg forwardConfig
@@ -45,7 +55,7 @@ func (t *tcpClient) Forward(ctx context.Context, sandboxID string, port uint32, 
 	initFrame := &pb.TcpForwardFrame{
 		Payload: &pb.TcpForwardFrame_Init{
 			Init: &pb.TcpForwardInit{
-				SandboxId: sandboxID,
+				SandboxId: sb.ID,
 				ServiceId: cfg.serviceID,
 				Target: &pb.TcpForwardInit_Tcp{
 					Tcp: &pb.TcpRelayTarget{

@@ -6,8 +6,11 @@ package fake
 import (
 	"context"
 
+	v1 "github.com/rhuss/openshell-sdk-go/openshell/v1"
 	"github.com/rhuss/openshell-sdk-go/openshell/v1/types"
 )
+
+var _ v1.FileInterface = (*fakeFileClient)(nil)
 
 // fakeFileClient implements v1.FileInterface. All methods return
 // Unimplemented because file transfer requires a real sandbox runtime.

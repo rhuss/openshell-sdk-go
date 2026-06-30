@@ -9,6 +9,7 @@ Last updated: 2026-06-30
 | 001 | 2026-06-27 | go-sdk | active | - | - |
 | 012 | 2026-06-30 | context-cancel-cleanup | active | 011 | - |
 | 013 | 2026-06-30 | typed-sandbox-policy | active | - | [#11](https://github.com/rhuss/openshell-sdk-go/issues/11) |
+| 014 | 2026-06-30 | name-id-consistency | active | - | [#15](https://github.com/rhuss/openshell-sdk-go/issues/15) |
 
 ## Attic (implemented)
 
@@ -43,6 +44,9 @@ Last updated: 2026-06-30
 ## Open Threads
 - SandboxPolicy.Version: server-assigned or caller-settable? (from #013)
 - ResourceRequirements (proto field 9) also missing from SDK SandboxSpec, add in same pass or separate? (from #013)
+- WatchSandboxRequest.id: does the server actually reject names, or resolve both? (from #014)
+- Name-to-ID caching: should the SDK cache name→ID mappings? Deferred, no caching for now. (from #014)
+- Upstream proto cleanup: file on NVIDIA/OpenShell after SDK changes merge (from #014)
 - Repo ownership: `rhuss` now, transfer to NVIDIA later (from #001, #002)
 - SDK versioning: track gateway versions or independent semver? (from #001)
 - Auth patterns: OIDC/OAuth flows deferred to dedicated brainstorm, separate from credential refresh (from #001)
@@ -55,7 +59,7 @@ Last updated: 2026-06-30
 - WithServiceID shared vs per-interface option type? (from #010)
 
 ## Resolved Threads
-- Interface evolution: follow client-go pattern — accept interface growth, provide fake, use concrete `*Client` in production
+- Interface evolution: follow client-go pattern, accept interface growth, provide fake, use concrete `*Client` in production
 - Fake package path: `openshell/v1/fake/` (from #007, resolved by implementation in spec 005)
 - Fake reactors: deferred to future brainstorm (from #007)
 - Fake Exec configurable result: deferred, consumers mock ExecInterface directly (from #007)
@@ -75,7 +79,7 @@ Last updated: 2026-06-30
 - Config sub-client: own top-level interface for consistency (from #008)
 - Policy interface: flat, not nested DraftPolicyInterface (from #009)
 - GetLogs: added to SandboxInterface, not a standalone LogsInterface (from #009)
-- Phase 4 (operator building blocks): removed — informers/listers/reconciler helpers belong in the operator repo, not the SDK
+- Phase 4 (operator building blocks): removed, informers/listers/reconciler helpers belong in the operator repo, not the SDK
 - TCP Forward: local port binding option or raw ReadWriteCloser sufficient for v1? (from #008, resolved: ReadWriteCloser)
 - ApproveAllDraftChunks: `include_security_flagged` via functional option, not Force param (from #009)
 - ErrorConflict: map `codes.Aborted` only, leave `FAILED_PRECONDITION` as ErrorInternal (from #009)

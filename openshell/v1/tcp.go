@@ -25,14 +25,16 @@ func WithForwardServiceID(id string) ForwardOption {
 }
 
 // TCPInterface defines operations for TCP port forwarding to sandboxes.
+// Methods accept a sandbox name and resolve it to an ID internally.
 type TCPInterface interface {
 	// Forward opens a bidirectional TCP connection to the given port inside a
-	// sandbox. The returned io.ReadWriteCloser wraps the underlying gRPC
-	// stream; closing it terminates the stream. Port must be in the range
-	// 1-65535; out-of-range values are rejected client-side with an
+	// sandbox. The sandbox is identified by name; the SDK resolves it to an
+	// ID internally. The returned io.ReadWriteCloser wraps the underlying
+	// gRPC stream; closing it terminates the stream. Port must be in the
+	// range 1-65535; out-of-range values are rejected client-side with an
 	// InvalidArgument error before opening the gRPC stream.
 	//
 	// The connection respects context cancellation: if ctx is cancelled,
 	// the stream is closed and pending Read/Write calls return a context error.
-	Forward(ctx context.Context, sandboxID string, port uint32, opts ...ForwardOption) (io.ReadWriteCloser, error)
+	Forward(ctx context.Context, sandboxName string, port uint32, opts ...ForwardOption) (io.ReadWriteCloser, error)
 }

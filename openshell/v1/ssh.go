@@ -34,6 +34,11 @@ type SSHInterface interface {
 	// CreateSession creates a new SSH session for the given sandbox.
 	// The returned SSHSession contains connection details including the
 	// sensitive Token field that must not be logged.
+	//
+	// Note: CreateSession accepts a raw sandbox ID, not a name.
+	// For name-based access with automatic session lifecycle management,
+	// prefer [SSHInterface.Tunnel] which resolves sandbox names internally
+	// and revokes the session on Close.
 	CreateSession(ctx context.Context, sandboxID string) (*SSHSession, error)
 	// RevokeSession revokes an existing SSH session by its token.
 	// Returns true if the session was actively revoked, false if it was

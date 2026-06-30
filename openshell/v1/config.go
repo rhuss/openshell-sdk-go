@@ -63,7 +63,8 @@ const (
 type ConfigInterface interface {
 	// GetSandbox retrieves the full configuration state for a sandbox,
 	// including policy, effective settings, and revision metadata.
-	GetSandbox(ctx context.Context, sandboxID string) (*SandboxConfig, error)
+	// The sandbox is identified by name; the SDK resolves it to an ID internally.
+	GetSandbox(ctx context.Context, sandboxName string) (*SandboxConfig, error)
 
 	// GetGateway retrieves gateway-global settings.
 	GetGateway(ctx context.Context) (*GatewayConfig, error)

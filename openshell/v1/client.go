@@ -93,12 +93,12 @@ func NewClient(cfg Config) (*Client, error) {
 	c.sandboxes = newSandboxClient(conn)
 	c.providers = newProviderClient(conn)
 	c.services = newServiceClient(conn)
-	c.exec = newExecClient(conn)
-	c.files = newFileClient(conn)
+	c.exec = newExecClient(conn, c.sandboxes)
+	c.files = newFileClient(conn, c.sandboxes)
 	c.health = newHealthClient(conn)
 	c.ssh = newSSHClient(conn, c.sandboxes)
-	c.tcp = newTCPClient(conn)
-	c.cfg = newConfigClient(conn)
+	c.tcp = newTCPClient(conn, c.sandboxes)
+	c.cfg = newConfigClient(conn, c.sandboxes)
 	c.policy = newPolicyClient(conn)
 
 	return c, nil

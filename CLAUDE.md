@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/012-typed-sandbox-policy/plan.md
+at specs/013-sandbox-name-resolution/plan.md
 <!-- SPECKIT END -->
 
 # OpenShell SDK for Go
