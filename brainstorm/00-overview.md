@@ -7,9 +7,7 @@ Last updated: 2026-06-30
 | # | Date | Topic | Status | Spec | Issue |
 |---|------|-------|--------|------|-------|
 | 001 | 2026-06-27 | go-sdk | active | - | - |
-| 012 | 2026-06-30 | context-cancel-cleanup | active | 011 | - |
-| 013 | 2026-06-30 | typed-sandbox-policy | active | - | [#11](https://github.com/rhuss/openshell-sdk-go/issues/11) |
-| 014 | 2026-06-30 | name-id-consistency | active | - | [#15](https://github.com/rhuss/openshell-sdk-go/issues/15) |
+| 015 | 2026-06-30 | local-port-listener | active | - | - |
 
 ## Attic (implemented)
 
@@ -25,6 +23,9 @@ Last updated: 2026-06-30
 | 009 | 2026-06-29 | policy-logs | 008 |
 | 010 | 2026-06-29 | ssh-tunnel-forward-opts | 009 |
 | 011 | 2026-06-29 | api-docs | 010 |
+| 012 | 2026-06-30 | context-cancel-cleanup | 011 |
+| 013 | 2026-06-30 | typed-sandbox-policy | 012 |
+| 014 | 2026-06-30 | name-id-consistency | 013 |
 
 ## Dependency Chain
 
@@ -55,8 +56,10 @@ Last updated: 2026-06-30
 - ListSandboxPolicies `global` flag: should SDK expose this or keep sandbox-scoped only? (from #009)
 - Doc comment coverage: bring all exported symbols to 80%+ per Constitution IX (from PR #4 review)
 - Proto-to-SDK naming verification: add lint rule or converter test pattern (from PR #4 review, Constitution X)
-- Tunnel() sandbox name vs ID: does Tunnel need name->ID resolution like GetLogs? (from #010)
 - WithServiceID shared vs per-interface option type? (from #010)
+- Listen error propagation: should per-connection Forward failures be returned from Accept(), silently retried, or routed to a callback? (from #015)
+- WithOnError callback: should Listen accept an error handler for connection-level failures? (from #015)
+- Connection limit: WithMaxConnections() deferred but internal design should accommodate it (from #015)
 
 ## Resolved Threads
 - Interface evolution: follow client-go pattern, accept interface growth, provide fake, use concrete `*Client` in production
@@ -80,7 +83,10 @@ Last updated: 2026-06-30
 - Policy interface: flat, not nested DraftPolicyInterface (from #009)
 - GetLogs: added to SandboxInterface, not a standalone LogsInterface (from #009)
 - Phase 4 (operator building blocks): removed, informers/listers/reconciler helpers belong in the operator repo, not the SDK
-- TCP Forward: local port binding option or raw ReadWriteCloser sufficient for v1? (from #008, resolved: ReadWriteCloser)
+- TCP Forward: local port binding option or raw ReadWriteCloser sufficient for v1? (from #008, resolved: ReadWriteCloser for v1, Listen() convenience layer in #015)
+- Listen transport: TCP Forward by default, WithSSHTunnel() option for per-connection SSH auth (from #015)
+- Listen API surface: on TCPInterface, not standalone type (from #015)
+- Listen fake: returns Unimplemented error, same as fake Tunnel() (from #015)
 - ApproveAllDraftChunks: `include_security_flagged` via functional option, not Force param (from #009)
 - ErrorConflict: map `codes.Aborted` only, leave `FAILED_PRECONDITION` as ErrorInternal (from #009)
 - MergeOperations: typed struct-per-variant, not raw bytes or interface polymorphism (from #009)
@@ -92,6 +98,7 @@ Last updated: 2026-06-30
 - Tunnel close behavior: auto-revoke session on Close() (from #010)
 - Forward() gap fix: WithServiceID() only, SSH target options deferred (from #010)
 - WithServiceID on Tunnel: yes, for symmetry with Forward() (from #010)
+- Tunnel() sandbox name vs ID: resolved by spec 013, Tunnel accepts name and resolves internally (from #010)
 
 ## Parked Ideas
 (none)
