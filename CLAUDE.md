@@ -1,9 +1,3 @@
-<!-- SPECKIT START -->
-For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan
-at specs/013-sandbox-name-resolution/plan.md
-<!-- SPECKIT END -->
-
 # OpenShell SDK for Go
 
 Go SDK for interacting with OpenShell servers.
@@ -69,3 +63,8 @@ Makefile            # Build shim delegating to mise
 .golangci.yml       # Linter configuration
 .github/workflows/  # CI pipeline (lint, test, build, proto:check)
 ```
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->
