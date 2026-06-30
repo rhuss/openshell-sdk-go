@@ -69,7 +69,7 @@ func setupFileTest(t *testing.T, mock *mockFileServer) (*fileClient, func()) {
 	)
 	require.NoError(t, err)
 
-	return newFileClient(conn), func() {
+	return newFileClient(conn, &stubSandboxResolver{}), func() {
 		_ = conn.Close()
 		srv.Stop()
 	}
@@ -80,7 +80,7 @@ func setupFileTest(t *testing.T, mock *mockFileServer) (*fileClient, func()) {
 func TestFileUpload(t *testing.T) {
 	mock := newMockFileServer()
 	mock.createResp = &pb.CreateSshSessionResponse{
-		SandboxId:   "sb-1",
+		SandboxId:   "sb-test-sandbox",
 		Token:       "session-token-123",
 		GatewayHost: "gateway.example.com",
 		GatewayPort: 2222,
@@ -93,12 +93,12 @@ func TestFileUpload(t *testing.T) {
 	localPath := filepath.Join(tmpDir, "upload.txt")
 	require.NoError(t, os.WriteFile(localPath, []byte("file content"), 0644))
 
-	err := client.Upload(context.Background(), "sb-1", localPath, "/remote/upload.txt")
+	err := client.Upload(context.Background(), "test-sandbox", localPath, "/remote/upload.txt")
 
 	// Upload will fail because there's no real SSH server, but it should
-	// at least call CreateSshSession with the correct sandbox ID
+	// at least call CreateSshSession with the resolved sandbox ID
 	// and attempt the transfer. The error is from the SSH connection, not the RPC.
-	assert.Equal(t, "sb-1", mock.lastCreateReq.GetSandboxId())
+	assert.Equal(t, "sb-test-sandbox", mock.lastCreateReq.GetSandboxId())
 	assert.Equal(t, 1, mock.createCallCount)
 
 	// We accept an error here since there's no real SSH server to connect to.
@@ -116,7 +116,7 @@ func TestFileUpload_CreateSessionError(t *testing.T) {
 	localPath := filepath.Join(tmpDir, "upload.txt")
 	require.NoError(t, os.WriteFile(localPath, []byte("content"), 0644))
 
-	err := client.Upload(context.Background(), "sb-1", localPath, "/remote/file.txt")
+	err := client.Upload(context.Background(), "test-sandbox", localPath, "/remote/file.txt")
 
 	require.Error(t, err)
 	assert.True(t, IsNotFound(err))
@@ -125,7 +125,7 @@ func TestFileUpload_CreateSessionError(t *testing.T) {
 func TestFileDownload(t *testing.T) {
 	mock := newMockFileServer()
 	mock.createResp = &pb.CreateSshSessionResponse{
-		SandboxId:   "sb-1",
+		SandboxId:   "sb-test-sandbox",
 		Token:       "session-token-456",
 		GatewayHost: "gateway.example.com",
 		GatewayPort: 2222,
@@ -137,11 +137,11 @@ func TestFileDownload(t *testing.T) {
 	tmpDir := t.TempDir()
 	localPath := filepath.Join(tmpDir, "download.txt")
 
-	err := client.Download(context.Background(), "sb-1", "/remote/file.txt", localPath)
+	err := client.Download(context.Background(), "test-sandbox", "/remote/file.txt", localPath)
 
 	// Download will fail at SSH connection (no real server), but should
-	// call CreateSshSession with the correct sandbox ID.
-	assert.Equal(t, "sb-1", mock.lastCreateReq.GetSandboxId())
+	// call CreateSshSession with the resolved sandbox ID.
+	assert.Equal(t, "sb-test-sandbox", mock.lastCreateReq.GetSandboxId())
 	assert.Equal(t, 1, mock.createCallCount)
 
 	_ = err
@@ -156,7 +156,7 @@ func TestFileDownload_CreateSessionError(t *testing.T) {
 	tmpDir := t.TempDir()
 	localPath := filepath.Join(tmpDir, "download.txt")
 
-	err := client.Download(context.Background(), "sb-1", "/remote/file.txt", localPath)
+	err := client.Download(context.Background(), "test-sandbox", "/remote/file.txt", localPath)
 
 	require.Error(t, err)
 	assert.True(t, IsPermissionDenied(err))
@@ -169,7 +169,7 @@ func TestFileUpload_NonExistentLocalFile(t *testing.T) {
 	client, cleanup := setupFileTest(t, mock)
 	defer cleanup()
 
-	err := client.Upload(context.Background(), "sb-1", "/nonexistent/file.txt", "/remote/file.txt")
+	err := client.Upload(context.Background(), "test-sandbox", "/nonexistent/file.txt", "/remote/file.txt")
 
 	require.Error(t, err)
 	// Should fail before contacting gateway
@@ -183,14 +183,14 @@ func TestFileUpload_LocalPathIsDirectory(t *testing.T) {
 
 	tmpDir := t.TempDir()
 
-	err := client.Upload(context.Background(), "sb-1", tmpDir, "/remote/file.txt")
+	err := client.Upload(context.Background(), "test-sandbox", tmpDir, "/remote/file.txt")
 
 	require.Error(t, err)
 	// Should fail before contacting gateway
 	assert.Equal(t, 0, mock.createCallCount)
 }
 
-func TestFileUpload_EmptySandboxID(t *testing.T) {
+func TestFileUpload_EmptySandboxName(t *testing.T) {
 	mock := newMockFileServer()
 	client, cleanup := setupFileTest(t, mock)
 	defer cleanup()
@@ -213,8 +213,108 @@ func TestFileDownload_EmptyRemotePath(t *testing.T) {
 	tmpDir := t.TempDir()
 	localPath := filepath.Join(tmpDir, "download.txt")
 
-	err := client.Download(context.Background(), "sb-1", "", localPath)
+	err := client.Download(context.Background(), "test-sandbox", "", localPath)
 
 	require.Error(t, err)
+	assert.Equal(t, 0, mock.createCallCount)
+}
+
+// --- Name-to-ID resolution tests ---
+
+func TestFileUpload_ResolvesNameToID(t *testing.T) {
+	mock := newMockFileServer()
+	mock.createResp = &pb.CreateSshSessionResponse{
+		SandboxId:   "sb-my-sandbox",
+		Token:       "token",
+		GatewayHost: "gw.example.com",
+		GatewayPort: 2222,
+	}
+	mock.revokeResp = &pb.RevokeSshSessionResponse{Revoked: true}
+	client, cleanup := setupFileTest(t, mock)
+	defer cleanup()
+
+	tmpDir := t.TempDir()
+	localPath := filepath.Join(tmpDir, "upload.txt")
+	require.NoError(t, os.WriteFile(localPath, []byte("content"), 0644))
+
+	_ = client.Upload(context.Background(), "my-sandbox", localPath, "/remote/file.txt")
+
+	// Verify the proto request contains the resolved ID, not the name
+	assert.Equal(t, "sb-my-sandbox", mock.lastCreateReq.GetSandboxId())
+}
+
+func TestFileUpload_ResolutionError(t *testing.T) {
+	mock := newMockFileServer()
+	lis := bufconn.Listen(bufSize)
+	srv := grpc.NewServer()
+	pb.RegisterOpenShellServer(srv, mock)
+	go func() { _ = srv.Serve(lis) }()
+
+	conn, err := grpc.NewClient("passthrough:///bufconn",
+		grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {
+			return lis.Dial()
+		}),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	require.NoError(t, err)
+	defer func() {
+		_ = conn.Close()
+		srv.Stop()
+	}()
+
+	resolver := &stubSandboxResolver{
+		getErr: &StatusError{Code: ErrorNotFound, Message: "sandbox not found"},
+	}
+	client := newFileClient(conn, resolver)
+
+	tmpDir := t.TempDir()
+	localPath := filepath.Join(tmpDir, "upload.txt")
+	require.NoError(t, os.WriteFile(localPath, []byte("content"), 0644))
+
+	err = client.Upload(context.Background(), "nonexistent", localPath, "/remote/file.txt")
+	require.Error(t, err)
+	assert.True(t, IsNotFound(err))
+	assert.Equal(t, 0, mock.createCallCount)
+}
+
+func TestFileDownload_ResolvesNameToID(t *testing.T) {
+	mock := newMockFileServer()
+	client, cleanup := setupFileTest(t, mock)
+	defer cleanup()
+
+	localPath := filepath.Join(t.TempDir(), "downloaded.txt")
+	_ = client.Download(context.Background(), "my-sandbox", "/remote/file.txt", localPath)
+
+	assert.Equal(t, "sb-my-sandbox", mock.lastCreateReq.GetSandboxId())
+}
+
+func TestFileDownload_ResolutionError(t *testing.T) {
+	mock := newMockFileServer()
+	lis := bufconn.Listen(bufSize)
+	srv := grpc.NewServer()
+	pb.RegisterOpenShellServer(srv, mock)
+	go func() { _ = srv.Serve(lis) }()
+
+	conn, err := grpc.NewClient("passthrough:///bufconn",
+		grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {
+			return lis.Dial()
+		}),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	require.NoError(t, err)
+	defer func() {
+		_ = conn.Close()
+		srv.Stop()
+	}()
+
+	resolver := &stubSandboxResolver{
+		getErr: &StatusError{Code: ErrorNotFound, Message: "sandbox not found"},
+	}
+	client := newFileClient(conn, resolver)
+
+	localPath := filepath.Join(t.TempDir(), "downloaded.txt")
+	err = client.Download(context.Background(), "nonexistent", "/remote/file.txt", localPath)
+	require.Error(t, err)
+	assert.True(t, IsNotFound(err))
 	assert.Equal(t, 0, mock.createCallCount)
 }

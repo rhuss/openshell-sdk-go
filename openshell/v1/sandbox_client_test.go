@@ -37,6 +37,7 @@ type mockSandboxServer struct {
 	watchEvents    []*pb.SandboxStreamEvent
 	watchErr       error
 	watchKeepOpen  chan struct{} // if non-nil, WatchSandbox blocks after sending events until closed
+	watchRequest   *pb.WatchSandboxRequest // recorded request
 
 	// GetLogs fields
 	getLogsResp    *pb.GetSandboxLogsResponse
@@ -146,7 +147,10 @@ func (s *mockSandboxServer) ListSandboxProviders(_ context.Context, req *pb.List
 	return &pb.ListSandboxProvidersResponse{Providers: provs}, nil
 }
 
-func (s *mockSandboxServer) WatchSandbox(_ *pb.WatchSandboxRequest, stream grpc.ServerStreamingServer[pb.SandboxStreamEvent]) error {
+func (s *mockSandboxServer) WatchSandbox(req *pb.WatchSandboxRequest, stream grpc.ServerStreamingServer[pb.SandboxStreamEvent]) error {
+	s.mu.Lock()
+	s.watchRequest = req
+	s.mu.Unlock()
 	if s.watchErr != nil {
 		return s.watchErr
 	}
@@ -539,6 +543,10 @@ func TestSandboxWaitReady_NotFound(t *testing.T) {
 
 func TestSandboxWatch_ReceivesEvents(t *testing.T) {
 	mock := newMockSandboxServer()
+	mock.sandboxes["sb-1"] = &pb.Sandbox{
+		Metadata: &dm.ObjectMeta{Id: "id-1", Name: "sb-1"},
+		Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_PROVISIONING},
+	}
 	mock.watchEvents = []*pb.SandboxStreamEvent{
 		{Payload: &pb.SandboxStreamEvent_Sandbox{Sandbox: &pb.Sandbox{
 			Metadata: &dm.ObjectMeta{Name: "sb-1", Id: "id-1"},
@@ -569,6 +577,10 @@ func TestSandboxWatch_ReceivesEvents(t *testing.T) {
 
 func TestSandboxWatch_FiltersSandboxEventsOnly(t *testing.T) {
 	mock := newMockSandboxServer()
+	mock.sandboxes["sb-1"] = &pb.Sandbox{
+		Metadata: &dm.ObjectMeta{Id: "id-1", Name: "sb-1"},
+		Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_READY},
+	}
 	mock.watchEvents = []*pb.SandboxStreamEvent{
 		{Payload: &pb.SandboxStreamEvent_Log{Log: &pb.SandboxLogLine{Message: "some log"}}},
 		{Payload: &pb.SandboxStreamEvent_Sandbox{Sandbox: &pb.Sandbox{
@@ -599,6 +611,10 @@ func TestSandboxWatch_FiltersSandboxEventsOnly(t *testing.T) {
 
 func TestSandboxWatch_StopCancelsStream(t *testing.T) {
 	mock := newMockSandboxServer()
+	mock.sandboxes["sb-1"] = &pb.Sandbox{
+		Metadata: &dm.ObjectMeta{Id: "id-1", Name: "sb-1"},
+		Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_READY},
+	}
 	mock.watchEvents = []*pb.SandboxStreamEvent{
 		{Payload: &pb.SandboxStreamEvent_Sandbox{Sandbox: &pb.Sandbox{
 			Metadata: &dm.ObjectMeta{Name: "sb-1"},
@@ -624,20 +640,81 @@ func TestSandboxWatch_StopCancelsStream(t *testing.T) {
 
 func TestSandboxWatch_RPCError(t *testing.T) {
 	mock := newMockSandboxServer()
-	mock.watchErr = status.Error(codes.NotFound, "sandbox not found")
+	mock.sandboxes["watch-err"] = &pb.Sandbox{
+		Metadata: &dm.ObjectMeta{Id: "id-watch-err", Name: "watch-err"},
+		Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_READY},
+	}
+	mock.watchErr = status.Error(codes.Unavailable, "stream unavailable")
 	client, cleanup := setupSandboxTest(t, mock)
 	defer cleanup()
 
-	_, err := client.Watch(context.Background(), "missing")
+	_, err := client.Watch(context.Background(), "watch-err")
 
 	require.Error(t, err)
-	assert.True(t, IsNotFound(err))
+	assert.True(t, IsUnavailable(err))
+}
+
+// --- T016: Watch name-to-ID resolution verification tests ---
+
+func TestSandboxWatch_ResolvesNameToID(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.sandboxes["my-sandbox"] = &pb.Sandbox{
+		Metadata: &dm.ObjectMeta{Id: "resolved-id-123", Name: "my-sandbox"},
+		Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_PROVISIONING},
+	}
+	mock.watchKeepOpen = make(chan struct{})
+	defer close(mock.watchKeepOpen)
+	mock.watchEvents = []*pb.SandboxStreamEvent{
+		{Payload: &pb.SandboxStreamEvent_Sandbox{Sandbox: &pb.Sandbox{
+			Metadata: &dm.ObjectMeta{Name: "my-sandbox", Id: "resolved-id-123"},
+			Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_PROVISIONING},
+		}}},
+	}
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	w, err := client.Watch(context.Background(), "my-sandbox")
+	require.NoError(t, err)
+	defer w.Stop()
+
+	// Verify the WatchSandboxRequest.Id contains the resolved ID, not the name
+	mock.mu.Lock()
+	req := mock.watchRequest
+	mock.mu.Unlock()
+	require.NotNil(t, req)
+	assert.Equal(t, "resolved-id-123", req.GetId(), "Watch should send resolved sandbox ID, not the name")
+}
+
+func TestSandboxWatch_ResolutionError(t *testing.T) {
+	mock := newMockSandboxServer()
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	_, err := client.Watch(context.Background(), "nonexistent")
+
+	require.Error(t, err)
+	assert.True(t, IsNotFound(err), "Watch should return NotFound when sandbox name cannot be resolved")
+}
+
+func TestSandboxWatch_EmptySandboxName(t *testing.T) {
+	mock := newMockSandboxServer()
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	_, err := client.Watch(context.Background(), "")
+
+	require.Error(t, err)
+	assert.True(t, IsInvalidArgument(err), "Watch should reject empty sandbox name")
 }
 
 // --- T023/T024: StopOnTerminal watch tests ---
 
 func TestSandboxWatch_StopOnTerminal_Ready(t *testing.T) {
 	mock := newMockSandboxServer()
+	mock.sandboxes["sb-1"] = &pb.Sandbox{
+		Metadata: &dm.ObjectMeta{Id: "id-1", Name: "sb-1"},
+		Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_PROVISIONING},
+	}
 	mock.watchKeepOpen = make(chan struct{})
 	defer close(mock.watchKeepOpen)
 	mock.watchEvents = []*pb.SandboxStreamEvent{
@@ -678,6 +755,10 @@ func TestSandboxWatch_StopOnTerminal_Ready(t *testing.T) {
 
 func TestSandboxWatch_StopOnTerminal_Error(t *testing.T) {
 	mock := newMockSandboxServer()
+	mock.sandboxes["sb-1"] = &pb.Sandbox{
+		Metadata: &dm.ObjectMeta{Id: "id-1", Name: "sb-1"},
+		Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_PROVISIONING},
+	}
 	mock.watchKeepOpen = make(chan struct{})
 	defer close(mock.watchKeepOpen)
 	mock.watchEvents = []*pb.SandboxStreamEvent{
@@ -718,6 +799,10 @@ func TestSandboxWatch_StopOnTerminal_Error(t *testing.T) {
 
 func TestSandboxWatch_StopOnTerminal_False_DoesNotClose(t *testing.T) {
 	mock := newMockSandboxServer()
+	mock.sandboxes["sb-1"] = &pb.Sandbox{
+		Metadata: &dm.ObjectMeta{Id: "id-1", Name: "sb-1"},
+		Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_READY},
+	}
 	mock.watchEvents = []*pb.SandboxStreamEvent{
 		{Payload: &pb.SandboxStreamEvent_Sandbox{Sandbox: &pb.Sandbox{
 			Metadata: &dm.ObjectMeta{Name: "sb-1", Id: "id-1"},

@@ -14,19 +14,28 @@ import (
 )
 
 type execClient struct {
-	client pb.OpenShellClient
+	client    pb.OpenShellClient
+	sandboxes SandboxInterface
 }
 
-func newExecClient(conn grpc.ClientConnInterface) *execClient {
-	return &execClient{client: pb.NewOpenShellClient(conn)}
+func newExecClient(conn grpc.ClientConnInterface, sandboxes SandboxInterface) *execClient {
+	return &execClient{client: pb.NewOpenShellClient(conn), sandboxes: sandboxes}
 }
 
-func (e *execClient) Run(ctx context.Context, sandboxID string, command []string, opts ...ExecOptions) (*ExecResult, error) {
+func (e *execClient) Run(ctx context.Context, sandboxName string, command []string, opts ...ExecOptions) (*ExecResult, error) {
+	if sandboxName == "" {
+		return nil, &StatusError{Code: ErrorInvalidArgument, Message: "sandbox name must not be empty"}
+	}
+	sb, err := e.sandboxes.Get(ctx, sandboxName)
+	if err != nil {
+		return nil, err
+	}
+
 	var opt *ExecOptions
 	if len(opts) > 0 {
 		opt = &opts[0]
 	}
-	req := converter.ExecRequestToProto(sandboxID, command, opt)
+	req := converter.ExecRequestToProto(sb.ID, command, opt)
 
 	stream, err := e.client.ExecSandbox(ctx, req)
 	if err != nil {
@@ -48,12 +57,20 @@ func (e *execClient) Run(ctx context.Context, sandboxID string, command []string
 	return converter.ExecResultFromEvents(events)
 }
 
-func (e *execClient) Stream(ctx context.Context, sandboxID string, command []string, opts ...ExecOptions) (ExecStream, error) {
+func (e *execClient) Stream(ctx context.Context, sandboxName string, command []string, opts ...ExecOptions) (ExecStream, error) {
+	if sandboxName == "" {
+		return nil, &StatusError{Code: ErrorInvalidArgument, Message: "sandbox name must not be empty"}
+	}
+	sb, err := e.sandboxes.Get(ctx, sandboxName)
+	if err != nil {
+		return nil, err
+	}
+
 	var opt *ExecOptions
 	if len(opts) > 0 {
 		opt = &opts[0]
 	}
-	req := converter.ExecRequestToProto(sandboxID, command, opt)
+	req := converter.ExecRequestToProto(sb.ID, command, opt)
 
 	streamCtx, cancel := context.WithCancel(ctx)
 	stream, err := e.client.ExecSandbox(streamCtx, req)
@@ -65,7 +82,15 @@ func (e *execClient) Stream(ctx context.Context, sandboxID string, command []str
 	return &execStream{stream: stream, cancel: cancel}, nil
 }
 
-func (e *execClient) Interactive(ctx context.Context, sandboxID string, command []string, cols, rows uint32, opts ...ExecOptions) (InteractiveSession, error) {
+func (e *execClient) Interactive(ctx context.Context, sandboxName string, command []string, cols, rows uint32, opts ...ExecOptions) (InteractiveSession, error) {
+	if sandboxName == "" {
+		return nil, &StatusError{Code: ErrorInvalidArgument, Message: "sandbox name must not be empty"}
+	}
+	sb, err := e.sandboxes.Get(ctx, sandboxName)
+	if err != nil {
+		return nil, err
+	}
+
 	var opt *ExecOptions
 	if len(opts) > 0 {
 		opt = &opts[0]
@@ -76,7 +101,7 @@ func (e *execClient) Interactive(ctx context.Context, sandboxID string, command 
 		return nil, converter.FromGRPCError(err)
 	}
 
-	startReq := converter.ExecInteractiveRequestToProto(sandboxID, command, cols, rows, opt)
+	startReq := converter.ExecInteractiveRequestToProto(sb.ID, command, cols, rows, opt)
 	if sendErr := stream.Send(&pb.ExecSandboxInput{
 		Payload: &pb.ExecSandboxInput_Start{Start: startReq},
 	}); sendErr != nil {

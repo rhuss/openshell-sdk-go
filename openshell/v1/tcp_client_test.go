@@ -91,7 +91,7 @@ func setupTCPTest(t *testing.T, mock *mockTCPServer) (*tcpClient, func()) {
 	)
 	require.NoError(t, err)
 
-	return newTCPClient(conn), func() {
+	return newTCPClient(conn, &stubSandboxResolver{}), func() {
 		_ = conn.Close()
 		srv.Stop()
 	}
@@ -127,7 +127,7 @@ func TestTCPForward_InitFrame(t *testing.T) {
 	mock.mu.Unlock()
 
 	require.NotNil(t, init)
-	assert.Equal(t, "my-sandbox", init.GetSandboxId())
+	assert.Equal(t, "sb-my-sandbox", init.GetSandboxId())
 	assert.Empty(t, init.GetServiceId(), "service_id should be empty per FR-007a")
 	assert.Empty(t, init.GetAuthorizationToken())
 
@@ -333,7 +333,7 @@ func TestTCPForward_WithServiceID(t *testing.T) {
 
 	require.NotNil(t, init)
 	assert.Equal(t, "audit-svc", init.GetServiceId())
-	assert.Equal(t, "my-sandbox", init.GetSandboxId())
+	assert.Equal(t, "sb-my-sandbox", init.GetSandboxId())
 }
 
 func TestTCPForward_WithoutOptions_BackwardCompat(t *testing.T) {
@@ -362,16 +362,16 @@ func TestTCPForward_WithoutOptions_BackwardCompat(t *testing.T) {
 
 func TestTCPForward_ServerError(t *testing.T) {
 	mock := newMockTCPServer()
-	mock.err = status.Errorf(codes.NotFound, "sandbox not found")
+	mock.err = status.Errorf(codes.Unavailable, "server unavailable")
 	client, cleanup := setupTCPTest(t, mock)
 	defer cleanup()
 
-	rwc, err := client.Forward(context.Background(), "missing", 8080)
+	rwc, err := client.Forward(context.Background(), "my-sandbox", 8080)
 
 	// The stream opens successfully (gRPC bidi streams don't fail on open),
 	// but the first write or read should surface the server error.
 	if err != nil {
-		// When Send(initFrame) races with the server returning NotFound,
+		// When Send(initFrame) races with the server returning the error,
 		// the client may get the server status or a transport-level error.
 		assert.Nil(t, rwc)
 		require.Error(t, err)
@@ -386,4 +386,73 @@ func TestTCPForward_ServerError(t *testing.T) {
 	buf := make([]byte, 64)
 	_, err = rwc.Read(buf)
 	assert.Error(t, err)
+}
+
+// --- Name-to-ID resolution tests ---
+
+func TestTCPForward_ResolvesNameToID(t *testing.T) {
+	mock := newMockTCPServer()
+	client, cleanup := setupTCPTest(t, mock)
+	defer cleanup()
+
+	rwc, err := client.Forward(context.Background(), "my-sandbox", 8080)
+	require.NoError(t, err)
+	require.NotNil(t, rwc)
+	defer func() { _ = rwc.Close() }()
+
+	// Trigger a round-trip so the server has processed the init frame.
+	_, err = rwc.Write([]byte("ping"))
+	require.NoError(t, err)
+	buf := make([]byte, 64)
+	_, err = rwc.Read(buf)
+	require.NoError(t, err)
+
+	mock.mu.Lock()
+	init := mock.lastInit
+	mock.mu.Unlock()
+
+	require.NotNil(t, init)
+	// stubSandboxResolver returns ID "sb-<name>" — verify the proto has the resolved ID, not the name
+	assert.Equal(t, "sb-my-sandbox", init.GetSandboxId(), "Forward should send resolved sandbox ID, not the name")
+}
+
+func TestTCPForward_ResolutionError(t *testing.T) {
+	mock := newMockTCPServer()
+	lis := bufconn.Listen(bufSize)
+	srv := grpc.NewServer()
+	pb.RegisterOpenShellServer(srv, mock)
+	go func() { _ = srv.Serve(lis) }()
+
+	conn, err := grpc.NewClient("passthrough:///bufconn",
+		grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {
+			return lis.Dial()
+		}),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	require.NoError(t, err)
+	defer func() {
+		_ = conn.Close()
+		srv.Stop()
+	}()
+
+	resolver := &stubSandboxResolver{
+		getErr: &StatusError{Code: ErrorNotFound, Message: "sandbox not found"},
+	}
+	client := newTCPClient(conn, resolver)
+
+	rwc, err := client.Forward(context.Background(), "nonexistent", 8080)
+	assert.Nil(t, rwc)
+	require.Error(t, err)
+	assert.True(t, IsNotFound(err))
+}
+
+func TestTCPForward_EmptySandboxName(t *testing.T) {
+	mock := newMockTCPServer()
+	client, cleanup := setupTCPTest(t, mock)
+	defer cleanup()
+
+	rwc, err := client.Forward(context.Background(), "", 8080)
+	assert.Nil(t, rwc)
+	require.Error(t, err)
+	assert.True(t, IsInvalidArgument(err))
 }

@@ -13,16 +13,26 @@ import (
 )
 
 type configClient struct {
-	client pb.OpenShellClient
+	client    pb.OpenShellClient
+	sandboxes SandboxInterface
 }
 
-func newConfigClient(conn grpc.ClientConnInterface) *configClient {
-	return &configClient{client: pb.NewOpenShellClient(conn)}
+func newConfigClient(conn grpc.ClientConnInterface, sandboxes SandboxInterface) *configClient {
+	return &configClient{client: pb.NewOpenShellClient(conn), sandboxes: sandboxes}
 }
 
-func (c *configClient) GetSandbox(ctx context.Context, sandboxID string) (*SandboxConfig, error) {
+func (c *configClient) GetSandbox(ctx context.Context, sandboxName string) (*SandboxConfig, error) {
+	if sandboxName == "" {
+		return nil, &StatusError{Code: ErrorInvalidArgument, Message: "sandbox name must not be empty"}
+	}
+	// Resolve sandbox name to ID — the proto RPC takes SandboxId, not name.
+	sb, err := c.sandboxes.Get(ctx, sandboxName)
+	if err != nil {
+		return nil, err
+	}
+
 	resp, err := c.client.GetSandboxConfig(ctx, &sbv1.GetSandboxConfigRequest{
-		SandboxId: sandboxID,
+		SandboxId: sb.ID,
 	})
 	if err != nil {
 		return nil, converter.FromGRPCError(err)
