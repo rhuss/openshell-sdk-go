@@ -256,6 +256,29 @@ func TestSandboxRoundTrip(t *testing.T) {
 			},
 			Providers: []string{"p1", "p2"},
 			GPUCount:  &gpuCount,
+			Policy: &v1.SandboxPolicy{
+				Version: 3,
+				Filesystem: &v1.FilesystemPolicy{
+					IncludeWorkdir: true,
+					ReadOnly:       []string{"/etc", "/usr/share"},
+					ReadWrite:      []string{"/tmp"},
+				},
+				Landlock: &v1.LandlockPolicy{
+					Compatibility: "best_effort",
+				},
+				Process: &v1.ProcessPolicy{
+					RunAsUser:  "sandbox",
+					RunAsGroup: "sandbox-group",
+				},
+				NetworkPolicies: map[string]v1.NetworkPolicyRule{
+					"web": {
+						Name: "web",
+						Endpoints: []v1.PolicyNetworkEndpoint{
+							{Host: "api.example.com", Port: 443, Protocol: "rest"},
+						},
+					},
+				},
+			},
 		},
 	}
 
@@ -276,6 +299,25 @@ func TestSandboxRoundTrip(t *testing.T) {
 	assert.Equal(t, original.Spec.Template.Image, back.Spec.Template.Image)
 	require.NotNil(t, back.Spec.Template.UserNamespaces)
 	assert.Equal(t, *original.Spec.Template.UserNamespaces, *back.Spec.Template.UserNamespaces)
+
+	// Policy round-trip
+	require.NotNil(t, back.Spec.Policy)
+	assert.Equal(t, uint32(3), back.Spec.Policy.Version)
+	require.NotNil(t, back.Spec.Policy.Filesystem)
+	assert.True(t, back.Spec.Policy.Filesystem.IncludeWorkdir)
+	assert.Equal(t, []string{"/etc", "/usr/share"}, back.Spec.Policy.Filesystem.ReadOnly)
+	assert.Equal(t, []string{"/tmp"}, back.Spec.Policy.Filesystem.ReadWrite)
+	require.NotNil(t, back.Spec.Policy.Landlock)
+	assert.Equal(t, "best_effort", back.Spec.Policy.Landlock.Compatibility)
+	require.NotNil(t, back.Spec.Policy.Process)
+	assert.Equal(t, "sandbox", back.Spec.Policy.Process.RunAsUser)
+	assert.Equal(t, "sandbox-group", back.Spec.Policy.Process.RunAsGroup)
+	require.Len(t, back.Spec.Policy.NetworkPolicies, 1)
+	webRule, ok := back.Spec.Policy.NetworkPolicies["web"]
+	require.True(t, ok)
+	assert.Equal(t, "web", webRule.Name)
+	require.Len(t, webRule.Endpoints, 1)
+	assert.Equal(t, "api.example.com", webRule.Endpoints[0].Host)
 }
 
 func TestSandboxSpecToProto(t *testing.T) {
@@ -288,6 +330,12 @@ func TestSandboxSpecToProto(t *testing.T) {
 		},
 		Providers: []string{"prov"},
 		GPUCount:  &gpuCount,
+		Policy: &v1.SandboxPolicy{
+			Version: 2,
+			Filesystem: &v1.FilesystemPolicy{
+				ReadOnly: []string{"/etc"},
+			},
+		},
 	}
 
 	p := SandboxSpecToProto(spec)
@@ -300,6 +348,12 @@ func TestSandboxSpecToProto(t *testing.T) {
 	assert.Equal(t, uint32(3), p.ResourceRequirements.Gpu.GetCount())
 	require.NotNil(t, p.Template)
 	assert.Equal(t, "img:spec", p.Template.Image)
+
+	// Policy conversion
+	require.NotNil(t, p.Policy)
+	assert.Equal(t, uint32(2), p.Policy.Version)
+	require.NotNil(t, p.Policy.Filesystem)
+	assert.Equal(t, []string{"/etc"}, p.Policy.Filesystem.ReadOnly)
 }
 
 func TestSandboxSpecToProto_Nil(t *testing.T) {

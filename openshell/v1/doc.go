@@ -213,6 +213,57 @@
 //	    v1.WithTunnelServiceID("dev-ssh"),
 //	)
 //
+// # Sandbox Policy
+//
+// Set an initial security policy when creating a sandbox:
+//
+//	sandbox, err := client.Sandboxes().Create(ctx, "secure-sandbox", &v1.SandboxSpec{
+//	    Template: &v1.SandboxTemplate{Image: "python:3.12"},
+//	    Policy: &v1.SandboxPolicy{
+//	        Version: 1,
+//	        Filesystem: &v1.FilesystemPolicy{
+//	            IncludeWorkdir: true,
+//	            ReadOnly:       []string{"/usr", "/lib"},
+//	        },
+//	        Process: &v1.ProcessPolicy{
+//	            RunAsUser:  "sandbox",
+//	            RunAsGroup: "sandbox",
+//	        },
+//	        NetworkPolicies: map[string]v1.NetworkPolicyRule{
+//	            "allow-api": {
+//	                Name: "allow-api",
+//	                Endpoints: []v1.PolicyNetworkEndpoint{
+//	                    {Host: "api.example.com", Port: 443, Protocol: "tcp"},
+//	                },
+//	            },
+//	        },
+//	    },
+//	}, nil)
+//
+// Replace the full policy at runtime via configuration update:
+//
+//	result, err := client.Config().Update(ctx, &v1.ConfigUpdate{
+//	    Name: "secure-sandbox",
+//	    Policy: &v1.SandboxPolicy{
+//	        Version: 2,
+//	        NetworkPolicies: map[string]v1.NetworkPolicyRule{
+//	            "allow-all": {Name: "allow-all"},
+//	        },
+//	    },
+//	})
+//
+// Read a policy back from revision history:
+//
+//	revisions, err := client.Policy().List(ctx, "secure-sandbox")
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	for _, rev := range revisions {
+//	    if rev.Policy != nil {
+//	        fmt.Printf("v%d: %d network rules\n", rev.Version, len(rev.Policy.NetworkPolicies))
+//	    }
+//	}
+//
 // # Configuration Management
 //
 // Read sandbox and gateway configuration, and update settings:

@@ -53,8 +53,8 @@ type EffectiveSetting struct {
 // SandboxConfig represents the full configuration state of a sandbox,
 // including policy, effective settings, and revision metadata.
 type SandboxConfig struct {
-	// Policy is the opaque SandboxPolicy proto bytes.
-	Policy []byte
+	// Policy is the typed security policy for this sandbox. Nil means no policy in the response.
+	Policy *SandboxPolicy
 	// PolicyVersion is monotonically increasing per sandbox.
 	PolicyVersion uint32
 	// PolicyHash is the SHA-256 of the serialized policy payload.
@@ -85,8 +85,8 @@ type GatewayConfig struct {
 type ConfigUpdate struct {
 	// Name is the sandbox name (required for sandbox-scoped updates).
 	Name string
-	// Policy is the opaque SandboxPolicy proto bytes.
-	Policy []byte
+	// Policy is the typed security policy for a full policy replacement. Nil means no policy change.
+	Policy *SandboxPolicy
 	// SettingKey is a single setting key to mutate.
 	SettingKey string
 	// SettingValue is the setting value for upsert. Nil means no value change.

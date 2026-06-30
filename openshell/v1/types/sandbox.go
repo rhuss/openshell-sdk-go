@@ -23,6 +23,8 @@ type SandboxSpec struct {
 	Template    *SandboxTemplate
 	Providers   []string
 	GPUCount    *uint32
+	// Policy is the security policy for the sandbox. Nil means no policy specified.
+	Policy *SandboxPolicy
 }
 
 // SandboxTemplate defines the container template for a sandbox.

@@ -9,6 +9,18 @@ import (
 	"github.com/rhuss/openshell-sdk-go/openshell/v1/types"
 )
 
+// SandboxPolicy is the top-level security policy configuration for a sandbox.
+type SandboxPolicy = types.SandboxPolicy
+
+// FilesystemPolicy controls which directories the sandbox can access.
+type FilesystemPolicy = types.FilesystemPolicy
+
+// LandlockPolicy configures the Linux Landlock LSM.
+type LandlockPolicy = types.LandlockPolicy
+
+// ProcessPolicy controls the user and group identity for sandboxed processes.
+type ProcessPolicy = types.ProcessPolicy
+
 // PolicyChunk represents a single proposed policy change in the draft inbox.
 type PolicyChunk = types.PolicyChunk
 

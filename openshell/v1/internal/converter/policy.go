@@ -4,10 +4,9 @@
 package converter
 
 import (
-	"google.golang.org/protobuf/proto"
-
 	"github.com/rhuss/openshell-sdk-go/openshell/v1/types"
 	pb "github.com/rhuss/openshell-sdk-go/proto/openshellv1"
+	sbv1 "github.com/rhuss/openshell-sdk-go/proto/sandboxv1"
 )
 
 // --- PolicyLoadStatus enum mapping ---
@@ -96,18 +95,118 @@ func DraftPolicyFromProto(r *pb.GetDraftPolicyResponse) *types.DraftPolicy {
 	return result
 }
 
+// --- SandboxPolicy ---
+
+// SandboxPolicyFromProto converts a proto SandboxPolicy to an SDK SandboxPolicy.
+// Returns nil for nil input. All slice and map fields are deep-copied.
+func SandboxPolicyFromProto(p *sbv1.SandboxPolicy) *types.SandboxPolicy {
+	if p == nil {
+		return nil
+	}
+	result := &types.SandboxPolicy{
+		Version:    p.GetVersion(),
+		Filesystem: filesystemPolicyFromProto(p.GetFilesystem()),
+		Landlock:   landlockPolicyFromProto(p.GetLandlock()),
+		Process:    processPolicyFromProto(p.GetProcess()),
+	}
+	if np := p.GetNetworkPolicies(); np != nil {
+		result.NetworkPolicies = make(map[string]types.NetworkPolicyRule, len(np))
+		for k, v := range np {
+			if converted := NetworkPolicyRuleFromProto(v); converted != nil {
+				result.NetworkPolicies[k] = *converted
+			}
+		}
+	}
+	return result
+}
+
+// SandboxPolicyToProto converts an SDK SandboxPolicy to a proto SandboxPolicy.
+// Returns nil for nil input. All slice and map fields are deep-copied.
+func SandboxPolicyToProto(p *types.SandboxPolicy) *sbv1.SandboxPolicy {
+	if p == nil {
+		return nil
+	}
+	result := &sbv1.SandboxPolicy{
+		Version:    p.Version,
+		Filesystem: filesystemPolicyToProto(p.Filesystem),
+		Landlock:   landlockPolicyToProto(p.Landlock),
+		Process:    processPolicyToProto(p.Process),
+	}
+	if p.NetworkPolicies != nil {
+		result.NetworkPolicies = make(map[string]*sbv1.NetworkPolicyRule, len(p.NetworkPolicies))
+		for k, v := range p.NetworkPolicies {
+			result.NetworkPolicies[k] = NetworkPolicyRuleToProto(&v)
+		}
+	}
+	return result
+}
+
+func filesystemPolicyFromProto(f *sbv1.FilesystemPolicy) *types.FilesystemPolicy {
+	if f == nil {
+		return nil
+	}
+	return &types.FilesystemPolicy{
+		IncludeWorkdir: f.GetIncludeWorkdir(),
+		ReadOnly:       CopyStringSlice(f.GetReadOnly()),
+		ReadWrite:      CopyStringSlice(f.GetReadWrite()),
+	}
+}
+
+func filesystemPolicyToProto(f *types.FilesystemPolicy) *sbv1.FilesystemPolicy {
+	if f == nil {
+		return nil
+	}
+	return &sbv1.FilesystemPolicy{
+		IncludeWorkdir: f.IncludeWorkdir,
+		ReadOnly:       CopyStringSlice(f.ReadOnly),
+		ReadWrite:      CopyStringSlice(f.ReadWrite),
+	}
+}
+
+func landlockPolicyFromProto(l *sbv1.LandlockPolicy) *types.LandlockPolicy {
+	if l == nil {
+		return nil
+	}
+	return &types.LandlockPolicy{
+		Compatibility: l.GetCompatibility(),
+	}
+}
+
+func landlockPolicyToProto(l *types.LandlockPolicy) *sbv1.LandlockPolicy {
+	if l == nil {
+		return nil
+	}
+	return &sbv1.LandlockPolicy{
+		Compatibility: l.Compatibility,
+	}
+}
+
+func processPolicyFromProto(p *sbv1.ProcessPolicy) *types.ProcessPolicy {
+	if p == nil {
+		return nil
+	}
+	return &types.ProcessPolicy{
+		RunAsUser:  p.GetRunAsUser(),
+		RunAsGroup: p.GetRunAsGroup(),
+	}
+}
+
+func processPolicyToProto(p *types.ProcessPolicy) *sbv1.ProcessPolicy {
+	if p == nil {
+		return nil
+	}
+	return &sbv1.ProcessPolicy{
+		RunAsUser:  p.RunAsUser,
+		RunAsGroup: p.RunAsGroup,
+	}
+}
+
 // --- SandboxPolicyRevision ---
 
 // SandboxPolicyRevisionFromProto converts a proto SandboxPolicyRevision to an SDK SandboxPolicyRevision.
 func SandboxPolicyRevisionFromProto(r *pb.SandboxPolicyRevision) *types.SandboxPolicyRevision {
 	if r == nil {
 		return nil
-	}
-	var policyBytes []byte
-	if p := r.GetPolicy(); p != nil {
-		if b, err := proto.Marshal(p); err == nil {
-			policyBytes = CopyByteSlice(b)
-		}
 	}
 	return &types.SandboxPolicyRevision{
 		Version:    r.GetVersion(),
@@ -116,7 +215,7 @@ func SandboxPolicyRevisionFromProto(r *pb.SandboxPolicyRevision) *types.SandboxP
 		LoadError:  r.GetLoadError(),
 		CreatedAt:  TimeFromMillis(r.GetCreatedAtMs()),
 		LoadedAt:   TimeFromMillis(r.GetLoadedAtMs()),
-		Policy:     policyBytes,
+		Policy:     SandboxPolicyFromProto(r.GetPolicy()),
 	}
 }
 
