@@ -9,7 +9,6 @@ import (
 	v1 "github.com/rhuss/openshell-sdk-go/openshell/v1/types"
 	pb "github.com/rhuss/openshell-sdk-go/proto/openshellv1"
 	sbv1 "github.com/rhuss/openshell-sdk-go/proto/sandboxv1"
-	"google.golang.org/protobuf/proto"
 )
 
 // --- SettingValue oneof conversion ---
@@ -132,12 +131,8 @@ func SandboxConfigFromProto(resp *sbv1.GetSandboxConfigResponse) *v1.SandboxConf
 		ProviderEnvRevision: resp.GetProviderEnvRevision(),
 	}
 
-	// Serialize SandboxPolicy to opaque bytes.
-	if p := resp.GetPolicy(); p != nil {
-		if b, err := proto.Marshal(p); err == nil {
-			sc.Policy = b
-		}
-	}
+	// Convert proto SandboxPolicy to typed SDK SandboxPolicy.
+	sc.Policy = SandboxPolicyFromProto(resp.GetPolicy())
 
 	// Deep-copy settings map.
 	if m := resp.GetSettings(); len(m) > 0 {
@@ -192,13 +187,8 @@ func ConfigUpdateToProto(cu *v1.ConfigUpdate) (*pb.UpdateConfigRequest, error) {
 		ExpectedResourceVersion: cu.ExpectedResourceVersion,
 	}
 
-	if cu.Policy != nil {
-		policy := &sbv1.SandboxPolicy{}
-		if err := proto.Unmarshal(cu.Policy, policy); err != nil {
-			return nil, fmt.Errorf("invalid policy bytes: %w", err)
-		}
-		req.Policy = policy
-	}
+	// Convert typed SDK SandboxPolicy to proto SandboxPolicy.
+	req.Policy = SandboxPolicyToProto(cu.Policy)
 
 	// Convert typed merge operations with validation.
 	if len(cu.MergeOperations) > 0 {

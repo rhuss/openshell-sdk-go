@@ -43,7 +43,103 @@ func copySandboxSpec(s types.SandboxSpec) types.SandboxSpec {
 		v := *s.GPUCount
 		s.GPUCount = &v
 	}
+	s.Policy = copySandboxPolicy(s.Policy)
 	return s
+}
+
+// copySandboxPolicy returns a deep copy of a SandboxPolicy pointer.
+// All sub-policies, slices, and map entries are duplicated.
+func copySandboxPolicy(p *types.SandboxPolicy) *types.SandboxPolicy {
+	if p == nil {
+		return nil
+	}
+	cp := *p
+	if p.Filesystem != nil {
+		fs := *p.Filesystem
+		fs.ReadOnly = copyStringSlice(p.Filesystem.ReadOnly)
+		fs.ReadWrite = copyStringSlice(p.Filesystem.ReadWrite)
+		cp.Filesystem = &fs
+	}
+	if p.Landlock != nil {
+		ll := *p.Landlock
+		cp.Landlock = &ll
+	}
+	if p.Process != nil {
+		pr := *p.Process
+		cp.Process = &pr
+	}
+	if p.NetworkPolicies != nil {
+		np := make(map[string]types.NetworkPolicyRule, len(p.NetworkPolicies))
+		for k, rule := range p.NetworkPolicies {
+			r := rule
+			if rule.Endpoints != nil {
+				eps := make([]types.PolicyNetworkEndpoint, len(rule.Endpoints))
+				for i, ep := range rule.Endpoints {
+					eps[i] = copyPolicyNetworkEndpoint(ep)
+				}
+				r.Endpoints = eps
+			}
+			if rule.Binaries != nil {
+				bins := make([]types.PolicyNetworkBinary, len(rule.Binaries))
+				copy(bins, rule.Binaries)
+				r.Binaries = bins
+			}
+			np[k] = r
+		}
+		cp.NetworkPolicies = np
+	}
+	return &cp
+}
+
+func copyPolicyNetworkEndpoint(ep types.PolicyNetworkEndpoint) types.PolicyNetworkEndpoint {
+	if ep.Ports != nil {
+		ports := make([]uint32, len(ep.Ports))
+		copy(ports, ep.Ports)
+		ep.Ports = ports
+	}
+	if ep.Rules != nil {
+		rules := make([]types.L7Rule, len(ep.Rules))
+		for i, r := range ep.Rules {
+			if r.Allow != nil {
+				a := *r.Allow
+				a.Query = copyL7QueryMap(r.Allow.Query)
+				a.Fields = copyStringSlice(r.Allow.Fields)
+				rules[i] = types.L7Rule{Allow: &a}
+			}
+		}
+		ep.Rules = rules
+	}
+	ep.AllowedIPs = copyStringSlice(ep.AllowedIPs)
+	if ep.DenyRules != nil {
+		drs := make([]types.L7DenyRule, len(ep.DenyRules))
+		for i, dr := range ep.DenyRules {
+			dr.Query = copyL7QueryMap(dr.Query)
+			dr.Fields = copyStringSlice(dr.Fields)
+			drs[i] = dr
+		}
+		ep.DenyRules = drs
+	}
+	if ep.GraphqlPersistedQueries != nil {
+		gq := make(map[string]types.GraphqlOperation, len(ep.GraphqlPersistedQueries))
+		for k, v := range ep.GraphqlPersistedQueries {
+			v.Fields = copyStringSlice(v.Fields)
+			gq[k] = v
+		}
+		ep.GraphqlPersistedQueries = gq
+	}
+	return ep
+}
+
+func copyL7QueryMap(m map[string]types.L7QueryMatcher) map[string]types.L7QueryMatcher {
+	if m == nil {
+		return nil
+	}
+	cp := make(map[string]types.L7QueryMatcher, len(m))
+	for k, v := range m {
+		v.Any = copyStringSlice(v.Any)
+		cp[k] = v
+	}
+	return cp
 }
 
 func copySandboxTemplate(t types.SandboxTemplate) types.SandboxTemplate {

@@ -11,7 +11,6 @@ import (
 	sbv1 "github.com/rhuss/openshell-sdk-go/proto/sandboxv1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/proto"
 )
 
 // --- SettingValue oneof mapping ---
@@ -244,12 +243,13 @@ func TestEffectiveSettingFromProto_Nil(t *testing.T) {
 // --- SandboxConfig (GetSandboxConfigResponse → SandboxConfig) ---
 
 func TestSandboxConfigFromProto(t *testing.T) {
-	policy := &sbv1.SandboxPolicy{}
-	policyBytes, err := proto.Marshal(policy)
-	require.NoError(t, err)
-
 	resp := &sbv1.GetSandboxConfigResponse{
-		Policy:  policy,
+		Policy: &sbv1.SandboxPolicy{
+			Version: 7,
+			Filesystem: &sbv1.FilesystemPolicy{
+				ReadOnly: []string{"/etc"},
+			},
+		},
 		Version: 3,
 		PolicyHash:          "sha256:abc",
 		Settings: map[string]*sbv1.EffectiveSetting{
@@ -275,7 +275,10 @@ func TestSandboxConfigFromProto(t *testing.T) {
 	sc := SandboxConfigFromProto(resp)
 
 	require.NotNil(t, sc)
-	assert.Equal(t, policyBytes, sc.Policy)
+	require.NotNil(t, sc.Policy, "typed SandboxPolicy must be populated")
+	assert.Equal(t, uint32(7), sc.Policy.Version)
+	require.NotNil(t, sc.Policy.Filesystem)
+	assert.Equal(t, []string{"/etc"}, sc.Policy.Filesystem.ReadOnly)
 	assert.Equal(t, uint32(3), sc.PolicyVersion)
 	assert.Equal(t, "sha256:abc", sc.PolicyHash)
 	assert.Equal(t, uint64(100), sc.ConfigRevision)
@@ -432,21 +435,24 @@ func TestConfigUpdateToProto(t *testing.T) {
 }
 
 func TestConfigUpdateToProto_WithPolicy(t *testing.T) {
-	// Policy bytes must be valid proto-encoded SandboxPolicy.
-	policy := &sbv1.SandboxPolicy{}
-	policyBytes, err := proto.Marshal(policy)
-	require.NoError(t, err)
-
 	cu := &v1.ConfigUpdate{
-		Name:   "sb-policy",
-		Policy: policyBytes,
+		Name: "sb-policy",
+		Policy: &v1.SandboxPolicy{
+			Version: 3,
+			Filesystem: &v1.FilesystemPolicy{
+				ReadOnly: []string{"/etc"},
+			},
+		},
 	}
 
 	req, err := ConfigUpdateToProto(cu)
 	require.NoError(t, err)
 
 	require.NotNil(t, req)
-	require.NotNil(t, req.Policy, "valid proto bytes must deserialize into SandboxPolicy")
+	require.NotNil(t, req.Policy, "typed SandboxPolicy must be converted to proto")
+	assert.Equal(t, uint32(3), req.Policy.GetVersion())
+	require.NotNil(t, req.Policy.GetFilesystem())
+	assert.Equal(t, []string{"/etc"}, req.Policy.GetFilesystem().GetReadOnly())
 }
 
 func TestConfigUpdateToProto_WithDeleteSetting(t *testing.T) {
@@ -501,15 +507,16 @@ func TestConfigUpdateToProto_Nil(t *testing.T) {
 	assert.Nil(t, req)
 }
 
-func TestConfigUpdateToProto_InvalidPolicyBytes(t *testing.T) {
+func TestConfigUpdateToProto_NilPolicy(t *testing.T) {
 	cu := &v1.ConfigUpdate{
-		Name:   "sb-bad-policy",
-		Policy: []byte{0xFF, 0xFE, 0xFD},
+		Name: "sb-nil-policy",
 	}
 
-	_, err := ConfigUpdateToProto(cu)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid policy bytes")
+	req, err := ConfigUpdateToProto(cu)
+	require.NoError(t, err)
+
+	require.NotNil(t, req)
+	assert.Nil(t, req.Policy, "nil SDK policy must produce nil proto policy")
 }
 
 // --- ConfigUpdateResult (UpdateConfigResponse → ConfigUpdateResult) ---

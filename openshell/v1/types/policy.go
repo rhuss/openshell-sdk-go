@@ -92,6 +92,53 @@ type DraftPolicy struct {
 	LastAnalyzedAt time.Time
 }
 
+// SandboxPolicy is the top-level security policy configuration for a sandbox.
+// It contains filesystem access rules, Landlock LSM configuration, process
+// identity rules, and named network access policies.
+type SandboxPolicy struct {
+	// Version is the policy version number. The server may override this on write.
+	Version uint32
+	// Filesystem controls which directories the sandbox can access.
+	// Nil means no filesystem policy is specified.
+	Filesystem *FilesystemPolicy
+	// Landlock configures the Linux Landlock LSM.
+	// Nil means no landlock policy is specified.
+	Landlock *LandlockPolicy
+	// Process controls the user and group identity for sandboxed processes.
+	// Nil means no process policy is specified.
+	Process *ProcessPolicy
+	// NetworkPolicies contains named network access rules.
+	// Nil means no network policies are specified; an empty map is distinct from nil.
+	NetworkPolicies map[string]NetworkPolicyRule
+}
+
+// FilesystemPolicy controls which directories the sandbox can access
+// in read-only or read-write mode.
+type FilesystemPolicy struct {
+	// IncludeWorkdir auto-includes the working directory as read-write.
+	IncludeWorkdir bool
+	// ReadOnly is the list of read-only directory paths.
+	// Nil means no read-only directories; an empty slice is distinct from nil.
+	ReadOnly []string
+	// ReadWrite is the list of read-write directory paths.
+	// Nil means no read-write directories; an empty slice is distinct from nil.
+	ReadWrite []string
+}
+
+// LandlockPolicy configures the Linux Landlock LSM for filesystem restriction enforcement.
+type LandlockPolicy struct {
+	// Compatibility is the compatibility mode (e.g., "best_effort", "hard_requirement").
+	Compatibility string
+}
+
+// ProcessPolicy controls the user and group identity under which sandboxed processes execute.
+type ProcessPolicy struct {
+	// RunAsUser is the user name for sandboxed processes.
+	RunAsUser string
+	// RunAsGroup is the group name for sandboxed processes.
+	RunAsGroup string
+}
+
 // SandboxPolicyRevision represents a versioned policy revision for a sandbox.
 type SandboxPolicyRevision struct {
 	// Version is the policy version (monotonically increasing per sandbox).
@@ -106,8 +153,8 @@ type SandboxPolicyRevision struct {
 	CreatedAt time.Time
 	// LoadedAt is when this revision was loaded by the sandbox.
 	LoadedAt time.Time
-	// Policy is the full policy (opaque bytes, only populated when requested).
-	Policy []byte
+	// Policy is the typed security policy for this revision. Nil when not requested or absent.
+	Policy *SandboxPolicy
 }
 
 // PolicyStatusResult contains the status of a sandbox's policy.

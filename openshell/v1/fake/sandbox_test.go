@@ -696,6 +696,105 @@ func TestSandbox_Watch_StopOnTerminal_False_DoesNotClose(t *testing.T) {
 	}
 }
 
+// --- T016: Sandbox Create with Policy ---
+
+func TestFakeSandboxCreateWithPolicy(t *testing.T) {
+	sc := newTestSandboxClient()
+	ctx := context.Background()
+
+	spec := &types.SandboxSpec{
+		LogLevel: "debug",
+		Policy: &types.SandboxPolicy{
+			Version: 3,
+			Filesystem: &types.FilesystemPolicy{
+				IncludeWorkdir: true,
+				ReadOnly:       []string{"/etc", "/usr/share"},
+				ReadWrite:      []string{"/tmp"},
+			},
+			Landlock: &types.LandlockPolicy{
+				Compatibility: "best_effort",
+			},
+			Process: &types.ProcessPolicy{
+				RunAsUser:  "sandbox",
+				RunAsGroup: "sandbox-group",
+			},
+			NetworkPolicies: map[string]types.NetworkPolicyRule{
+				"web": {
+					Name: "web",
+					Endpoints: []types.PolicyNetworkEndpoint{
+						{Host: "api.example.com", Port: 443, Protocol: "rest"},
+					},
+				},
+			},
+		},
+	}
+
+	created, err := sc.Create(ctx, "policy-sb", spec, nil)
+	require.NoError(t, err)
+
+	// Verify created sandbox has policy
+	require.NotNil(t, created.Spec.Policy)
+	assert.Equal(t, uint32(3), created.Spec.Policy.Version)
+
+	// Get it back and verify all fields
+	got, err := sc.Get(ctx, "policy-sb")
+	require.NoError(t, err)
+	require.NotNil(t, got.Spec.Policy)
+
+	p := got.Spec.Policy
+	assert.Equal(t, uint32(3), p.Version)
+
+	require.NotNil(t, p.Filesystem)
+	assert.True(t, p.Filesystem.IncludeWorkdir)
+	assert.Equal(t, []string{"/etc", "/usr/share"}, p.Filesystem.ReadOnly)
+	assert.Equal(t, []string{"/tmp"}, p.Filesystem.ReadWrite)
+
+	require.NotNil(t, p.Landlock)
+	assert.Equal(t, "best_effort", p.Landlock.Compatibility)
+
+	require.NotNil(t, p.Process)
+	assert.Equal(t, "sandbox", p.Process.RunAsUser)
+	assert.Equal(t, "sandbox-group", p.Process.RunAsGroup)
+
+	require.Len(t, p.NetworkPolicies, 1)
+	webRule, ok := p.NetworkPolicies["web"]
+	require.True(t, ok)
+	assert.Equal(t, "web", webRule.Name)
+	require.Len(t, webRule.Endpoints, 1)
+	assert.Equal(t, "api.example.com", webRule.Endpoints[0].Host)
+	assert.Equal(t, uint32(443), webRule.Endpoints[0].Port)
+
+	// Deep-copy isolation: mutate input spec, verify stored copy unchanged
+	spec.Policy.Version = 99
+	spec.Policy.Filesystem.ReadOnly[0] = "mutated"
+	spec.Policy.NetworkPolicies["web"] = types.NetworkPolicyRule{Name: "mutated"}
+
+	got2, err := sc.Get(ctx, "policy-sb")
+	require.NoError(t, err)
+	assert.Equal(t, uint32(3), got2.Spec.Policy.Version)
+	assert.Equal(t, "/etc", got2.Spec.Policy.Filesystem.ReadOnly[0])
+	assert.Equal(t, "web", got2.Spec.Policy.NetworkPolicies["web"].Name)
+
+	// Deep-copy isolation: mutate returned object, verify store unchanged
+	got.Spec.Policy.Filesystem.ReadWrite[0] = "mutated"
+	got3, err := sc.Get(ctx, "policy-sb")
+	require.NoError(t, err)
+	assert.Equal(t, "/tmp", got3.Spec.Policy.Filesystem.ReadWrite[0])
+}
+
+func TestFakeSandboxCreateWithNilPolicy(t *testing.T) {
+	sc := newTestSandboxClient()
+	ctx := context.Background()
+
+	created, err := sc.Create(ctx, "no-policy-sb", &types.SandboxSpec{LogLevel: "info"}, nil)
+	require.NoError(t, err)
+	assert.Nil(t, created.Spec.Policy)
+
+	got, err := sc.Get(ctx, "no-policy-sb")
+	require.NoError(t, err)
+	assert.Nil(t, got.Spec.Policy)
+}
+
 // --- T032: GetLogs stub tests ---
 
 func TestSandbox_GetLogs_ReturnsUnimplemented(t *testing.T) {

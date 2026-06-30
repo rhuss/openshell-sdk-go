@@ -19,7 +19,6 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
-	"google.golang.org/protobuf/proto"
 )
 
 // --- Mock server for Config RPCs ---
@@ -104,13 +103,14 @@ func setupConfigTest(t *testing.T, mock *mockConfigServer) (*configClient, func(
 // --- GetSandbox tests ---
 
 func TestConfigGetSandbox(t *testing.T) {
-	policy := &sbv1.SandboxPolicy{}
-	policyBytes, err := proto.Marshal(policy)
-	require.NoError(t, err)
-
 	mock := newMockConfigServer()
 	mock.sandboxResp = &sbv1.GetSandboxConfigResponse{
-		Policy:      policy,
+		Policy: &sbv1.SandboxPolicy{
+			Version: 4,
+			Filesystem: &sbv1.FilesystemPolicy{
+				ReadOnly: []string{"/etc"},
+			},
+		},
 		Version:     3,
 		PolicyHash:  "sha256:deadbeef",
 		ConfigRevision:      42,
@@ -154,8 +154,11 @@ func TestConfigGetSandbox(t *testing.T) {
 	assert.Equal(t, uint32(1), sc.GlobalPolicyVersion)
 	assert.Equal(t, uint64(7), sc.ProviderEnvRevision)
 
-	// Opaque policy bytes.
-	assert.Equal(t, policyBytes, sc.Policy)
+	// Typed SandboxPolicy.
+	require.NotNil(t, sc.Policy)
+	assert.Equal(t, uint32(4), sc.Policy.Version)
+	require.NotNil(t, sc.Policy.Filesystem)
+	assert.Equal(t, []string{"/etc"}, sc.Policy.Filesystem.ReadOnly)
 
 	// Settings map.
 	require.Len(t, sc.Settings, 2)
@@ -388,14 +391,14 @@ func TestConfigUpdate_WithPolicy(t *testing.T) {
 	client, cleanup := setupConfigTest(t, mock)
 	defer cleanup()
 
-	// Create opaque policy bytes from a SandboxPolicy proto.
-	originalPolicy := &sbv1.SandboxPolicy{}
-	policyBytes, err := proto.Marshal(originalPolicy)
-	require.NoError(t, err)
-
 	update := &ConfigUpdate{
-		Name:   "my-sandbox",
-		Policy: policyBytes,
+		Name: "my-sandbox",
+		Policy: &types.SandboxPolicy{
+			Version: 5,
+			Filesystem: &types.FilesystemPolicy{
+				ReadOnly: []string{"/usr"},
+			},
+		},
 	}
 
 	result, err := client.Update(context.Background(), update)
@@ -404,14 +407,15 @@ func TestConfigUpdate_WithPolicy(t *testing.T) {
 	require.NotNil(t, result)
 	assert.Equal(t, uint32(2), result.Version)
 
-	// Verify the policy was deserialized and sent as proto.
+	// Verify the typed policy was converted and sent as proto.
 	mock.mu.Lock()
 	req := mock.lastUpdateReq
 	mock.mu.Unlock()
 
-	// The converter deserializes opaque bytes → SandboxPolicy proto.
-	// An empty policy still produces a non-nil proto message.
-	assert.NotNil(t, req.GetPolicy())
+	require.NotNil(t, req.GetPolicy())
+	assert.Equal(t, uint32(5), req.GetPolicy().GetVersion())
+	require.NotNil(t, req.GetPolicy().GetFilesystem())
+	assert.Equal(t, []string{"/usr"}, req.GetPolicy().GetFilesystem().GetReadOnly())
 }
 
 func TestConfigUpdate_Error(t *testing.T) {
