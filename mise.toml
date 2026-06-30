@@ -7,7 +7,7 @@ protoc = "29.6"
 
 [tasks.test]
 description = "Run unit tests with coverage"
-run = "go test -coverprofile=coverage.out -race ./..."
+run = "go test -coverprofile=coverage.out -coverpkg=./openshell/... -race ./..."
 
 [tasks."test:integration"]
 description = "Run integration tests"
