@@ -4,14 +4,6 @@ Accessor: `client.Config()`
 
 Retrieve and update configuration for sandboxes and the gateway.
 
-## Methods
-
-| SDK Method | gRPC RPC | Proto File | Description |
-|------------|----------|------------|-------------|
-| `GetSandbox(ctx, sandboxID string)` | `GetSandboxConfig` | `openshell.proto` | Get sandbox configuration |
-| `GetGateway(ctx)` | `GetGatewayConfig` | `openshell.proto` | Get gateway configuration |
-| `Update(ctx, update *ConfigUpdate)` | `UpdateConfig` | `openshell.proto` | Apply a configuration update |
-
 ## GetSandbox
 
 Retrieve the current configuration for a specific sandbox.

@@ -19,7 +19,7 @@ body,
 }
 
 .content {
-    font-size: 20px;
+    font-size: 18px;
     line-height: 1.7;
     max-width: none;
     padding: 0 4em;
@@ -83,7 +83,7 @@ body,
 
 .content pre > code,
 .content pre > code.hljs {
-    font-size: 18px;
+    font-size: 16px;
     padding: 1em 1em !important;
     display: block;
 }
@@ -123,6 +123,7 @@ body,
     line-height: 1.7;
     margin: 0;
     padding: 0;
+    padding-left: 1em;
 }
 
 /* On-this-page sub-navigation */

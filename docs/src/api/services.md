@@ -5,15 +5,6 @@ Accessor: `client.Services()`
 Expose, inspect, and manage network services attached to sandboxes. Services provide
 external access to ports running inside a sandbox via managed endpoints.
 
-## Methods
-
-| SDK Method | gRPC RPC | Proto File | Description |
-|------------|----------|------------|-------------|
-| `Expose(ctx, sandboxName, serviceName string, targetPort uint32, domain bool)` | `ExposeService` | `openshell.proto` | Expose a sandbox port as a named service |
-| `Get(ctx, sandboxName, serviceName string)` | `GetService` | `openshell.proto` | Get details of an exposed service |
-| `List(ctx, sandboxName string, opts ...ListOptions)` | `ListServices` | `openshell.proto` | List all services for a sandbox |
-| `Delete(ctx, sandboxName, serviceName string)` | `DeleteService` | `openshell.proto` | Remove an exposed service |
-
 ## Expose
 
 Expose a port from a sandbox as a named service endpoint. Set `domain` to `true`

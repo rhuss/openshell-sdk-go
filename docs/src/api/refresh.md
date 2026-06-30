@@ -5,15 +5,6 @@ Accessor: `client.Providers().Refresh()`
 Manage credential refresh schedules for provider profiles. Configure automatic
 rotation of API keys and monitor refresh status.
 
-## Methods
-
-| SDK Method | gRPC RPC | Proto File | Description |
-|------------|----------|------------|-------------|
-| `GetStatus(ctx, provider, credentialKey string)` | `GetProviderRefreshStatus` | `openshell.proto` | Get refresh status for a credential |
-| `Configure(ctx, config *RefreshConfig)` | `ConfigureProviderRefresh` | `openshell.proto` | Set up automatic credential refresh |
-| `Rotate(ctx, provider, credentialKey string)` | `RotateProviderCredential` | `openshell.proto` | Manually trigger a credential rotation |
-| `Delete(ctx, provider, credentialKey string)` | `DeleteProviderRefresh` | `openshell.proto` | Remove a refresh configuration |
-
 ## GetStatus
 
 Check the refresh status for a specific provider credential.

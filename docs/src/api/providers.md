@@ -33,14 +33,6 @@ if err != nil {
 fmt.Println("Created provider:", provider.Name)
 ```
 
-**gRPC (Proto):**
-
-```protobuf
-rpc CreateProvider(CreateProviderRequest) returns (ProviderResponse);
-```
-
-
-
 ## Get
 
 Fetch a provider by name.
@@ -60,14 +52,6 @@ if err != nil {
 }
 fmt.Println("Provider type:", provider.Type)
 ```
-
-**gRPC (Proto):**
-
-```protobuf
-rpc GetProvider(GetProviderRequest) returns (ProviderResponse);
-```
-
-
 
 ## List
 
@@ -98,14 +82,6 @@ providers, err = client.Providers().List(ctx, v1.ListOptions{
 })
 ```
 
-**gRPC (Proto):**
-
-```protobuf
-rpc ListProviders(ListProvidersRequest) returns (ListProvidersResponse);
-```
-
-
-
 ## Update
 
 Update an existing provider's configuration or credentials.
@@ -132,14 +108,6 @@ if err != nil {
 fmt.Println("Updated provider:", updated.Name)
 ```
 
-**gRPC (Proto):**
-
-```protobuf
-rpc UpdateProvider(UpdateProviderRequest) returns (ProviderResponse);
-```
-
-
-
 ## Delete
 
 Remove a provider by name.
@@ -158,14 +126,6 @@ if err != nil {
     log.Fatal(err)
 }
 ```
-
-**gRPC (Proto):**
-
-```protobuf
-rpc DeleteProvider(DeleteProviderRequest) returns (DeleteProviderResponse);
-```
-
-
 
 ## Ensure
 
@@ -195,18 +155,7 @@ if err != nil {
 fmt.Println("Provider ready:", provider.Name)
 ```
 
-**gRPC (Proto):**
-
-```protobuf
-// Ensure is an SDK-level convenience. It calls GetProvider first,
-// then either CreateProvider or UpdateProvider depending on whether
-// the provider already exists.
-rpc CreateProvider(CreateProviderRequest) returns (ProviderResponse);
-rpc GetProvider(GetProviderRequest) returns (ProviderResponse);
-rpc UpdateProvider(UpdateProviderRequest) returns (ProviderResponse);
-```
-
-
+Ensure is an SDK-level convenience. It calls `GetProvider` first, then either `CreateProvider` or `UpdateProvider` depending on whether the provider already exists.
 
 ## Sub-Clients
 

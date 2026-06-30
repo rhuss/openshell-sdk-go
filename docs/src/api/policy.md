@@ -5,21 +5,6 @@ Accessor: `client.Policy()`
 Manage network policies for sandboxes through a draft-based workflow. Policies
 go through a draft, review, and approval cycle before being applied.
 
-## Methods
-
-| SDK Method | gRPC RPC | Proto File | Description |
-|------------|----------|------------|-------------|
-| `GetDraft(ctx, sandboxName string, opts ...GetDraftOption)` | `GetDraftPolicy` | `openshell.proto` | Get the current draft policy |
-| `ApproveDraftChunk(ctx, sandboxName, chunkID string)` | `ApproveDraftChunk` | `openshell.proto` | Approve a single draft chunk |
-| `RejectDraftChunk(ctx, sandboxName, chunkID, reason string)` | `RejectDraftChunk` | `openshell.proto` | Reject a draft chunk with a reason |
-| `ApproveAllDraftChunks(ctx, sandboxName string, opts ...ApproveAllOption)` | `ApproveAllDraftChunks` | `openshell.proto` | Approve all pending draft chunks |
-| `ClearDraftChunks(ctx, sandboxName string)` | `ClearDraftChunks` | `openshell.proto` | Clear all draft chunks |
-| `GetDraftHistory(ctx, sandboxName string)` | `GetDraftHistory` | `openshell.proto` | Get the history of draft changes |
-| `GetStatus(ctx, sandboxName string, opts ...GetStatusOption)` | `GetSandboxPolicyStatus` | `openshell.proto` | Get current policy enforcement status |
-| `List(ctx, sandboxName string, opts ...ListPolicyOption)` | `ListSandboxPolicies` | `openshell.proto` | List policy revisions |
-| `EditDraftChunk(ctx, sandboxName, chunkID string, proposedRule *NetworkPolicyRule)` | `EditDraftChunk` | `openshell.proto` | Edit a draft chunk's proposed rule |
-| `UndoDraftChunk(ctx, sandboxName, chunkID string)` | `UndoDraftChunk` | `openshell.proto` | Undo changes to a draft chunk |
-
 ## GetDraft
 
 Retrieve the current draft policy for a sandbox.

@@ -5,14 +5,6 @@ Accessor: `client.SSH()`
 Create and manage SSH sessions for sandboxes. Supports direct SSH access and
 TCP tunneling through SSH connections.
 
-## Methods
-
-| SDK Method | gRPC RPC | Proto File | Description |
-|------------|----------|------------|-------------|
-| `CreateSession(ctx, sandboxID string)` | `CreateSshSession` | `openshell.proto` | Create a new SSH session with credentials |
-| `RevokeSession(ctx, token string)` | `RevokeSshSession` | `openshell.proto` | Revoke an active SSH session |
-| `Tunnel(ctx, sandboxName string, port uint32, opts ...TunnelOption)` | `CreateSshSession` + `ForwardTcp` | `openshell.proto` | Create an SSH tunnel to a sandbox port |
-
 ## CreateSession
 
 Create a new SSH session for a sandbox. Returns connection details including

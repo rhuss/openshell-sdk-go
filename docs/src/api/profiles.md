@@ -5,17 +5,6 @@ Accessor: `client.Providers().Profiles()`
 Manage provider profiles for AI model providers. Profiles define connection details,
 credentials, and model mappings for providers like OpenAI, Anthropic, or custom endpoints.
 
-## Methods
-
-| SDK Method | gRPC RPC | Proto File | Description |
-|------------|----------|------------|-------------|
-| `List(ctx, opts ...ListOptions)` | `ListProviderProfiles` | `openshell.proto` | List all provider profiles |
-| `Get(ctx, id string)` | `GetProviderProfile` | `openshell.proto` | Get a profile by ID |
-| `Import(ctx, items []ProfileImportItem)` | `ImportProviderProfiles` | `openshell.proto` | Import one or more profiles |
-| `Update(ctx, id string, expectedResourceVersion uint64, item ProfileImportItem)` | `UpdateProviderProfiles` | `openshell.proto` | Update an existing profile with optimistic locking |
-| `Lint(ctx, items []ProfileImportItem)` | `LintProviderProfiles` | `openshell.proto` | Validate profiles without importing |
-| `Delete(ctx, id string)` | `DeleteProviderProfile` | `openshell.proto` | Delete a profile by ID |
-
 ## List
 
 List all provider profiles visible to the current user.

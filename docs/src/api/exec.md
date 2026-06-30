@@ -27,13 +27,7 @@ fmt.Println("Stdout:", result.Stdout)
 fmt.Println("Stderr:", result.Stderr)
 ```
 
-**gRPC (Proto):**
-
-```protobuf
-// Server-streaming RPC. The SDK collects all streamed ExecSandboxEvent
-// messages, assembles stdout/stderr, and returns a single ExecResult.
-rpc ExecSandbox(ExecSandboxRequest) returns (stream ExecSandboxEvent);
-```
+The SDK collects all streamed events, assembles stdout/stderr, and returns a single `ExecResult`.
 
 `ExecResult` contains the complete output after the command finishes:
 
@@ -81,14 +75,6 @@ if err != nil {
 fmt.Println("Exited with:", exitCode)
 ```
 
-**gRPC (Proto):**
-
-```protobuf
-// Same server-streaming RPC as Run. The SDK exposes the raw stream
-// of ExecSandboxEvent messages through the ExecStream iterator interface.
-rpc ExecSandbox(ExecSandboxRequest) returns (stream ExecSandboxEvent);
-```
-
 ## Interactive
 
 Open a bidirectional terminal session with a command.
@@ -133,14 +119,7 @@ if err != nil {
 fmt.Println("Exited with:", exitCode)
 ```
 
-**gRPC (Proto):**
-
-```protobuf
-// Bidirectional streaming RPC. The SDK wraps the two-way stream
-// as an InteractiveSession with Read/Write/Resize methods.
-rpc ExecSandboxInteractive(stream ExecSandboxInput)
-    returns (stream ExecSandboxEvent);
-```
+The SDK wraps the bidirectional stream as an `InteractiveSession` with `Read`/`Write`/`Resize` methods.
 
 ## ExecStream
 

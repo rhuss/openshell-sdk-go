@@ -4,12 +4,6 @@ Accessor: `client.TCP()`
 
 Forward TCP connections to sandbox ports using bidirectional gRPC streaming.
 
-## Methods
-
-| SDK Method | gRPC RPC | Proto File | Description |
-|------------|----------|------------|-------------|
-| `Forward(ctx, sandboxID string, port uint32, opts ...ForwardOption)` | `ForwardTcp` | `openshell.proto` | Open a TCP forwarding stream to a sandbox port |
-
 ## Forward
 
 Open a bidirectional TCP forwarding stream to a specific port inside a sandbox.

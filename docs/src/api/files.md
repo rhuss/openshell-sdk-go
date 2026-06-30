@@ -5,13 +5,6 @@ Accessor: `client.Files()`
 Upload and download files to and from sandboxes. Uses gRPC streaming for efficient
 transfer of large files.
 
-## Methods
-
-| SDK Method | gRPC RPC | Proto File | Description |
-|------------|----------|------------|-------------|
-| `Upload(ctx, sandboxID, localPath, remotePath string)` | Client-streaming upload | `openshell.proto` | Upload a local file to a sandbox |
-| `Download(ctx, sandboxID, remotePath, localPath string)` | Server-streaming download | `openshell.proto` | Download a file from a sandbox |
-
 ## Upload
 
 Upload a file from the local filesystem to a path inside a sandbox.

@@ -27,12 +27,6 @@ sb, err := client.Sandboxes().Create(ctx, "my-sandbox", &v1.SandboxSpec{
 })
 ```
 
-**gRPC**
-
-```protobuf
-rpc CreateSandbox(CreateSandboxRequest) returns (SandboxResponse)
-```
-
 ## Get
 
 Retrieves a sandbox by name.
@@ -46,12 +40,6 @@ Get(ctx context.Context, name string) (*Sandbox, error)
 ```go
 sb, err := client.Sandboxes().Get(ctx, "my-sandbox")
 fmt.Println(sb.Status.Phase) // "Ready", "Provisioning", etc.
-```
-
-**gRPC**
-
-```protobuf
-rpc GetSandbox(GetSandboxRequest) returns (SandboxResponse)
 ```
 
 ## List
@@ -76,12 +64,6 @@ sandboxes, err := client.Sandboxes().List(ctx, v1.ListOptions{
 })
 ```
 
-**gRPC**
-
-```protobuf
-rpc ListSandboxes(ListSandboxesRequest) returns (ListSandboxesResponse)
-```
-
 ## Delete
 
 Deletes a sandbox by name.
@@ -94,12 +76,6 @@ Delete(ctx context.Context, name string) error
 
 ```go
 err := client.Sandboxes().Delete(ctx, "my-sandbox")
-```
-
-**gRPC**
-
-```protobuf
-rpc DeleteSandbox(DeleteSandboxRequest) returns (DeleteSandboxResponse)
 ```
 
 ## AttachProvider
@@ -123,12 +99,6 @@ result, err := client.Sandboxes().AttachProvider(ctx,
 fmt.Println(result.Attached) // true if newly attached
 ```
 
-**gRPC**
-
-```protobuf
-rpc AttachSandboxProvider(AttachSandboxProviderRequest) returns (AttachSandboxProviderResponse)
-```
-
 ## DetachProvider
 
 Detaches a provider from a sandbox. Uses the same optimistic concurrency pattern as `AttachProvider`.
@@ -150,12 +120,6 @@ result, err := client.Sandboxes().DetachProvider(ctx,
 fmt.Println(result.Detached) // true if actually detached
 ```
 
-**gRPC**
-
-```protobuf
-rpc DetachSandboxProvider(DetachSandboxProviderRequest) returns (DetachSandboxProviderResponse)
-```
-
 ## ListProviders
 
 Lists all providers currently attached to a sandbox.
@@ -171,12 +135,6 @@ providers, err := client.Sandboxes().ListProviders(ctx, "my-sandbox")
 for _, p := range providers {
     fmt.Printf("provider: %s (type: %s)\n", p.Name, p.Type)
 }
-```
-
-**gRPC**
-
-```protobuf
-rpc ListSandboxProviders(ListSandboxProvidersRequest) returns (ListSandboxProvidersResponse)
 ```
 
 ## WaitReady
@@ -208,13 +166,7 @@ sb, err := client.Sandboxes().WaitReady(ctx, "my-sandbox", v1.WaitOptions{
 })
 ```
 
-**gRPC**
-
 There is no dedicated WaitReady RPC. The SDK implements this by polling `GetSandbox` until the sandbox phase is `Ready` or `Error`.
-
-```protobuf
-rpc GetSandbox(GetSandboxRequest) returns (SandboxResponse)
-```
 
 ## Watch
 
@@ -275,12 +227,6 @@ for event := range watcher.ResultChan() {
 // Channel closes after Ready or Error
 ```
 
-**gRPC**
-
-```protobuf
-rpc WatchSandbox(WatchSandboxRequest) returns (stream SandboxStreamEvent)
-```
-
 ## GetLogs
 
 Retrieves log entries from a sandbox. The sandbox is looked up by name (the SDK resolves the name to an internal ID automatically). Use functional options to filter results.
@@ -324,8 +270,3 @@ The `LogResult` contains:
 
 Each `LogLine` has `Timestamp`, `Level`, `Target`, `Message`, `Source`, and `Fields` (structured key-value data).
 
-**gRPC**
-
-```protobuf
-rpc GetSandboxLogs(GetSandboxLogsRequest) returns (GetSandboxLogsResponse)
-```

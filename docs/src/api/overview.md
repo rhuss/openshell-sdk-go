@@ -30,7 +30,7 @@ These are accessed through `client.Providers()`:
 
 ## Hero Interfaces
 
-The three most-used interfaces have detailed reference pages with side-by-side SDK and gRPC code blocks:
+The three most-used interfaces have detailed reference pages with method signatures and code examples:
 
 - **[Sandboxes](sandboxes.md)**: The core of the SDK. Create sandboxes, wait for readiness, watch state changes, manage providers, retrieve logs.
 - **[Exec](exec.md)**: Execute commands with one-shot, streaming, or interactive modes.
@@ -38,7 +38,7 @@ The three most-used interfaces have detailed reference pages with side-by-side S
 
 ## Standard Interfaces
 
-The remaining interfaces have reference tables mapping each SDK method to its underlying gRPC RPC:
+The remaining interfaces have reference pages with method signatures and usage examples:
 
 [Profiles](profiles.md) | [Refresh](refresh.md) | [Services](services.md) | [Files](files.md) | [Health](health.md) | [SSH](ssh.md) | [TCP](tcp.md) | [Config](config.md) | [Policy](policy.md)
 

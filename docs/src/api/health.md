@@ -4,12 +4,6 @@ Accessor: `client.Health()`
 
 Check the health status of the connected OpenShell gateway.
 
-## Methods
-
-| SDK Method | gRPC RPC | Proto File | Description |
-|------------|----------|------------|-------------|
-| `Check(ctx)` | `Health` | `openshell.proto` | Check gateway health |
-
 ## Check
 
 Perform a health check against the gateway. Returns the overall status and
