@@ -25,24 +25,30 @@ if err != nil {
 }
 for _, s := range statuses {
     fmt.Printf("Key: %s, Last refresh: %s, Next: %s\n",
-        s.CredentialKey, s.LastRefresh, s.NextRefresh)
+        s.CredentialKey, s.LastRefreshAt, s.NextRefreshAt)
 }
 ```
 
 ## Configure
 
-Set up automatic credential refresh with a defined schedule.
+Set up automatic credential refresh with a defined strategy and material.
 
 ```go
 status, err := client.Providers().Refresh().Configure(ctx, &v1.RefreshConfig{
     Provider:      "openai",
     CredentialKey:  "default",
-    IntervalHours:  24,
+    Strategy:       v1.RefreshStrategyOAuth2ClientCredentials,
+    Material: map[string]string{
+        "client_id":     "my-client-id",
+        "client_secret": "my-client-secret",
+        "token_url":     "https://oauth.example.com/token",
+    },
+    SecretMaterialKeys: []string{"client_secret"},
 })
 if err != nil {
     log.Fatal(err)
 }
-fmt.Printf("Refresh configured, next rotation: %s\n", status.NextRefresh)
+fmt.Printf("Refresh configured, next rotation: %s\n", status.NextRefreshAt)
 ```
 
 ## Rotate
@@ -54,7 +60,7 @@ status, err := client.Providers().Refresh().Rotate(ctx, "openai", "default")
 if err != nil {
     log.Fatal(err)
 }
-fmt.Printf("Rotated successfully at %s\n", status.LastRefresh)
+fmt.Printf("Rotated successfully at %s\n", status.LastRefreshAt)
 ```
 
 See also: [Error Handling](../error-handling.md), [Profiles](profiles.md)

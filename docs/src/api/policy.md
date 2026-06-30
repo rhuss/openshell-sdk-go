@@ -30,8 +30,8 @@ if err != nil {
     log.Fatal(err)
 }
 for _, chunk := range draft.Chunks {
-    fmt.Printf("Chunk %s: %s -> %s (%s)\n",
-        chunk.Id, chunk.Source, chunk.Destination, chunk.Status)
+    fmt.Printf("Chunk %s: rule=%s, status=%s, confidence=%.1f\n",
+        chunk.ID, chunk.RuleName, chunk.Status, chunk.Confidence)
 }
 ```
 
@@ -44,8 +44,8 @@ result, err := client.Policy().ApproveAllDraftChunks(ctx, "my-sandbox")
 if err != nil {
     log.Fatal(err)
 }
-fmt.Printf("Approved %d chunks, new revision: %d\n",
-    result.ApprovedCount, result.Revision)
+fmt.Printf("Approved %d chunks (skipped %d), policy version: %d\n",
+    result.ChunksApproved, result.ChunksSkipped, result.PolicyVersion)
 ```
 
 ## GetStatus
@@ -57,8 +57,8 @@ status, err := client.Policy().GetStatus(ctx, "my-sandbox")
 if err != nil {
     log.Fatal(err)
 }
-fmt.Printf("Policy mode: %s, active revision: %d\n",
-    status.Mode, status.ActiveRevision)
+fmt.Printf("Active version: %d, revision status: %s\n",
+    status.ActiveVersion, status.Revision.Status)
 ```
 
 ## List
@@ -71,8 +71,8 @@ if err != nil {
     log.Fatal(err)
 }
 for _, rev := range revisions {
-    fmt.Printf("Revision %d: %s (%d rules)\n",
-        rev.Revision, rev.CreatedAt, len(rev.Rules))
+    fmt.Printf("Version %d: %s (status: %s)\n",
+        rev.Version, rev.CreatedAt, rev.Status)
 }
 ```
 
@@ -93,10 +93,12 @@ Modify the proposed rule in a draft chunk before approval.
 
 ```go
 err := client.Policy().EditDraftChunk(ctx, "my-sandbox", "chunk-abc", &v1.NetworkPolicyRule{
-    Direction:   "egress",
-    Protocol:    "tcp",
-    Port:        443,
-    Destination: "api.example.com",
+    Name: "allow-api",
+    Endpoints: []v1.PolicyNetworkEndpoint{{
+        Host:     "api.example.com",
+        Port:     443,
+        Protocol: "tcp",
+    }},
 })
 if err != nil {
     log.Fatal(err)
