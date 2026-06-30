@@ -8,6 +8,7 @@ Last updated: 2026-06-30
 |---|------|-------|--------|------|-------|
 | 001 | 2026-06-27 | go-sdk | active | - | - |
 | 012 | 2026-06-30 | context-cancel-cleanup | active | 011 | - |
+| 013 | 2026-06-30 | typed-sandbox-policy | active | - | [#11](https://github.com/rhuss/openshell-sdk-go/issues/11) |
 
 ## Attic (implemented)
 
@@ -40,6 +41,8 @@ Last updated: 2026-06-30
 ```
 
 ## Open Threads
+- SandboxPolicy.Version: server-assigned or caller-settable? (from #013)
+- ResourceRequirements (proto field 9) also missing from SDK SandboxSpec, add in same pass or separate? (from #013)
 - Repo ownership: `rhuss` now, transfer to NVIDIA later (from #001, #002)
 - SDK versioning: track gateway versions or independent semver? (from #001)
 - Auth patterns: OIDC/OAuth flows deferred to dedicated brainstorm, separate from credential refresh (from #001)
