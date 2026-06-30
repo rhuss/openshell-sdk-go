@@ -6,6 +6,7 @@
 [![Coverage](https://codecov.io/gh/rhuss/openshell-sdk-go/branch/main/graph/badge.svg)](https://codecov.io/gh/rhuss/openshell-sdk-go)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
+> [!IMPORTANT]
 > **[Read the full documentation](https://ro14nd.de/openshell-sdk-go/)** for guides, API reference with gRPC mapping, and testing patterns.
 
 A Go SDK for interacting with [OpenShell](https://github.com/NVIDIA/OpenShell)
