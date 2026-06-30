@@ -118,12 +118,22 @@ func (s *sshClient) Tunnel(ctx context.Context, sandboxName string, port uint32,
 
 	revokeSession = false
 
-	return &sshTunnel{
+	t := &sshTunnel{
 		tcpForwardConn: conn,
 		revokeFunc: func() {
 			_, _ = s.RevokeSession(context.Background(), session.Token)
 		},
-	}, nil
+	}
+
+	// Auto-revoke the SSH session when the parent context is cancelled.
+	// The done channel closes after readLoop exits (stream fully drained),
+	// so Close() won't race with an active stream.
+	go func() {
+		<-conn.done
+		_ = t.Close()
+	}()
+
+	return t, nil
 }
 
 type sshTunnel struct {

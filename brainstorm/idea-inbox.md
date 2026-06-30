@@ -27,12 +27,3 @@ Ideas captured from code reviews for future brainstorming.
 - **Reference**: brainstorm #010 (Phase 2b-3)
 - **Summary**: Remote-to-local forwarding where the sandbox connects back to the client through the gateway (like `ssh -R`). Requires proto support investigation. May not be feasible with current ForwardTcp RPC which is client-initiated only.
 
-### context-cancellation-session-cleanup
-
-- **Source**: triage
-- **Date**: 2026-06-29
-- **Reference**: PR #7 (009-ssh-tunnel-forward-opts)
-- **Summary**: When a parent context is cancelled on an active SSH tunnel, the gRPC stream terminates but the SSH session is not revoked until the caller explicitly calls Close(). Both copilot and devin flagged this as a gap between spec acceptance scenario 3 ("context cancellation revokes the session") and the implementation (Go convention: caller must call Close()). A background goroutine watching streamCtx.Done() could auto-revoke, but needs careful design to avoid races with the closeOnce pattern.
-
-> copilot: "Tunnel session cleanup isn't triggered by parent context cancellation unless the caller explicitly calls Close()"
-> devin: "If the user cancels the parent context but never calls Close(), the session is NOT revoked"

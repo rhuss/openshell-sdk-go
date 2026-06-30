@@ -36,3 +36,4 @@ Thumbs.db
 !**/.specify/memory/
 !**/.specify/memory/constitution.md
 docs/book/
+.playwright-mcp/
