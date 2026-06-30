@@ -1,5 +1,13 @@
 # OpenShell SDK for Go
 
+[![CI](https://github.com/rhuss/openshell-sdk-go/actions/workflows/ci.yml/badge.svg)](https://github.com/rhuss/openshell-sdk-go/actions/workflows/ci.yml)
+[![Docs](https://github.com/rhuss/openshell-sdk-go/actions/workflows/docs.yml/badge.svg)](https://ro14nd.de/openshell-sdk-go/)
+[![Go Reference](https://pkg.go.dev/badge/github.com/rhuss/openshell-sdk-go.svg)](https://pkg.go.dev/github.com/rhuss/openshell-sdk-go)
+[![Go Report Card](https://goreportcard.com/badge/github.com/rhuss/openshell-sdk-go)](https://goreportcard.com/report/github.com/rhuss/openshell-sdk-go)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+
+> **[Read the full documentation](https://ro14nd.de/openshell-sdk-go/)** for guides, API reference with gRPC mapping, and testing patterns.
+
 A Go SDK for interacting with [OpenShell](https://github.com/NVIDIA/OpenShell)
 servers, providing idiomatic Go bindings for shell session management, command
 execution, provider configuration, and service exposure.

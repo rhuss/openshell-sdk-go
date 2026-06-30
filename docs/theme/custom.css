@@ -84,7 +84,7 @@ body,
 .content pre > code,
 .content pre > code.hljs {
     font-size: 18px;
-    padding: 1.2em 2em !important;
+    padding: 1em 1em !important;
     display: block;
 }
 
@@ -120,16 +120,20 @@ body,
 
 /* Main sidebar items */
 .sidebar ol.chapter li.chapter-item {
-    line-height: 1.0;
+    line-height: 1.7;
     margin: 0;
-    padding: 3px 0;
+    padding: 0;
 }
 
-/* On-this-page sub-navigation: even tighter */
+/* On-this-page sub-navigation */
 .sidebar .on-this-page li {
-    line-height: 1.0;
+    line-height: 1.8;
     margin: 0;
-    padding: 1px 0;
+    padding: 0;
+}
+
+.sidebar .on-this-page {
+    margin-top: 0.3em;
 }
 
 .sidebar .on-this-page ol.section {
@@ -139,7 +143,7 @@ body,
 
 /* Section headers: clear visual break */
 .sidebar ol.chapter li.part-title {
-    margin-top: 1.8em;
+    margin-top: 1.2em;
     margin-bottom: 0.4em;
     padding-bottom: 0.2em;
     font-weight: 700;
