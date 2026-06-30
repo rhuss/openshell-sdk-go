@@ -499,20 +499,20 @@ func TestUnhealthyGateway(t *testing.T) {
 
 ## Documentation
 
-Full API documentation is available at the [OpenShell Go SDK Docs](docs/src/SUMMARY.md) site, built with [mdBook](https://rust-lang.github.io/mdBook/).
+Full API documentation is available at the [OpenShell Go SDK Docs](https://ro14nd.de/openshell-sdk-go/) site, built with [mdBook](https://rust-lang.github.io/mdBook/).
 
 Key sections:
 
-- **[Getting Started](docs/src/getting-started.md)** - Installation, connecting, first sandbox
-- **[Error Handling](docs/src/error-handling.md)** - `StatusError`, predicate functions, retry patterns
-- **[Testing](docs/src/testing.md)** - Fake client, fixture seeding, watch events
-- **[API Reference](docs/src/api/overview.md)** - Per-resource method tables and code examples
+- **[Getting Started](https://ro14nd.de/openshell-sdk-go/getting-started.html)** - Installation, connecting, first sandbox
+- **[Error Handling](https://ro14nd.de/openshell-sdk-go/error-handling.html)** - `StatusError`, predicate functions, retry patterns
+- **[Testing](https://ro14nd.de/openshell-sdk-go/testing.html)** - Fake client, fixture seeding, watch events
+- **[API Reference](https://ro14nd.de/openshell-sdk-go/api/overview.html)** - Per-resource method tables and code examples
 
 To build the docs locally:
 
 ```bash
-# Install mdBook and the admonish preprocessor
-cargo install mdbook mdbook-admonish
+# Install mdBook
+cargo install mdbook
 
 # Build the docs
 mdbook build docs

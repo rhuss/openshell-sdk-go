@@ -9,7 +9,7 @@ build-dir = "book"
 create-missing = false
 
 [output.html]
-default-theme = "light"
+default-theme = "rust"
 preferred-dark-theme = "navy"
 additional-css = ["theme/custom.css"]
 git-repository-url = "https://github.com/rhuss/openshell-sdk-go"

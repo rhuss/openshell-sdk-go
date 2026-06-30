@@ -8,7 +8,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-    --content-max-width: 800px;
+    --content-max-width: none;
 }
 
 /* Base typography */
@@ -19,9 +19,10 @@ body,
 }
 
 .content {
-    font-size: 18px;
+    font-size: 20px;
     line-height: 1.7;
-    max-width: var(--content-max-width);
+    max-width: none;
+    padding: 0 4em;
 }
 
 /* Headings */
@@ -67,9 +68,11 @@ body,
 .content pre {
     font-size: 15px;
     line-height: 1.5;
-    padding: 1em 1.2em;
+    padding: 0;
     border-radius: 6px;
     margin: 1em 0;
+    overflow-x: auto;
+    max-width: 100%;
 }
 
 .content code {
@@ -78,9 +81,11 @@ body,
     border-radius: 3px;
 }
 
-.content pre > code {
-    font-size: inherit;
-    padding: 0;
+.content pre > code,
+.content pre > code.hljs {
+    font-size: 18px;
+    padding: 1.2em 2em !important;
+    display: block;
 }
 
 /* Tables */
@@ -105,12 +110,59 @@ body,
 
 /* Sidebar adjustments */
 .sidebar .sidebar-scrollbox {
-    font-size: 15px;
+    font-size: 17px;
+}
+
+/* Hide chapter numbers (mdBook 0.5.x uses <strong> inside links) */
+.sidebar ol.chapter li.chapter-item a > strong {
+    display: none;
+}
+
+/* Main sidebar items */
+.sidebar ol.chapter li.chapter-item {
+    line-height: 1.0;
+    margin: 0;
+    padding: 3px 0;
+}
+
+/* On-this-page sub-navigation: even tighter */
+.sidebar .on-this-page li {
+    line-height: 1.0;
+    margin: 0;
+    padding: 1px 0;
+}
+
+.sidebar .on-this-page ol.section {
+    padding-left: 1em;
+    margin: 0;
+}
+
+/* Section headers: clear visual break */
+.sidebar ol.chapter li.part-title {
+    margin-top: 1.8em;
+    margin-bottom: 0.4em;
+    padding-bottom: 0.2em;
+    font-weight: 700;
+    font-size: 1.15em;
+    letter-spacing: 0.03em;
+    opacity: 0.9;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* Lists */
 .content li {
     margin-bottom: 0.3em;
+}
+
+/* Navigation arrows: smaller, less intrusive */
+.nav-chapters {
+    font-size: 2em;
+    max-width: 40px;
+    opacity: 0.4;
+}
+
+.nav-chapters:hover {
+    opacity: 0.8;
 }
 
 /* Blockquotes */
