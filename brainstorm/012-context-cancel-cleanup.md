@@ -57,6 +57,7 @@ background goroutine watching the `done` channel is the only change needed.
 - SSH Tunnel only, not TCP Forward (no session to revoke)
 - Best-effort revocation (fire-and-forget with context.Background(), matches existing revokeFunc pattern)
 - Implementation: goroutine watching the `done` channel, calls Close() on exit
+- Race safety: `tcpForwardConn.Close()` serializes `CloseSend()` with concurrent `Write()` calls via `sendMu` to prevent Write/CloseSend races introduced by the cleanup goroutine
 
 ## Open Questions
 

@@ -7,7 +7,7 @@ Last updated: 2026-06-30
 | # | Date | Topic | Status | Spec | Issue |
 |---|------|-------|--------|------|-------|
 | 001 | 2026-06-27 | go-sdk | active | - | - |
-| 012 | 2026-06-30 | context-cancel-cleanup | active | - | - |
+| 012 | 2026-06-30 | context-cancel-cleanup | active | 011 | - |
 
 ## Attic (implemented)
 

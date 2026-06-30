@@ -9,6 +9,7 @@ import (
 	"net"
 	"sync"
 	"testing"
+	"time"
 
 	pb "github.com/rhuss/openshell-sdk-go/proto/openshellv1"
 	"github.com/stretchr/testify/assert"
@@ -24,14 +25,15 @@ import (
 
 type mockSSHServer struct {
 	pb.UnimplementedOpenShellServer
-	mu         sync.Mutex
-	sessions   map[string]*pb.CreateSshSessionResponse // key: sandbox ID
-	tokens     map[string]bool                         // track active tokens
-	createErr  error
-	revokeErr  error
-	forwardErr error
-	nextToken  string // override token for testing
-	lastInit   *pb.TcpForwardInit
+	mu           sync.Mutex
+	sessions     map[string]*pb.CreateSshSessionResponse // key: sandbox ID
+	tokens       map[string]bool                         // track active tokens
+	revokeCount  int                                     // total revocation attempts
+	createErr    error
+	revokeErr    error
+	forwardErr   error
+	nextToken    string // override token for testing
+	lastInit     *pb.TcpForwardInit
 }
 
 func newMockSSHServer() *mockSSHServer {
@@ -70,6 +72,7 @@ func (s *mockSSHServer) CreateSshSession(_ context.Context, req *pb.CreateSshSes
 func (s *mockSSHServer) RevokeSshSession(_ context.Context, req *pb.RevokeSshSessionRequest) (*pb.RevokeSshSessionResponse, error) { //nolint:revive // proto-generated method name
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.revokeCount++
 	if s.revokeErr != nil {
 		return nil, s.revokeErr
 	}
@@ -503,4 +506,104 @@ func TestSSHTunnel_TokenNotExposed(t *testing.T) {
 	repr := fmt.Sprintf("%v", rwc)
 	assert.NotContains(t, repr, "secret-tunnel-token-xyz",
 		"token must not leak through the returned value's string representation")
+}
+
+func TestSSHTunnel_ContextCancelRevokesSession(t *testing.T) {
+	mock := newMockSSHServer()
+	resolver := defaultSandboxResolver()
+	client, cleanup := setupSSHTestWithSandboxes(t, mock, resolver)
+	defer cleanup()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	rwc, err := client.Tunnel(ctx, "my-sandbox", 22)
+	require.NoError(t, err)
+	require.NotNil(t, rwc)
+
+	cancel()
+
+	require.Eventually(t, func() bool {
+		mock.mu.Lock()
+		defer mock.mu.Unlock()
+		for _, active := range mock.tokens {
+			if !active {
+				return true
+			}
+		}
+		return false
+	}, 5*time.Second, 10*time.Millisecond, "session token should be revoked after context cancel")
+}
+
+func TestSSHTunnel_ContextCancelThenClose(t *testing.T) {
+	mock := newMockSSHServer()
+	resolver := defaultSandboxResolver()
+	client, cleanup := setupSSHTestWithSandboxes(t, mock, resolver)
+	defer cleanup()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	rwc, err := client.Tunnel(ctx, "my-sandbox", 22)
+	require.NoError(t, err)
+	require.NotNil(t, rwc)
+
+	cancel()
+
+	// Wait for the cleanup goroutine to complete its revocation.
+	require.Eventually(t, func() bool {
+		mock.mu.Lock()
+		defer mock.mu.Unlock()
+		for _, active := range mock.tokens {
+			if !active {
+				return true
+			}
+		}
+		return false
+	}, 5*time.Second, 10*time.Millisecond)
+
+	// Explicit Close() after the cleanup goroutine already ran.
+	err = rwc.Close()
+	assert.NoError(t, err)
+
+	mock.mu.Lock()
+	count := mock.revokeCount
+	mock.mu.Unlock()
+	assert.Equal(t, 1, count, "exactly one revocation should occur (closeOnce idempotency)")
+}
+
+func TestSSHTunnel_CloseBeforeContextCancel(t *testing.T) {
+	mock := newMockSSHServer()
+	resolver := defaultSandboxResolver()
+	client, cleanup := setupSSHTestWithSandboxes(t, mock, resolver)
+	defer cleanup()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	rwc, err := client.Tunnel(ctx, "my-sandbox", 22)
+	require.NoError(t, err)
+	require.NotNil(t, rwc)
+
+	// Explicit Close() first (revokes the session).
+	err = rwc.Close()
+	require.NoError(t, err)
+
+	// Cancel context after Close() already completed.
+	cancel()
+
+	// Verify the cleanup goroutine does not trigger a second revocation.
+	require.Never(t, func() bool {
+		mock.mu.Lock()
+		defer mock.mu.Unlock()
+		return mock.revokeCount > 1
+	}, 200*time.Millisecond, 10*time.Millisecond, "cleanup goroutine should not revoke again")
+
+	mock.mu.Lock()
+	count := mock.revokeCount
+	tokenRevoked := false
+	for _, active := range mock.tokens {
+		if !active {
+			tokenRevoked = true
+			break
+		}
+	}
+	mock.mu.Unlock()
+
+	assert.True(t, tokenRevoked, "session should be revoked")
+	assert.Equal(t, 1, count, "exactly one revocation should occur")
 }

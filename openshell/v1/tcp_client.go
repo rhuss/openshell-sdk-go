@@ -155,7 +155,9 @@ func (c *tcpForwardConn) Write(p []byte) (int, error) {
 }
 
 func (c *tcpForwardConn) Close() error {
+	c.sendMu.Lock()
 	err := c.stream.CloseSend()
+	c.sendMu.Unlock()
 	c.cancel()
 	<-c.done
 	return err
