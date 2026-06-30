@@ -1,22 +1,28 @@
 # Brainstorm Overview
 
-Last updated: 2026-06-29
+Last updated: 2026-06-30
 
-## Sessions
+## Active Sessions
 
 | # | Date | Topic | Status | Spec | Issue |
 |---|------|-------|--------|------|-------|
 | 001 | 2026-06-27 | go-sdk | active | - | - |
-| 002 | 2026-06-27 | project-setup | active | - | - |
-| 003 | 2026-06-27 | proto-generation | active | - | - |
-| 004 | 2026-06-27 | core-sdk | spec-created | 003 | - |
-| 005 | 2026-06-27 | full-api | active | - | - |
-| 006 | 2026-06-28 | converter-refactor | done | 004 | - |
-| 007 | 2026-06-28 | fake-client | active | - | - |
-| 008 | 2026-06-29 | ssh-tcp-config | active | - | - |
-| 009 | 2026-06-29 | policy-logs | active | - | - |
-| 010 | 2026-06-29 | ssh-tunnel-forward-opts | active | - | - |
-| 011 | 2026-06-29 | api-docs | active | - | - |
+| 012 | 2026-06-30 | context-cancel-cleanup | active | - | - |
+
+## Attic (implemented)
+
+| # | Date | Topic | Spec |
+|---|------|-------|------|
+| 002 | 2026-06-27 | project-setup | 001 |
+| 003 | 2026-06-27 | proto-generation | 002 |
+| 004 | 2026-06-27 | core-sdk | 003 |
+| 005 | 2026-06-27 | full-api | 006 |
+| 006 | 2026-06-28 | converter-refactor | 004 |
+| 007 | 2026-06-28 | fake-client | 005 |
+| 008 | 2026-06-29 | ssh-tcp-config | 007 |
+| 009 | 2026-06-29 | policy-logs | 008 |
+| 010 | 2026-06-29 | ssh-tunnel-forward-opts | 009 |
+| 011 | 2026-06-29 | api-docs | 010 |
 
 ## Dependency Chain
 
