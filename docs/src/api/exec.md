@@ -1,20 +1,13 @@
 # Exec
 
-Access the Exec API through `client.Exec()`, which returns an `ExecInterface`. It provides three modes for running commands in a sandbox:
+Accessor: `client.Exec()`
 
-- **Run** collects all output and returns it as a single result.
-- **Stream** exposes output as an iterator for processing chunks as they arrive.
-- **Interactive** opens a bidirectional session for terminal-style interaction.
+Execute commands in a sandbox with three modes: one-shot (`Run`), streaming
+(`Stream`), or interactive terminal (`Interactive`).
 
 ## Run
 
 Execute a command and collect all output into a single result.
-
-```go
-Run(ctx context.Context, sandboxID string, command []string, opts ...ExecOptions) (*ExecResult, error)
-```
-
-**SDK (Go):**
 
 ```go
 result, err := client.Exec().Run(ctx, "sbx-123", []string{"ls", "-la"})
@@ -40,12 +33,6 @@ The SDK collects all streamed events, assembles stdout/stderr, and returns a sin
 ## Stream
 
 Execute a command and process output chunks as they arrive.
-
-```go
-Stream(ctx context.Context, sandboxID string, command []string, opts ...ExecOptions) (ExecStream, error)
-```
-
-**SDK (Go):**
 
 ```go
 stream, err := client.Exec().Stream(ctx, "sbx-123", []string{"tail", "-f", "/var/log/app.log"})
@@ -78,12 +65,6 @@ fmt.Println("Exited with:", exitCode)
 ## Interactive
 
 Open a bidirectional terminal session with a command.
-
-```go
-Interactive(ctx context.Context, sandboxID string, command []string, cols, rows uint32, opts ...ExecOptions) (InteractiveSession, error)
-```
-
-**SDK (Go):**
 
 ```go
 session, err := client.Exec().Interactive(ctx, "sbx-123", []string{"/bin/bash"}, 80, 24)
@@ -176,3 +157,5 @@ type ExecChunk struct {
 |----------|------------|---------------------------------------------------|
 | `Data`   | `[]byte`   | Raw output bytes from the process.                |
 | `Stream` | StreamType | Either `StreamStdout` or `StreamStderr`.          |
+
+See also: [Error Handling](../error-handling.md), [Testing](../testing.md)

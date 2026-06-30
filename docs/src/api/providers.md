@@ -1,18 +1,13 @@
 # Providers
 
-Access the Providers API through `client.Providers()`, which returns a `ProviderInterface`. It manages compute providers (AI inference endpoints) and exposes sub-clients for [Profiles](profiles.md) and [Refresh](refresh.md).
+Accessor: `client.Providers()`
+
+Register and manage compute providers (AI inference endpoints). Exposes
+sub-clients for [Profiles](profiles.md) and [Refresh](refresh.md).
 
 ## Create
 
 Register a new provider with the gateway.
-
-```go
-Create(ctx context.Context, provider *Provider) (*Provider, error)
-```
-
-
-
-**SDK (Go):**
 
 ```go
 provider, err := client.Providers().Create(ctx, &v1.Provider{
@@ -38,14 +33,6 @@ fmt.Println("Created provider:", provider.Name)
 Fetch a provider by name.
 
 ```go
-Get(ctx context.Context, name string) (*Provider, error)
-```
-
-
-
-**SDK (Go):**
-
-```go
 provider, err := client.Providers().Get(ctx, "my-openai")
 if err != nil {
     log.Fatal(err)
@@ -56,14 +43,6 @@ fmt.Println("Provider type:", provider.Type)
 ## List
 
 List all registered providers, with optional pagination.
-
-```go
-List(ctx context.Context, opts ...ListOptions) ([]*Provider, error)
-```
-
-
-
-**SDK (Go):**
 
 ```go
 // List all providers
@@ -87,14 +66,6 @@ providers, err = client.Providers().List(ctx, v1.ListOptions{
 Update an existing provider's configuration or credentials.
 
 ```go
-Update(ctx context.Context, provider *Provider) (*Provider, error)
-```
-
-
-
-**SDK (Go):**
-
-```go
 provider, err := client.Providers().Get(ctx, "my-openai")
 if err != nil {
     log.Fatal(err)
@@ -113,14 +84,6 @@ fmt.Println("Updated provider:", updated.Name)
 Remove a provider by name.
 
 ```go
-Delete(ctx context.Context, name string) error
-```
-
-
-
-**SDK (Go):**
-
-```go
 err := client.Providers().Delete(ctx, "my-openai")
 if err != nil {
     log.Fatal(err)
@@ -130,14 +93,6 @@ if err != nil {
 ## Ensure
 
 Create or update a provider in a single idempotent call. If a provider with the given name exists, it is updated; otherwise a new one is created. This is the recommended way to register providers because it avoids "already exists" errors when re-registering.
-
-```go
-Ensure(ctx context.Context, provider *Provider) (*Provider, error)
-```
-
-
-
-**SDK (Go):**
 
 ```go
 provider, err := client.Providers().Ensure(ctx, &v1.Provider{
@@ -192,3 +147,5 @@ The `Provider` type represents a registered compute provider.
 | `Credentials`          | map[string]string         | Authentication credentials (e.g., API keys)     |
 | `Config`               | map[string]string         | Provider-specific configuration values          |
 | `CredentialExpiresAt`  | map[string]time.Time      | Expiration timestamps for credentials           |
+
+See also: [Profiles](profiles.md), [Refresh](refresh.md), [Error Handling](../error-handling.md), [Testing](../testing.md)

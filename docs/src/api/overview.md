@@ -28,19 +28,22 @@ These are accessed through `client.Providers()`:
 | [ProfileInterface](profiles.md) | `client.Providers().Profiles()` | Manage provider type profiles |
 | [RefreshInterface](refresh.md) | `client.Providers().Refresh()` | Configure credential refresh strategies |
 
-## Hero Interfaces
+## Interfaces
 
-The three most-used interfaces have detailed reference pages with method signatures and code examples:
+Each interface has a reference page with method signatures and usage examples:
 
-- **[Sandboxes](sandboxes.md)**: The core of the SDK. Create sandboxes, wait for readiness, watch state changes, manage providers, retrieve logs.
+- **[Sandboxes](sandboxes.md)**: Create sandboxes, wait for readiness, watch state changes, manage providers, retrieve logs.
 - **[Exec](exec.md)**: Execute commands with one-shot, streaming, or interactive modes.
 - **[Providers](providers.md)**: Register and manage compute providers. Includes sub-clients for profiles and credential refresh.
-
-## Standard Interfaces
-
-The remaining interfaces have reference pages with method signatures and usage examples:
-
-[Profiles](profiles.md) | [Refresh](refresh.md) | [Services](services.md) | [Files](files.md) | [Health](health.md) | [SSH](ssh.md) | [TCP](tcp.md) | [Config](config.md) | [Policy](policy.md)
+- **[Services](services.md)**: Expose and manage HTTP services inside sandboxes.
+- **[Files](files.md)**: Upload and download files to/from sandboxes.
+- **[Health](health.md)**: Check gateway health status.
+- **[SSH](ssh.md)**: Create SSH sessions and tunnels to sandboxes.
+- **[TCP](tcp.md)**: Forward TCP connections to sandbox ports.
+- **[Config](config.md)**: Read and update sandbox and gateway configuration.
+- **[Policy](policy.md)**: Manage draft policy recommendations.
+- **[Profiles](profiles.md)**: Manage provider type profiles (via `client.Providers().Profiles()`).
+- **[Refresh](refresh.md)**: Configure credential refresh strategies (via `client.Providers().Refresh()`).
 
 ## Common Patterns
 

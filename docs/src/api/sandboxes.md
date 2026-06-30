@@ -1,20 +1,13 @@
 # Sandboxes
 
-The `SandboxInterface` is the core of the SDK. It manages sandbox lifecycle, provider attachment, state observation, and log retrieval.
+Accessor: `client.Sandboxes()`
 
-```go
-sandboxes := client.Sandboxes() // returns v1.SandboxInterface
-```
+Manage sandbox lifecycle: create, inspect, delete, attach/detach providers,
+wait for readiness, watch state changes, and retrieve logs.
 
 ## Create
 
 Creates a new sandbox with the given name, spec, and labels.
-
-```go
-Create(ctx context.Context, name string, spec *SandboxSpec, labels map[string]string) (*Sandbox, error)
-```
-
-**SDK**
 
 ```go
 sb, err := client.Sandboxes().Create(ctx, "my-sandbox", &v1.SandboxSpec{
@@ -32,12 +25,6 @@ sb, err := client.Sandboxes().Create(ctx, "my-sandbox", &v1.SandboxSpec{
 Retrieves a sandbox by name.
 
 ```go
-Get(ctx context.Context, name string) (*Sandbox, error)
-```
-
-**SDK**
-
-```go
 sb, err := client.Sandboxes().Get(ctx, "my-sandbox")
 fmt.Println(sb.Status.Phase) // "Ready", "Provisioning", etc.
 ```
@@ -45,12 +32,6 @@ fmt.Println(sb.Status.Phase) // "Ready", "Provisioning", etc.
 ## List
 
 Lists sandboxes with optional pagination and label filtering.
-
-```go
-List(ctx context.Context, opts ...ListOptions) ([]*Sandbox, error)
-```
-
-**SDK**
 
 ```go
 // List all sandboxes
@@ -69,24 +50,12 @@ sandboxes, err := client.Sandboxes().List(ctx, v1.ListOptions{
 Deletes a sandbox by name.
 
 ```go
-Delete(ctx context.Context, name string) error
-```
-
-**SDK**
-
-```go
 err := client.Sandboxes().Delete(ctx, "my-sandbox")
 ```
 
 ## AttachProvider
 
 Attaches a provider to a sandbox. The `expectedResourceVersion` enables optimistic concurrency control: pass the sandbox's current `ResourceVersion` to ensure no other client has modified it since your last read.
-
-```go
-AttachProvider(ctx context.Context, sandboxName, providerName string, expectedResourceVersion uint64) (*AttachProviderResult, error)
-```
-
-**SDK**
 
 ```go
 sb, _ := client.Sandboxes().Get(ctx, "my-sandbox")
@@ -104,12 +73,6 @@ fmt.Println(result.Attached) // true if newly attached
 Detaches a provider from a sandbox. Uses the same optimistic concurrency pattern as `AttachProvider`.
 
 ```go
-DetachProvider(ctx context.Context, sandboxName, providerName string, expectedResourceVersion uint64) (*DetachProviderResult, error)
-```
-
-**SDK**
-
-```go
 sb, _ := client.Sandboxes().Get(ctx, "my-sandbox")
 
 result, err := client.Sandboxes().DetachProvider(ctx,
@@ -125,12 +88,6 @@ fmt.Println(result.Detached) // true if actually detached
 Lists all providers currently attached to a sandbox.
 
 ```go
-ListProviders(ctx context.Context, sandboxName string) ([]*Provider, error)
-```
-
-**SDK**
-
-```go
 providers, err := client.Sandboxes().ListProviders(ctx, "my-sandbox")
 for _, p := range providers {
     fmt.Printf("provider: %s (type: %s)\n", p.Name, p.Type)
@@ -142,12 +99,6 @@ for _, p := range providers {
 Blocks until the sandbox reaches the `Ready` phase, returning the final sandbox state. Under the hood, WaitReady polls via `Get` at a configurable interval (default 500ms). Use context cancellation or deadlines to set a timeout.
 
 If the sandbox enters the `Error` phase, WaitReady returns immediately with a `StatusError`.
-
-```go
-WaitReady(ctx context.Context, name string, opts ...WaitOptions) (*Sandbox, error)
-```
-
-**SDK**
 
 ```go
 // Wait with a 30-second timeout
@@ -172,10 +123,6 @@ There is no dedicated WaitReady RPC. The SDK implements this by polling `GetSand
 
 Opens a server-streaming connection to observe sandbox state changes in real time. Returns a `WatchInterface[*Sandbox]` that delivers events through a channel.
 
-```go
-Watch(ctx context.Context, name string, opts ...WatchOptions) (WatchInterface[*Sandbox], error)
-```
-
 The `WatchInterface[T]` provides:
 
 - `ResultChan() <-chan Event[T]` returns the channel of events
@@ -185,8 +132,6 @@ Each `Event[T]` carries:
 
 - `Type`: one of `EventAdded`, `EventModified`, `EventDeleted`, or `EventError`
 - `Object`: the `*Sandbox` at that point in time (`nil` for `EventError`)
-
-**SDK**
 
 ```go
 watcher, err := client.Sandboxes().Watch(ctx, "my-sandbox")
@@ -209,8 +154,6 @@ for event := range watcher.ResultChan() {
 }
 ```
 
-**With StopOnTerminal**
-
 Setting `StopOnTerminal: true` causes the watcher to close automatically once the sandbox reaches a terminal phase (`Ready` or `Error`). This is useful for provisioning flows where you only care about the outcome.
 
 ```go
@@ -231,10 +174,6 @@ for event := range watcher.ResultChan() {
 
 Retrieves log entries from a sandbox. The sandbox is looked up by name (the SDK resolves the name to an internal ID automatically). Use functional options to filter results.
 
-```go
-GetLogs(ctx context.Context, sandboxName string, opts ...LogOption) (*LogResult, error)
-```
-
 **Available options:**
 
 | Option | Description |
@@ -243,8 +182,6 @@ GetLogs(ctx context.Context, sandboxName string, opts ...LogOption) (*LogResult,
 | `WithLogSince(t time.Time)` | Only include entries at or after this time |
 | `WithLogSources(sources ...string)` | Filter by source (e.g., `"gateway"`, `"sandbox"`) |
 | `WithLogMinLevel(level string)` | Minimum log level (e.g., `"WARN"`, `"ERROR"`) |
-
-**SDK**
 
 ```go
 // Get the last 50 log lines
@@ -270,3 +207,4 @@ The `LogResult` contains:
 
 Each `LogLine` has `Timestamp`, `Level`, `Target`, `Message`, `Source`, and `Fields` (structured key-value data).
 
+See also: [Error Handling](../error-handling.md), [Testing](../testing.md)
