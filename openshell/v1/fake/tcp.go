@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 
 	v1 "github.com/rhuss/openshell-sdk-go/openshell/v1"
 	"github.com/rhuss/openshell-sdk-go/openshell/v1/types"
@@ -33,6 +34,25 @@ func (c *fakeTCPClient) Forward(_ context.Context, _ string, port uint32, _ ...v
 		return nil, &types.StatusError{Code: types.ErrorInvalidArgument, Message: fmt.Sprintf("port must be in range 1-65535, got %d", port)}
 	}
 	return nil, &types.StatusError{Code: types.ErrorUnimplemented, Message: "Forward is not supported by the fake client"}
+}
+
+// Listen validates inputs then returns Unimplemented. The fake does not bind
+// any local port; it checks that sandboxName is non-empty, remotePort is in
+// the range 1-65535, and localPort is in the range 0-65535.
+func (c *fakeTCPClient) Listen(_ context.Context, sandboxName string, remotePort uint32, localPort uint32, _ ...v1.ListenOption) (net.Listener, error) {
+	if c.closedFunc() {
+		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
+	}
+	if sandboxName == "" {
+		return nil, &types.StatusError{Code: types.ErrorInvalidArgument, Message: "sandbox name must not be empty"}
+	}
+	if remotePort == 0 || remotePort > 65535 {
+		return nil, &types.StatusError{Code: types.ErrorInvalidArgument, Message: fmt.Sprintf("port must be in range 1-65535, got %d", remotePort)}
+	}
+	if localPort > 65535 {
+		return nil, &types.StatusError{Code: types.ErrorInvalidArgument, Message: fmt.Sprintf("local port must be in range 0-65535, got %d", localPort)}
+	}
+	return nil, &types.StatusError{Code: types.ErrorUnimplemented, Message: "Listen is not supported by the fake client"}
 }
 
 // Compile-time check that fakeTCPClient implements v1.TCPInterface.

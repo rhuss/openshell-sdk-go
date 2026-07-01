@@ -5,9 +5,12 @@ package v1
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"net"
 	"sync"
 	"testing"
+	"time"
 
 	pb "github.com/rhuss/openshell-sdk-go/proto/openshellv1"
 	"github.com/stretchr/testify/assert"
@@ -91,7 +94,7 @@ func setupTCPTest(t *testing.T, mock *mockTCPServer) (*tcpClient, func()) {
 	)
 	require.NoError(t, err)
 
-	return newTCPClient(conn, &stubSandboxResolver{}), func() {
+	return newTCPClient(conn, &stubSandboxResolver{}, nil), func() {
 		_ = conn.Close()
 		srv.Stop()
 	}
@@ -438,7 +441,7 @@ func TestTCPForward_ResolutionError(t *testing.T) {
 	resolver := &stubSandboxResolver{
 		getErr: &StatusError{Code: ErrorNotFound, Message: "sandbox not found"},
 	}
-	client := newTCPClient(conn, resolver)
+	client := newTCPClient(conn, resolver, nil)
 
 	rwc, err := client.Forward(context.Background(), "nonexistent", 8080)
 	assert.Nil(t, rwc)
@@ -455,4 +458,829 @@ func TestTCPForward_EmptySandboxName(t *testing.T) {
 	assert.Nil(t, rwc)
 	require.Error(t, err)
 	assert.True(t, IsInvalidArgument(err))
+}
+
+// --- Listen tests ---
+
+func TestTCPListen_ReturnsValidListener(t *testing.T) {
+	mock := newMockTCPServer()
+	client, cleanup := setupTCPTest(t, mock)
+	defer cleanup()
+
+	ln, err := client.Listen(context.Background(), "my-sandbox", 8080, 0)
+	require.NoError(t, err)
+	require.NotNil(t, ln)
+	defer func() { _ = ln.Close() }()
+
+	// Addr should return a non-nil TCP address with a non-zero port.
+	addr := ln.Addr()
+	require.NotNil(t, addr)
+	tcpAddr, ok := addr.(*net.TCPAddr)
+	require.True(t, ok, "expected *net.TCPAddr, got %T", addr)
+	assert.NotZero(t, tcpAddr.Port, "OS-assigned port should be non-zero")
+}
+
+func TestTCPListen_ConcurrentConnections(t *testing.T) {
+	mock := newMockTCPServer()
+	client, cleanup := setupTCPTest(t, mock)
+	defer cleanup()
+
+	ln, err := client.Listen(context.Background(), "my-sandbox", 8080, 0)
+	require.NoError(t, err)
+	require.NotNil(t, ln)
+	defer func() { _ = ln.Close() }()
+
+	const numConns = 10
+	var wg sync.WaitGroup
+	errCh := make(chan error, numConns*2) // space for accept + dial errors
+
+	// Accept goroutine: accepts all connections.
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for range numConns {
+			_, acceptErr := ln.Accept()
+			if acceptErr != nil {
+				errCh <- fmt.Errorf("accept: %w", acceptErr)
+				return
+			}
+		}
+	}()
+
+	// Dial numConns goroutines, each independently writes and reads.
+	for i := range numConns {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+
+			conn, dialErr := net.Dial("tcp", ln.Addr().String())
+			if dialErr != nil {
+				errCh <- fmt.Errorf("dial %d: %w", idx, dialErr)
+				return
+			}
+			defer func() { _ = conn.Close() }()
+
+			payload := []byte(fmt.Sprintf("msg-%d", idx))
+			_, writeErr := conn.Write(payload)
+			if writeErr != nil {
+				errCh <- fmt.Errorf("write %d: %w", idx, writeErr)
+				return
+			}
+
+			buf := make([]byte, 256)
+			n, readErr := conn.Read(buf)
+			if readErr != nil {
+				errCh <- fmt.Errorf("read %d: %w", idx, readErr)
+				return
+			}
+
+			if string(buf[:n]) != string(payload) {
+				errCh <- fmt.Errorf("conn %d: expected %q, got %q", idx, payload, buf[:n])
+			}
+		}(i)
+	}
+
+	wg.Wait()
+	close(errCh)
+	for err := range errCh {
+		t.Errorf("concurrent connection error: %v", err)
+	}
+}
+
+func TestTCPListen_EphemeralPort(t *testing.T) {
+	mock := newMockTCPServer()
+	client, cleanup := setupTCPTest(t, mock)
+	defer cleanup()
+
+	// localPort=0 → OS assigns an ephemeral port.
+	ln, err := client.Listen(context.Background(), "my-sandbox", 8080, 0)
+	require.NoError(t, err)
+	require.NotNil(t, ln)
+	defer func() { _ = ln.Close() }()
+
+	// Addr() should expose the assigned port.
+	tcpAddr, ok := ln.Addr().(*net.TCPAddr)
+	require.True(t, ok)
+	assert.NotZero(t, tcpAddr.Port, "OS-assigned port should be non-zero")
+
+	// Verify a connection through the ephemeral port actually works.
+	acceptDone := make(chan struct{})
+	go func() {
+		defer close(acceptDone)
+		_, _ = ln.Accept()
+	}()
+
+	conn, err := net.Dial("tcp", ln.Addr().String())
+	require.NoError(t, err)
+	defer func() { _ = conn.Close() }()
+
+	payload := []byte("ephemeral-test")
+	_, err = conn.Write(payload)
+	require.NoError(t, err)
+
+	buf := make([]byte, 256)
+	n, err := conn.Read(buf)
+	require.NoError(t, err)
+	assert.Equal(t, payload, buf[:n])
+}
+
+func TestTCPListen_EmptySandboxName(t *testing.T) {
+	mock := newMockTCPServer()
+	client, cleanup := setupTCPTest(t, mock)
+	defer cleanup()
+
+	ln, err := client.Listen(context.Background(), "", 8080, 0)
+	assert.Nil(t, ln)
+	require.Error(t, err)
+	assert.True(t, IsInvalidArgument(err))
+}
+
+func TestTCPListen_BidirectionalDataFlow(t *testing.T) {
+	mock := newMockTCPServer()
+	client, cleanup := setupTCPTest(t, mock)
+	defer cleanup()
+
+	ln, err := client.Listen(context.Background(), "my-sandbox", 8080, 0)
+	require.NoError(t, err)
+	require.NotNil(t, ln)
+	defer func() { _ = ln.Close() }()
+
+	// Accept in a goroutine (Accept blocks until a connection arrives).
+	acceptDone := make(chan struct{})
+	go func() {
+		defer close(acceptDone)
+		conn, acceptErr := ln.Accept()
+		if acceptErr != nil {
+			return
+		}
+		// The bridge goroutines handle data flow; we just need to keep
+		// the accepted connection alive until the test completes.
+		_ = conn
+	}()
+
+	// Connect to the listener's local address.
+	conn, err := net.Dial("tcp", ln.Addr().String())
+	require.NoError(t, err)
+	defer func() { _ = conn.Close() }()
+
+	// Write data through the local connection → tunnel → mock echo → back.
+	payload := []byte("hello through the tunnel")
+	_, err = conn.Write(payload)
+	require.NoError(t, err)
+
+	// Read the echoed data back.
+	buf := make([]byte, 256)
+	n, err := conn.Read(buf)
+	require.NoError(t, err)
+	assert.Equal(t, payload, buf[:n])
+
+	// Second round-trip to confirm bidirectionality.
+	payload2 := []byte("round two")
+	_, err = conn.Write(payload2)
+	require.NoError(t, err)
+
+	n, err = conn.Read(buf)
+	require.NoError(t, err)
+	assert.Equal(t, payload2, buf[:n])
+}
+
+func TestTCPListen_InvalidRemotePort(t *testing.T) {
+	mock := newMockTCPServer()
+	client, cleanup := setupTCPTest(t, mock)
+	defer cleanup()
+
+	tests := []struct {
+		name string
+		port uint32
+	}{
+		{"port zero", 0},
+		{"port too high", 65536},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ln, err := client.Listen(context.Background(), "my-sandbox", tt.port, 0)
+			assert.Nil(t, ln)
+			require.Error(t, err)
+			assert.True(t, IsInvalidArgument(err), "expected InvalidArgument, got: %v", err)
+		})
+	}
+}
+
+// --- Graceful shutdown tests ---
+
+func TestTCPListen_CloseTerminatesConnections(t *testing.T) {
+	mock := newMockTCPServer()
+	client, cleanup := setupTCPTest(t, mock)
+	defer cleanup()
+
+	ln, err := client.Listen(context.Background(), "my-sandbox", 8080, 0)
+	require.NoError(t, err)
+
+	const numConns = 3
+	conns := make([]net.Conn, numConns)
+
+	// Accept goroutine.
+	go func() {
+		for range numConns {
+			_, _ = ln.Accept()
+		}
+	}()
+
+	// Establish 3 connections.
+	for i := range numConns {
+		conns[i], err = net.Dial("tcp", ln.Addr().String())
+		require.NoError(t, err)
+
+		// Verify data flows before shutdown.
+		_, err = conns[i].Write([]byte("pre-close"))
+		require.NoError(t, err)
+		buf := make([]byte, 256)
+		_, err = conns[i].Read(buf)
+		require.NoError(t, err)
+	}
+
+	// Close the listener. Per SC-003, this should complete within 5 seconds.
+	closeDone := make(chan error, 1)
+	go func() {
+		closeDone <- ln.Close()
+	}()
+
+	select {
+	case closeErr := <-closeDone:
+		assert.NoError(t, closeErr)
+	case <-time.After(5 * time.Second):
+		t.Fatal("Close did not complete within 5 seconds")
+	}
+
+	// All connections should now return errors on read.
+	for i, conn := range conns {
+		buf := make([]byte, 64)
+		_, readErr := conn.Read(buf)
+		assert.Error(t, readErr, "connection %d should be closed after listener.Close()", i)
+		_ = conn.Close()
+	}
+}
+
+func TestTCPListen_ContextCancellation(t *testing.T) {
+	mock := newMockTCPServer()
+	client, cleanup := setupTCPTest(t, mock)
+	defer cleanup()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	ln, err := client.Listen(ctx, "my-sandbox", 8080, 0)
+	require.NoError(t, err)
+	require.NotNil(t, ln)
+
+	// Accept a connection so there's an active bridge.
+	go func() { _, _ = ln.Accept() }()
+
+	conn, err := net.Dial("tcp", ln.Addr().String())
+	require.NoError(t, err)
+
+	// Verify data flows before cancellation.
+	_, err = conn.Write([]byte("before-cancel"))
+	require.NoError(t, err)
+	buf := make([]byte, 256)
+	_, err = conn.Read(buf)
+	require.NoError(t, err)
+
+	// Cancel the context — should trigger listener close.
+	cancel()
+
+	// The connection should eventually fail.
+	// Give the context-watcher goroutine a moment to close the listener.
+	time.Sleep(50 * time.Millisecond)
+
+	_, err = conn.Write([]byte("after-cancel"))
+	if err == nil {
+		// Write may succeed if buffered, but Read should fail.
+		buf = make([]byte, 64)
+		_, err = conn.Read(buf)
+	}
+	assert.Error(t, err, "connection should fail after context cancellation")
+	_ = conn.Close()
+}
+
+func TestTCPListen_AcceptOnClosedListener(t *testing.T) {
+	mock := newMockTCPServer()
+	client, cleanup := setupTCPTest(t, mock)
+	defer cleanup()
+
+	ln, err := client.Listen(context.Background(), "my-sandbox", 8080, 0)
+	require.NoError(t, err)
+
+	// Close the listener immediately.
+	err = ln.Close()
+	require.NoError(t, err)
+
+	// Accept should return an error.
+	conn, err := ln.Accept()
+	assert.Nil(t, conn)
+	assert.Error(t, err)
+}
+
+// --- Custom bind address tests ---
+
+func TestTCPListen_WithBindAddress(t *testing.T) {
+	mock := newMockTCPServer()
+	client, cleanup := setupTCPTest(t, mock)
+	defer cleanup()
+
+	// Verify WithBindAddress is accepted and the listener binds to the
+	// specified address. We use 127.0.0.1 explicitly since it is the only
+	// loopback address guaranteed on all platforms (macOS does not enable
+	// 127.0.0.2+ by default). The default-case assertion below confirms
+	// that omitting the option also produces 127.0.0.1.
+	ln, err := client.Listen(
+		context.Background(), "my-sandbox", 8080, 0,
+		WithBindAddress("127.0.0.1"),
+	)
+	require.NoError(t, err)
+	defer func() { _ = ln.Close() }()
+
+	tcpAddr, ok := ln.Addr().(*net.TCPAddr)
+	require.True(t, ok, "expected *net.TCPAddr")
+	assert.Equal(t, "127.0.0.1", tcpAddr.IP.String(),
+		"listener should bind to the address specified by WithBindAddress")
+
+	// Also verify that without WithBindAddress the default is 127.0.0.1.
+	lnDefault, err := client.Listen(
+		context.Background(), "my-sandbox", 8080, 0,
+	)
+	require.NoError(t, err)
+	defer func() { _ = lnDefault.Close() }()
+
+	defaultAddr, ok := lnDefault.Addr().(*net.TCPAddr)
+	require.True(t, ok, "expected *net.TCPAddr")
+	assert.Equal(t, "127.0.0.1", defaultAddr.IP.String(),
+		"default bind address should be 127.0.0.1")
+}
+
+// --- SSH tunnel transport tests ---
+
+// mockSSHClient implements SSHInterface for testing the SSH tunnel path.
+type mockSSHClient struct {
+	mu          sync.Mutex
+	tunnelCalls int
+}
+
+func (m *mockSSHClient) CreateSession(_ context.Context, _ string) (*SSHSession, error) {
+	return nil, fmt.Errorf("not implemented in mock")
+}
+
+func (m *mockSSHClient) RevokeSession(_ context.Context, _ string) (bool, error) {
+	return false, fmt.Errorf("not implemented in mock")
+}
+
+// Tunnel returns a pipe that echoes data back, and increments the call counter.
+func (m *mockSSHClient) Tunnel(_ context.Context, _ string, _ uint32, _ ...TunnelOption) (io.ReadWriteCloser, error) {
+	m.mu.Lock()
+	m.tunnelCalls++
+	m.mu.Unlock()
+
+	// Create a pipe-based echo tunnel: read from one end, write back to the other.
+	clientReader, serverWriter := io.Pipe()
+	serverReader, clientWriter := io.Pipe()
+
+	// Echo goroutine: copy everything from server reader to server writer.
+	go func() {
+		buf := make([]byte, 4096)
+		for {
+			n, err := serverReader.Read(buf)
+			if err != nil {
+				_ = serverWriter.Close()
+				return
+			}
+			if _, wErr := serverWriter.Write(buf[:n]); wErr != nil {
+				return
+			}
+		}
+	}()
+
+	return &pipeRWC{Reader: clientReader, Writer: clientWriter, closers: []io.Closer{clientReader, clientWriter, serverReader, serverWriter}}, nil
+}
+
+// pipeRWC wraps a Reader and Writer into an io.ReadWriteCloser.
+type pipeRWC struct {
+	io.Reader
+	io.Writer
+	closers []io.Closer
+}
+
+func (p *pipeRWC) Close() error {
+	for _, c := range p.closers {
+		_ = c.Close()
+	}
+	return nil
+}
+
+func TestTCPListen_WithSSHTunnel(t *testing.T) {
+	mock := newMockTCPServer()
+
+	// Set up the gRPC connection (needed for tcpClient even though SSH path
+	// won't use Forward).
+	lis := bufconn.Listen(bufSize)
+	srv := grpc.NewServer()
+	pb.RegisterOpenShellServer(srv, mock)
+	go func() { _ = srv.Serve(lis) }()
+
+	conn, err := grpc.NewClient("passthrough:///bufconn",
+		grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {
+			return lis.Dial()
+		}),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	require.NoError(t, err)
+	defer func() {
+		_ = conn.Close()
+		srv.Stop()
+	}()
+
+	sshMock := &mockSSHClient{}
+	client := newTCPClient(conn, &stubSandboxResolver{}, sshMock)
+
+	ln, err := client.Listen(
+		context.Background(), "my-sandbox", 8080, 0,
+		WithSSHTunnel(),
+		WithListenServiceID("ssh-svc"),
+	)
+	require.NoError(t, err)
+	defer func() { _ = ln.Close() }()
+
+	// Accept in background.
+	go func() { _, _ = ln.Accept() }()
+
+	// Connect and send data through the SSH tunnel path.
+	c, err := net.Dial("tcp", ln.Addr().String())
+	require.NoError(t, err)
+
+	payload := []byte("ssh-tunnel-test")
+	_, err = c.Write(payload)
+	require.NoError(t, err)
+
+	buf := make([]byte, 256)
+	n, err := c.Read(buf)
+	require.NoError(t, err)
+	assert.Equal(t, string(payload), string(buf[:n]),
+		"data should echo through SSH tunnel")
+
+	// Verify that Tunnel was called (not Forward).
+	sshMock.mu.Lock()
+	calls := sshMock.tunnelCalls
+	sshMock.mu.Unlock()
+	assert.Equal(t, 1, calls, "SSH Tunnel should have been called exactly once")
+
+	// Verify no Forward calls happened on the mock TCP server.
+	mock.mu.Lock()
+	initFrame := mock.lastInit
+	mock.mu.Unlock()
+	assert.Nil(t, initFrame, "TCP Forward should not have been called when using SSH tunnel")
+
+	_ = c.Close()
+}
+
+func TestTCPListen_CallerSpecifiedPort(t *testing.T) {
+	mock := newMockTCPServer()
+	client, cleanup := setupTCPTest(t, mock)
+	defer cleanup()
+
+	const wantPort = 19876
+	ln, err := client.Listen(context.Background(), "my-sandbox", 8080, wantPort)
+	require.NoError(t, err)
+	require.NotNil(t, ln)
+	defer func() { _ = ln.Close() }()
+
+	tcpAddr, ok := ln.Addr().(*net.TCPAddr)
+	require.True(t, ok)
+	assert.Equal(t, wantPort, tcpAddr.Port, "listener should bind to the exact port requested")
+
+	go func() { _, _ = ln.Accept() }()
+
+	c, err := net.Dial("tcp", ln.Addr().String())
+	require.NoError(t, err)
+	defer func() { _ = c.Close() }()
+
+	_, err = c.Write([]byte("fixed-port"))
+	require.NoError(t, err)
+
+	buf := make([]byte, 64)
+	n, err := c.Read(buf)
+	require.NoError(t, err)
+	assert.Equal(t, "fixed-port", string(buf[:n]))
+}
+
+func TestTCPListen_ServiceIDPropagated(t *testing.T) {
+	mock := newMockTCPServer()
+	client, cleanup := setupTCPTest(t, mock)
+	defer cleanup()
+
+	ln, err := client.Listen(context.Background(), "my-sandbox", 8080, 0,
+		WithListenServiceID("test-svc-id"),
+	)
+	require.NoError(t, err)
+	defer func() { _ = ln.Close() }()
+
+	go func() { _, _ = ln.Accept() }()
+
+	c, err := net.Dial("tcp", ln.Addr().String())
+	require.NoError(t, err)
+
+	_, err = c.Write([]byte("svc-id-test"))
+	require.NoError(t, err)
+	buf := make([]byte, 64)
+	_, err = c.Read(buf)
+	require.NoError(t, err)
+	_ = c.Close()
+
+	mock.mu.Lock()
+	init := mock.lastInit
+	mock.mu.Unlock()
+
+	require.NotNil(t, init, "mock should have received the init frame")
+	assert.Equal(t, "test-svc-id", init.GetServiceId(),
+		"Listen should propagate service ID to the Forward init frame")
+}
+
+func TestTCPListen_ConcurrentAccept(t *testing.T) {
+	mock := newMockTCPServer()
+	client, cleanup := setupTCPTest(t, mock)
+	defer cleanup()
+
+	ln, err := client.Listen(context.Background(), "my-sandbox", 8080, 0)
+	require.NoError(t, err)
+	defer func() { _ = ln.Close() }()
+
+	const numAcceptors = 3
+	const numConns = 6
+	accepted := make(chan net.Conn, numConns)
+	var wg sync.WaitGroup
+
+	for range numAcceptors {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				conn, acceptErr := ln.Accept()
+				if acceptErr != nil {
+					return
+				}
+				accepted <- conn
+			}
+		}()
+	}
+
+	for range numConns {
+		c, dialErr := net.Dial("tcp", ln.Addr().String())
+		require.NoError(t, dialErr)
+		_, err = c.Write([]byte("hello"))
+		require.NoError(t, err)
+		buf := make([]byte, 64)
+		_, err = c.Read(buf)
+		require.NoError(t, err)
+		_ = c.Close()
+	}
+
+	_ = ln.Close()
+	wg.Wait()
+	close(accepted)
+
+	count := 0
+	for conn := range accepted {
+		_ = conn.Close()
+		count++
+	}
+	assert.Equal(t, numConns, count, "all connections should be accepted across concurrent acceptors")
+}
+
+func TestTCPListen_WithSSHTunnel_NilSSH(t *testing.T) {
+	mock := newMockTCPServer()
+	lis := bufconn.Listen(bufSize)
+	srv := grpc.NewServer()
+	pb.RegisterOpenShellServer(srv, mock)
+	go func() { _ = srv.Serve(lis) }()
+
+	conn, err := grpc.NewClient("passthrough:///bufconn",
+		grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {
+			return lis.Dial()
+		}),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	require.NoError(t, err)
+	defer func() {
+		_ = conn.Close()
+		srv.Stop()
+	}()
+
+	client := newTCPClient(conn, &stubSandboxResolver{}, nil)
+	_, err = client.Listen(context.Background(), "my-sandbox", 8080, 0, WithSSHTunnel())
+	require.Error(t, err)
+	assert.True(t, IsInvalidArgument(err), "WithSSHTunnel with nil SSH client should return InvalidArgument")
+}
+
+// --- Failure injection helpers ---
+
+// flippableResolver extends stubSandboxResolver with a mutex-guarded error
+// that can be toggled at runtime (set to nil to stop failing).
+type flippableResolver struct {
+	mu      sync.Mutex
+	failErr error
+}
+
+func (r *flippableResolver) Get(_ context.Context, name string) (*Sandbox, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.failErr != nil {
+		return nil, r.failErr
+	}
+	return &Sandbox{ID: "sb-" + name, Name: name}, nil
+}
+
+func (r *flippableResolver) Create(context.Context, string, *SandboxSpec, map[string]string) (*Sandbox, error) {
+	panic("not implemented")
+}
+func (r *flippableResolver) List(context.Context, ...ListOptions) ([]*Sandbox, error) {
+	panic("not implemented")
+}
+func (r *flippableResolver) Delete(context.Context, string) error { panic("not implemented") }
+func (r *flippableResolver) AttachProvider(context.Context, string, string, uint64) (*AttachProviderResult, error) {
+	panic("not implemented")
+}
+func (r *flippableResolver) DetachProvider(context.Context, string, string, uint64) (*DetachProviderResult, error) {
+	panic("not implemented")
+}
+func (r *flippableResolver) ListProviders(context.Context, string) ([]*Provider, error) {
+	panic("not implemented")
+}
+func (r *flippableResolver) WaitReady(context.Context, string, ...WaitOptions) (*Sandbox, error) {
+	panic("not implemented")
+}
+func (r *flippableResolver) Watch(context.Context, string, ...WatchOptions) (WatchInterface[*Sandbox], error) {
+	panic("not implemented")
+}
+func (r *flippableResolver) GetLogs(context.Context, string, ...LogOption) (*LogResult, error) {
+	panic("not implemented")
+}
+
+// --- Failure injection tests ---
+
+func TestTCPListen_TunnelSetupRetry(t *testing.T) {
+	mock := newMockTCPServer()
+
+	lis := bufconn.Listen(bufSize)
+	srv := grpc.NewServer()
+	pb.RegisterOpenShellServer(srv, mock)
+	go func() { _ = srv.Serve(lis) }()
+
+	conn, err := grpc.NewClient("passthrough:///bufconn",
+		grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {
+			return lis.Dial()
+		}),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	require.NoError(t, err)
+	defer func() {
+		_ = conn.Close()
+		srv.Stop()
+	}()
+
+	// Use a resolver that fails initially, then succeeds.
+	resolver := &flippableResolver{
+		failErr: &StatusError{Code: ErrorUnavailable, Message: "sandbox unreachable"},
+	}
+	client := newTCPClient(conn, resolver, nil)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	inner, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+
+	tl := &tunnelListener{
+		inner:       inner,
+		ctx:         ctx,
+		cancel:      cancel,
+		tcp:         client,
+		sandboxName: "my-sandbox",
+		remotePort:  8080,
+		cfg:         listenConfig{bindAddress: "127.0.0.1"},
+	}
+
+	accepted := make(chan net.Conn, 1)
+	acceptErr := make(chan error, 1)
+
+	go func() {
+		c, e := tl.Accept()
+		if e != nil {
+			acceptErr <- e
+			return
+		}
+		accepted <- c
+	}()
+
+	// First connection triggers Forward which fails (resolver returns error).
+	c1, err := net.Dial("tcp", inner.Addr().String())
+	require.NoError(t, err)
+	defer func() { _ = c1.Close() }()
+
+	time.Sleep(50 * time.Millisecond)
+
+	// Clear the error so the next Forward succeeds.
+	resolver.mu.Lock()
+	resolver.failErr = nil
+	resolver.mu.Unlock()
+
+	// Second connection should succeed through the retry loop.
+	c2, err := net.Dial("tcp", inner.Addr().String())
+	require.NoError(t, err)
+	defer func() { _ = c2.Close() }()
+
+	select {
+	case c := <-accepted:
+		require.NotNil(t, c)
+		_ = c.Close()
+	case e := <-acceptErr:
+		t.Fatalf("Accept returned error instead of retrying: %v", e)
+	case <-time.After(5 * time.Second):
+		t.Fatal("Accept did not return after retry")
+	}
+
+	_ = tl.Close()
+}
+
+func TestTCPListen_TunnelFailureWithContextCancel(t *testing.T) {
+	mock := newMockTCPServer()
+
+	lis := bufconn.Listen(bufSize)
+	srv := grpc.NewServer()
+	pb.RegisterOpenShellServer(srv, mock)
+	go func() { _ = srv.Serve(lis) }()
+
+	conn, err := grpc.NewClient("passthrough:///bufconn",
+		grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) {
+			return lis.Dial()
+		}),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	require.NoError(t, err)
+	defer func() {
+		_ = conn.Close()
+		srv.Stop()
+	}()
+
+	// Resolver always fails: Forward will error on every attempt.
+	resolver := &flippableResolver{
+		failErr: &StatusError{Code: ErrorUnavailable, Message: "permanent failure"},
+	}
+	client := newTCPClient(conn, resolver, nil)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	ln, err := client.Listen(ctx, "my-sandbox", 8080, 0)
+	require.NoError(t, err)
+
+	acceptErr := make(chan error, 1)
+	go func() {
+		_, e := ln.Accept()
+		acceptErr <- e
+	}()
+
+	// Trigger a connection that will fail tunnel setup.
+	c, err := net.Dial("tcp", ln.Addr().String())
+	require.NoError(t, err)
+	_ = c.Close()
+
+	// Give Accept time to enter the retry loop.
+	time.Sleep(50 * time.Millisecond)
+
+	// Cancel context: the context-watcher goroutine in Listen() calls
+	// Close(), which closes the inner listener and unblocks Accept.
+	cancel()
+
+	select {
+	case e := <-acceptErr:
+		require.Error(t, e)
+	case <-time.After(5 * time.Second):
+		t.Fatal("Accept did not return after context cancellation")
+	}
+}
+
+func TestTCPListen_BridgedConnCloseIdempotent(t *testing.T) {
+	r1, w1 := io.Pipe()
+	r2, w2 := io.Pipe()
+	tunnel := &pipeRWC{Reader: r1, Writer: w2, closers: []io.Closer{r1, w1, r2, w2}}
+
+	server, client := net.Pipe()
+	defer func() { _ = server.Close() }()
+
+	bc := &bridgedConn{
+		Conn:   client,
+		tunnel: tunnel,
+	}
+
+	err1 := bc.Close()
+	err2 := bc.Close()
+
+	// Second close must not panic and must return the same error.
+	assert.Equal(t, err1, err2, "idempotent Close should return the same error")
 }
