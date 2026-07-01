@@ -2,13 +2,6 @@
 
 Ideas captured from code reviews for future brainstorming.
 
-### reverse-forwarding
-
-- **Source**: brainstorm
-- **Date**: 2026-06-29
-- **Reference**: brainstorm #010 (Phase 2b-3)
-- **Summary**: Remote-to-local forwarding where the sandbox connects back to the client through the gateway (like `ssh -R`). Requires proto support investigation. May not be feasible with current ForwardTcp RPC which is client-initiated only.
-
 ### sandbox-session
 
 - **Source**: discussion
