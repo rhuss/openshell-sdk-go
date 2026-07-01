@@ -106,6 +106,38 @@ func ExampleClient_Exec() {
 	// Exec requires a real gateway
 }
 
+// ExampleClient_TCP demonstrates binding a local port to a sandbox port
+// using the net.Listener pattern. The returned listener tunnels every
+// accepted connection to the remote port inside the sandbox.
+//
+// The fake client returns Unimplemented for Listen, so this example shows
+// the call pattern and error handling rather than a live tunnel.
+func ExampleClient_TCP() {
+	client := fake.NewClient()
+	defer client.Close() //nolint:errcheck
+
+	ctx := context.Background()
+
+	// Bind local port 0 (OS-assigned) to sandbox port 8080.
+	ln, err := client.TCP().Listen(ctx, "my-sandbox", 8080, 0)
+	if v1.IsUnimplemented(err) {
+		fmt.Println("Listen requires a real gateway")
+	}
+	if ln != nil {
+		// In production, use ln.Addr() to discover the assigned port,
+		// then accept connections in a loop:
+		//
+		//   for {
+		//       conn, err := ln.Accept()
+		//       if err != nil { break }
+		//       go handleConn(conn)
+		//   }
+		defer ln.Close() //nolint:errcheck
+	}
+	// Output:
+	// Listen requires a real gateway
+}
+
 // ExampleIsNotFound demonstrates handling a not-found error.
 func ExampleIsNotFound() {
 	client := fake.NewClient()

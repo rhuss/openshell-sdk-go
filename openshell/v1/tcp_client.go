@@ -7,6 +7,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
+	"strconv"
 	"sync"
 
 	"github.com/rhuss/openshell-sdk-go/openshell/v1/internal/converter"
@@ -17,10 +19,11 @@ import (
 type tcpClient struct {
 	client    pb.OpenShellClient
 	sandboxes SandboxInterface
+	ssh       SSHInterface
 }
 
-func newTCPClient(conn grpc.ClientConnInterface, sandboxes SandboxInterface) *tcpClient {
-	return &tcpClient{client: pb.NewOpenShellClient(conn), sandboxes: sandboxes}
+func newTCPClient(conn grpc.ClientConnInterface, sandboxes SandboxInterface, ssh SSHInterface) *tcpClient {
+	return &tcpClient{client: pb.NewOpenShellClient(conn), sandboxes: sandboxes, ssh: ssh}
 }
 
 func (t *tcpClient) Forward(ctx context.Context, sandboxName string, port uint32, opts ...ForwardOption) (io.ReadWriteCloser, error) {
@@ -81,6 +84,205 @@ func (t *tcpClient) Forward(ctx context.Context, sandboxName string, port uint32
 	}
 	go conn.readLoop()
 	return conn, nil
+}
+
+func (t *tcpClient) Listen(ctx context.Context, sandboxName string, remotePort uint32, localPort uint32, opts ...ListenOption) (net.Listener, error) {
+	if sandboxName == "" {
+		return nil, &StatusError{Code: ErrorInvalidArgument, Message: "sandbox name must not be empty"}
+	}
+	if remotePort == 0 || remotePort > 65535 {
+		return nil, &StatusError{
+			Code:    ErrorInvalidArgument,
+			Message: fmt.Sprintf("port must be in range 1-65535, got %d", remotePort),
+		}
+	}
+	if localPort > 65535 {
+		return nil, &StatusError{
+			Code:    ErrorInvalidArgument,
+			Message: fmt.Sprintf("local port must be in range 0-65535, got %d", localPort),
+		}
+	}
+
+	cfg := listenConfig{bindAddress: "127.0.0.1"}
+	for _, o := range opts {
+		o(&cfg)
+	}
+
+	if cfg.useSSHTunnel && t.ssh == nil {
+		return nil, &StatusError{
+			Code:    ErrorInvalidArgument,
+			Message: "WithSSHTunnel requires an SSH client, but none is available",
+		}
+	}
+
+	addr := net.JoinHostPort(cfg.bindAddress, strconv.FormatUint(uint64(localPort), 10))
+	inner, err := net.Listen("tcp", addr)
+	if err != nil {
+		return nil, fmt.Errorf("listen on %s: %w", addr, err)
+	}
+
+	listenCtx, cancel := context.WithCancel(ctx)
+	tl := &tunnelListener{
+		inner:       inner,
+		ctx:         listenCtx,
+		cancel:      cancel,
+		tcp:         t,
+		ssh:         t.ssh,
+		sandboxName: sandboxName,
+		remotePort:  remotePort,
+		cfg:         cfg,
+	}
+
+	// Context-watcher: if the parent context is cancelled, close the listener.
+	go func() {
+		<-listenCtx.Done()
+		_ = tl.Close()
+	}()
+
+	return tl, nil
+}
+
+// tunnelListener implements net.Listener. It accepts local TCP connections
+// and bridges each one to a sandbox port via Forward (or Tunnel in SSH mode).
+type tunnelListener struct {
+	inner       net.Listener
+	ctx         context.Context
+	cancel      context.CancelFunc
+	tcp         *tcpClient
+	ssh         SSHInterface
+	sandboxName string
+	remotePort  uint32
+	cfg         listenConfig
+	wg          sync.WaitGroup
+	mu          sync.Mutex
+	closing     bool
+	closeOnce   sync.Once
+	closeErr    error
+}
+
+// Accept waits for and returns the next tunneled connection. Each accepted
+// local connection triggers a Forward (or SSH Tunnel) to the sandbox port.
+// If tunnel setup fails, the local connection is closed and Accept retries.
+// Accept returns an error when the listener is closed.
+func (tl *tunnelListener) Accept() (net.Conn, error) {
+	for {
+		conn, err := tl.inner.Accept()
+		if err != nil {
+			return nil, err
+		}
+
+		// Establish the tunnel to the sandbox.
+		var tunnel io.ReadWriteCloser
+		if tl.cfg.useSSHTunnel && tl.ssh != nil {
+			var tunnelOpts []TunnelOption
+			if tl.cfg.serviceID != "" {
+				tunnelOpts = append(tunnelOpts, WithTunnelServiceID(tl.cfg.serviceID))
+			}
+			tunnel, err = tl.ssh.Tunnel(tl.ctx, tl.sandboxName, tl.remotePort, tunnelOpts...)
+		} else {
+			var fwdOpts []ForwardOption
+			if tl.cfg.serviceID != "" {
+				fwdOpts = append(fwdOpts, WithForwardServiceID(tl.cfg.serviceID))
+			}
+			tunnel, err = tl.tcp.Forward(tl.ctx, tl.sandboxName, tl.remotePort, fwdOpts...)
+		}
+
+		if err != nil {
+			_ = conn.Close()
+			select {
+			case <-tl.ctx.Done():
+				return nil, tl.ctx.Err()
+			default:
+				continue
+			}
+		}
+
+		// Wrap the local conn + tunnel into a bridged connection and
+		// spawn goroutines that copy data bidirectionally.
+		bc := &bridgedConn{
+			Conn:   conn,
+			tunnel: tunnel,
+		}
+
+		tl.mu.Lock()
+		if tl.closing {
+			tl.mu.Unlock()
+			_ = bc.Close()
+			return nil, net.ErrClosed
+		}
+		tl.wg.Add(1)
+		tl.mu.Unlock()
+		go tl.bridge(bc)
+
+		return bc, nil
+	}
+}
+
+// bridge copies data bidirectionally between the local connection and the
+// tunnel. It runs in its own goroutine and decrements the WaitGroup on exit.
+func (tl *tunnelListener) bridge(bc *bridgedConn) {
+	defer tl.wg.Done()
+
+	done := make(chan struct{}, 2)
+
+	// Local → tunnel
+	go func() {
+		_, _ = io.Copy(bc.tunnel, bc.Conn)
+		done <- struct{}{}
+	}()
+
+	// Tunnel → local
+	go func() {
+		_, _ = io.Copy(bc.Conn, bc.tunnel)
+		done <- struct{}{}
+	}()
+
+	<-done
+	_ = bc.Close()
+	<-done
+}
+
+// Close stops the listener from accepting new connections, cancels all
+// active tunnels, and blocks until all bridge goroutines finish.
+func (tl *tunnelListener) Close() error {
+	tl.closeOnce.Do(func() {
+		tl.mu.Lock()
+		tl.closing = true
+		tl.mu.Unlock()
+		tl.closeErr = tl.inner.Close()
+		tl.cancel()
+		tl.wg.Wait()
+	})
+	return tl.closeErr
+}
+
+// Addr returns the listener's network address (the bound local address).
+func (tl *tunnelListener) Addr() net.Addr {
+	return tl.inner.Addr()
+}
+
+// bridgedConn wraps a local net.Conn and its associated tunnel. Closing
+// the bridgedConn closes both the local connection and the tunnel.
+type bridgedConn struct {
+	net.Conn
+	tunnel    io.ReadWriteCloser
+	closeOnce sync.Once
+	closeErr  error
+}
+
+// Close closes both the tunnel and the underlying local connection.
+// Safe to call concurrently from bridge teardown and consumer code.
+func (bc *bridgedConn) Close() error {
+	bc.closeOnce.Do(func() {
+		tErr := bc.tunnel.Close()
+		cErr := bc.Conn.Close()
+		if tErr != nil {
+			bc.closeErr = tErr
+		} else {
+			bc.closeErr = cErr
+		}
+	})
+	return bc.closeErr
 }
 
 // tcpForwardConn wraps a bidirectional TcpForwardFrame stream into an
