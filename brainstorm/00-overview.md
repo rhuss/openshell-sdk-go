@@ -1,6 +1,6 @@
 # Brainstorm Overview
 
-Last updated: 2026-06-30
+Last updated: 2026-07-01
 
 ## Active Sessions
 
@@ -8,6 +8,7 @@ Last updated: 2026-06-30
 |---|------|-------|--------|------|-------|
 | 001 | 2026-06-27 | go-sdk | active | - | - |
 | 015 | 2026-06-30 | local-port-listener | active | - | - |
+| 016 | 2026-07-01 | reverse-forwarding | active | - | [#18](https://github.com/rhuss/openshell-sdk-go/issues/18) |
 
 ## Attic (implemented)
 
@@ -60,6 +61,12 @@ Last updated: 2026-06-30
 - Listen error propagation: should per-connection Forward failures be returned from Accept(), silently retried, or routed to a callback? (from #015)
 - WithOnError callback: should Listen accept an error handler for connection-level failures? (from #015)
 - Connection limit: WithMaxConnections() deferred but internal design should accommodate it (from #015)
+- Proto model for reverse forwarding: which approach does upstream prefer, client-polls or gateway-push? (from #016)
+- WithOnError callback for RemoteListen: should per-connection errors surface via callback or just logging? (from #016)
+- Sandbox-side bind semantics: port allocation, conflict handling inside sandbox (from #016)
+- Reverse forwarding auth model: reuse existing credentials or separate token? (from #016)
+- WithSSHTunnel for reverse direction: needed or always direct TCP? (from #016)
+- Connection limit for RemoteListen: part of v1 or deferred? (from #016)
 
 ## Resolved Threads
 - Interface evolution: follow client-go pattern, accept interface growth, provide fake, use concrete `*Client` in production
