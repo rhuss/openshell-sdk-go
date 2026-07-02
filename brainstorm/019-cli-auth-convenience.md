@@ -127,29 +127,32 @@ Map `auth_mode` field to the right AuthProvider chain:
 - Filesystem operations isolated to this package (core SDK stays
   filesystem-free per constitution)
 
+## Resolved Questions
+
+- **TLS scope:** `NewClient` resolves both auth and TLS (insecure, custom
+  CA, mTLS certs) from gateway metadata. One call gives a fully configured
+  client, matching the Rust bootstrap behavior. mTLS cert/key/CA loading
+  is part of this package.
+- **OIDC disk token source:** Full `oauth2.TokenSource` implementation.
+  Reads token bundle from disk, uses refresh token to cycle access tokens,
+  writes updated bundle back to disk. This makes OIDC gateways work for
+  unattended workflows without re-login.
+- **Active gateway:** Supported. Empty name resolves to the `active_gateway`
+  marker file, matching the Rust CLI's `gateway use` behavior.
+- **LoadConfig:** Returns a frozen snapshot (parsed once, returned as a
+  value). Caller can re-call `LoadConfig` for fresh data. No live view,
+  no TOCTOU issues.
+- **Edge dependency:** Direct import of `openshell/v1/edge`. Edge auth is
+  already shipped (PR #22), no indirection needed.
+- **Gateway precedence:** User gateways override system gateways (user-first
+  fallback to system), matching Rust behavior.
+- **ListGateways source info:** Includes source (user vs system) per entry,
+  matching the Rust `GatewayMetadataSource` pattern. Useful for CLI
+  tab-completion and debugging.
+
 ## Open Questions
 
-- mTLS certificate loading: part of this package or separate? The Rust
-  CLI has `mtls.rs` in bootstrap with cert/key/CA loading. The Go SDK
-  may want a dedicated TLS options type.
-- Should `NewClient` also resolve TLS dial options (insecure, custom CA,
-  mTLS), or only AuthProvider? Gateway metadata includes TLS-relevant
-  fields.
-- Active gateway: should the Go SDK support the "active gateway" concept
-  or always require an explicit name? The Rust CLI has `gateway use`
-  to set the active gateway.
-- `diskTokenSource`: should this implement `oauth2.TokenSource` (reading
-  OIDC token bundles from disk, using refresh tokens)? Or is static
-  token reading from disk sufficient for v1?
-- Should `LoadConfig` return a frozen snapshot or a live view that
-  re-reads on access?
-- System-vs-user gateway precedence: user overrides system? Rust does
-  user-first fallback to system.
-- Should ListGateways include source info (user vs system, like the
-  Rust `GatewayMetadataSource`)?
-- Should the package depend on the edge package (018) directly, or use
-  a plugin/callback pattern so it works even if edge isn't implemented
-  yet?
+(none remaining)
 
 ## Future Brainstorms
 
