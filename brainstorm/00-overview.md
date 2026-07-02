@@ -1,6 +1,6 @@
 # Brainstorm Overview
 
-Last updated: 2026-06-30
+Last updated: 2026-07-01
 
 ## Active Sessions
 
@@ -8,6 +8,8 @@ Last updated: 2026-06-30
 |---|------|-------|--------|------|-------|
 | 001 | 2026-06-27 | go-sdk | active | - | - |
 | 015 | 2026-06-30 | local-port-listener | active | - | - |
+| 016 | 2026-07-01 | reverse-forwarding | active | - | [#18](https://github.com/rhuss/openshell-sdk-go/issues/18) |
+| 017 | 2026-07-01 | sdk-core-auth | active | - | - |
 
 ## Attic (implemented)
 
@@ -50,7 +52,7 @@ Last updated: 2026-06-30
 - Upstream proto cleanup: file on NVIDIA/OpenShell after SDK changes merge (from #014)
 - Repo ownership: `rhuss` now, transfer to NVIDIA later (from #001, #002)
 - SDK versioning: track gateway versions or independent semver? (from #001)
-- Auth patterns: OIDC/OAuth flows deferred to dedicated brainstorm, separate from credential refresh (from #001)
+- Auth patterns: OIDC/OAuth flows deferred to dedicated brainstorm, separate from credential refresh (from #001, core token refresh addressed in #017)
 - Multi-gateway client support (multi-cluster)? (from #004)
 - NetworkPolicyRule and related sandbox.v1 types: inspect sandbox proto for exact SDK type shape (from #009)
 - ListSandboxPolicies `global` flag: should SDK expose this or keep sandbox-scoped only? (from #009)
@@ -60,6 +62,17 @@ Last updated: 2026-06-30
 - Listen error propagation: should per-connection Forward failures be returned from Accept(), silently retried, or routed to a callback? (from #015)
 - WithOnError callback: should Listen accept an error handler for connection-level failures? (from #015)
 - Connection limit: WithMaxConnections() deferred but internal design should accommodate it (from #015)
+- Proto model for reverse forwarding: which approach does upstream prefer, client-polls or gateway-push? (from #016)
+- WithOnError callback for RemoteListen: should per-connection errors surface via callback or just logging? (from #016)
+- Sandbox-side bind semantics: port allocation, conflict handling inside sandbox (from #016)
+- Reverse forwarding auth model: reuse existing credentials or separate token? (from #016)
+- WithSSHTunnel for reverse direction: needed or always direct TCP? (from #016)
+- Connection limit for RemoteListen: part of v1 or deferred? (from #016)
+- oauth2.Token: vendor/re-export from types package or let callers import golang.org/x/oauth2 directly? (from #017)
+- RefreshableToken leeway default: 10s (k8s) or expiry-based (Python SDK)? (from #017)
+- 401-triggered token reset: worth implementing for gRPC or overkill? (from #017)
+- CLI convenience layer: gateway config loading, disk-aware fileTokenSource, FromGatewayConfig(name) (from #017, separate brainstorm)
+- Full OIDC browser flow: discovery, auth code + PKCE, callback server as optional openshell/v1/oidc package (from #017, separate brainstorm)
 
 ## Resolved Threads
 - Interface evolution: follow client-go pattern, accept interface growth, provide fake, use concrete `*Client` in production

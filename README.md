@@ -32,6 +32,9 @@ patterns will look familiar:
   identical to `watch.Interface` in client-go
 - **Functional options**: variadic option patterns for list filtering,
   pagination, and watch configuration
+- **Composable auth with token refresh**: wraps `oauth2.TokenSource` for
+  automatic token caching and coalesced refresh, following the k8s client-go
+  `cachingTokenSource` pattern
 - **Fake client for testing**: an in-memory implementation of the full client
   interface (like `k8s.io/client-go/kubernetes/fake`), so operators can be tested
   without a real gateway
@@ -74,6 +77,35 @@ if err != nil {
 fmt.Println(string(result.Stdout))
 ```
 
+### With automatic token refresh
+
+For OIDC gateways, use `RefreshableToken` to wrap any `oauth2.TokenSource` with
+automatic caching and coalesced refresh:
+
+```go
+import "golang.org/x/oauth2"
+
+tokenSource := oauth2Config.TokenSource(ctx, initialToken)
+auth, err := v1.RefreshableToken(tokenSource,
+    v1.WithLeeway(30*time.Second),
+)
+if err != nil {
+    log.Fatal(err)
+}
+client, err := v1.NewClient(v1.Config{
+    Address: "gateway.example.com:443",
+    Auth:    auth,
+})
+if err != nil {
+    log.Fatal(err)
+}
+defer client.Close()
+```
+
+Concurrent callers share a single refresh call. If the token source fails, the
+SDK falls back to the cached token with a logged warning. See the
+[Auth](https://ro14nd.de/openshell-sdk-go/api/auth.html) docs for details.
+
 See the [Getting Started](https://ro14nd.de/openshell-sdk-go/getting-started.html) guide for the full walkthrough.
 
 ## Architecture
@@ -110,6 +142,7 @@ consumers import a single package. See the [Architecture](https://ro14nd.de/open
 | Sandbox logs (streaming retrieval) | `SandboxInterface` | [Sandboxes](https://ro14nd.de/openshell-sdk-go/api/sandboxes.html) |
 | Health checking | `HealthInterface` | [Health](https://ro14nd.de/openshell-sdk-go/api/health.html) |
 | SSH tunneling and TCP forwarding | `SSHInterface`, `TCPInterface` | [SSH](https://ro14nd.de/openshell-sdk-go/api/ssh.html), [TCP](https://ro14nd.de/openshell-sdk-go/api/tcp.html) |
+| Auth: static token, refreshable token (oauth2.TokenSource) | `AuthProvider` | [Auth](https://ro14nd.de/openshell-sdk-go/api/auth.html) |
 | Typed errors (`IsNotFound`, `IsAlreadyExists`, `IsConflict`, ...) | `StatusError` | [Error Handling](https://ro14nd.de/openshell-sdk-go/error-handling.html) |
 | Real-time watch with auto-stop on terminal phase | `WatchInterface[T]` | [Sandboxes](https://ro14nd.de/openshell-sdk-go/api/sandboxes.html) |
 | Fake client for testing (no gRPC server needed) | `fake.Client` | [Testing](https://ro14nd.de/openshell-sdk-go/testing.html) |
