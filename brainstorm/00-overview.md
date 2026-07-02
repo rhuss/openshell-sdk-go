@@ -1,6 +1,6 @@
 # Brainstorm Overview
 
-Last updated: 2026-07-02 (019 added)
+Last updated: 2026-07-02 (018 implemented, 019 expanded)
 
 ## Active Sessions
 
@@ -9,7 +9,7 @@ Last updated: 2026-07-02 (019 added)
 | 001 | 2026-06-27 | go-sdk | active | - | - |
 | 015 | 2026-06-30 | local-port-listener | active | - | - |
 | 016 | 2026-07-01 | reverse-forwarding | active | - | [#18](https://github.com/rhuss/openshell-sdk-go/issues/18) |
-| 018 | 2026-07-02 | edge-auth | active | - | [#20](https://github.com/rhuss/openshell-sdk-go/issues/20) |
+| 018 | 2026-07-02 | edge-auth | spec-created | 016 | [#20](https://github.com/rhuss/openshell-sdk-go/issues/20) |
 | 019 | 2026-07-02 | cli-auth-convenience | active | - | [#21](https://github.com/rhuss/openshell-sdk-go/issues/21) |
 
 ## Attic (implemented)
@@ -72,22 +72,8 @@ Last updated: 2026-07-02 (019 added)
 - Connection limit for RemoteListen: part of v1 or deferred? (from #016)
 - CLI convenience layer: gateway config loading, disk-aware fileTokenSource, FromGatewayConfig(name) (from #017, separate brainstorm)
 - Full OIDC browser flow: discovery, auth code + PKCE, callback server as optional openshell/v1/oidc package (from #017, separate brainstorm)
-- WithExtraHeaders: should empty-string values be silently skipped or sent as empty headers? (from #018)
-- Tunnel proxy: connection pool or goroutine-per-connection? (from #018)
-- Tunnel proxy: should TunnelOption include WithTLS for the WebSocket connection itself? (from #018)
-- Tunnel proxy: error logging strategy, use types.Logger or separate mechanism? (from #018)
-- edge.CloudflareAccess: validate non-empty edgeToken or leave to server? (from #018)
-- Tunnel proxy: should Close() drain in-flight connections or force-close? (from #018)
 - Dynamic edge token refresh (WithHeaderFunc) if edge tokens need independent refresh cycles (from #018, future brainstorm)
 - Other edge proxy convenience constructors (Google IAP, Zscaler) when concrete use cases arise (from #018, future brainstorm)
-- mTLS certificate loading: part of gateway package or separate? (from #019)
-- Should NewClient resolve TLS dial options as well as AuthProvider? (from #019)
-- Active gateway: should Go SDK support the "active gateway" concept or always require explicit name? (from #019)
-- diskTokenSource: implement oauth2.TokenSource reading OIDC bundles from disk, or static-only for v1? (from #019)
-- LoadConfig: frozen snapshot or live view that re-reads on access? (from #019)
-- System-vs-user gateway precedence: user overrides system? (from #019)
-- Should ListGateways include source info (user vs system)? (from #019)
-- Should gateway package depend on edge package directly or use plugin/callback pattern? (from #019)
 - Full OIDC browser flow as openshell/v1/oidc/ package (from #019, future brainstorm)
 - Gateway management operations (Add, Remove, SetActive) if Go programs need them (from #019, future brainstorm)
 - Multi-gateway client support (connecting to multiple gateways from one process) (from #019, future brainstorm)
@@ -130,6 +116,14 @@ Last updated: 2026-07-02 (019 added)
 - Forward() gap fix: WithServiceID() only, SSH target options deferred (from #010)
 - WithServiceID on Tunnel: yes, for symmetry with Forward() (from #010)
 - Tunnel() sandbox name vs ID: resolved by spec 013, Tunnel accepts name and resolves internally (from #010)
+- WithExtraHeaders: empty values silently skipped, goroutine-per-connection, WithTLS supported, types.Logger for logging, validate non-empty edgeToken, drain then force-close (from #018, resolved in spec 016)
+- NewClient resolves both auth and TLS from gateway metadata (from #019, resolved in brainstorm expansion)
+- Full oauth2.TokenSource for OIDC disk tokens with refresh cycling (from #019, resolved in brainstorm expansion)
+- Active gateway supported via marker file (from #019, resolved in brainstorm expansion)
+- LoadConfig returns frozen snapshot (from #019, resolved in brainstorm expansion)
+- Direct edge package dependency, no callback indirection (from #019, resolved in brainstorm expansion)
+- User-first gateway precedence with source info in ListGateways (from #019, resolved in brainstorm expansion)
+- mTLS cert loading is part of gateway package (from #019, resolved in brainstorm expansion)
 - oauth2.Token: callers import golang.org/x/oauth2 directly; SDK does not re-export (from #017, resolved in spec 015)
 - RefreshableToken leeway default: 10s, matching k8s client-go (from #017, resolved in spec 015)
 - 401-triggered token reset: not implemented, overkill for gRPC (from #017, resolved in spec 015)
