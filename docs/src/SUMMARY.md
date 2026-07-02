@@ -26,6 +26,7 @@
 - [TCP](api/tcp.md)
 - [Config](api/config.md)
 - [Policy](api/policy.md)
+- [Gateway](api/gateway.md)
 
 # Guides
 
