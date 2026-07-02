@@ -27,7 +27,50 @@ run = "go build ./..."
 
 [tasks.ci]
 description = "Run full CI pipeline"
-depends = ["lint", "build", "test", "proto:check"]
+depends = ["lint", "build", "test", "proto:check", "docs:check"]
+
+[tasks."docs:check"]
+description = "Verify every public package has a docs page"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+
+DOCS_DIR="docs/src/api"
+SUMMARY="docs/src/SUMMARY.md"
+MISSING=0
+
+# Find all public packages with a doc.go (excluding internal, proto, types)
+for docfile in openshell/v1/*/doc.go; do
+  pkg=$(basename "$(dirname "$docfile")")
+
+  # Skip internal packages and types (no user-facing docs needed)
+  case "$pkg" in
+    internal|types) continue ;;
+  esac
+
+  # Check for matching docs page
+  if [ ! -f "$DOCS_DIR/$pkg.md" ]; then
+    echo "MISSING: $DOCS_DIR/$pkg.md (package openshell/v1/$pkg has doc.go but no docs page)"
+    MISSING=$((MISSING + 1))
+  fi
+
+  # Check for SUMMARY.md entry
+  if ! grep -q "api/$pkg.md" "$SUMMARY" 2>/dev/null; then
+    echo "MISSING: SUMMARY.md entry for api/$pkg.md"
+    MISSING=$((MISSING + 1))
+  fi
+done
+
+if [ "$MISSING" -gt 0 ]; then
+  echo ""
+  echo "ERROR: $MISSING documentation gaps found."
+  echo "Every public package with doc.go needs a docs/src/api/<pkg>.md page"
+  echo "and a SUMMARY.md entry. See Constitution XIII."
+  exit 1
+fi
+
+echo "Docs check passed: all public packages have documentation."
+"""
 
 [tasks."proto:gen"]
 description = "Generate Go bindings from proto files"

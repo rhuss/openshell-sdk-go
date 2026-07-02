@@ -193,6 +193,7 @@ consumers import a single package. See the [Architecture](https://ro14nd.de/open
 | Typed errors (`IsNotFound`, `IsAlreadyExists`, `IsConflict`, ...) | `StatusError` | [Error Handling](https://ro14nd.de/openshell-sdk-go/error-handling.html) |
 | Real-time watch with auto-stop on terminal phase | `WatchInterface[T]` | [Sandboxes](https://ro14nd.de/openshell-sdk-go/api/sandboxes.html) |
 | Fake client for testing (no gRPC server needed) | `fake.Client` | [Testing](https://ro14nd.de/openshell-sdk-go/testing.html) |
+| Gateway config convenience (load CLI gateway configs, auto-wire auth) | `gateway.NewClient`, `gateway.LoadConfig` | [Gateway](https://ro14nd.de/openshell-sdk-go/api/gateway.html) |
 
 ## Prerequisites
 

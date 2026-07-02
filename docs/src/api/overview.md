@@ -19,6 +19,12 @@ The OpenShell Go SDK exposes 12 interfaces through the sub-client pattern. You a
 | [ConfigInterface](config.md) | `client.Config()` | Read and update sandbox and gateway configuration |
 | [PolicyInterface](policy.md) | `client.Policy()` | Manage draft policy recommendations |
 
+### Convenience Packages
+
+| Package | Entry Point | Description |
+|---------|-------------|-------------|
+| [gateway](gateway.md) | `gateway.NewClient(name)` | Read CLI gateway configs and auto-wire clients |
+
 ### Provider Sub-Interfaces
 
 These are accessed through `client.Providers()`:

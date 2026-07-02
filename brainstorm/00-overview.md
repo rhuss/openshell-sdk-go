@@ -1,6 +1,6 @@
 # Brainstorm Overview
 
-Last updated: 2026-07-02
+Last updated: 2026-07-02 (019 added)
 
 ## Active Sessions
 
@@ -10,6 +10,7 @@ Last updated: 2026-07-02
 | 015 | 2026-06-30 | local-port-listener | active | - | - |
 | 016 | 2026-07-01 | reverse-forwarding | active | - | [#18](https://github.com/rhuss/openshell-sdk-go/issues/18) |
 | 018 | 2026-07-02 | edge-auth | active | - | [#20](https://github.com/rhuss/openshell-sdk-go/issues/20) |
+| 019 | 2026-07-02 | cli-auth-convenience | active | - | [#21](https://github.com/rhuss/openshell-sdk-go/issues/21) |
 
 ## Attic (implemented)
 
@@ -79,6 +80,17 @@ Last updated: 2026-07-02
 - Tunnel proxy: should Close() drain in-flight connections or force-close? (from #018)
 - Dynamic edge token refresh (WithHeaderFunc) if edge tokens need independent refresh cycles (from #018, future brainstorm)
 - Other edge proxy convenience constructors (Google IAP, Zscaler) when concrete use cases arise (from #018, future brainstorm)
+- mTLS certificate loading: part of gateway package or separate? (from #019)
+- Should NewClient resolve TLS dial options as well as AuthProvider? (from #019)
+- Active gateway: should Go SDK support the "active gateway" concept or always require explicit name? (from #019)
+- diskTokenSource: implement oauth2.TokenSource reading OIDC bundles from disk, or static-only for v1? (from #019)
+- LoadConfig: frozen snapshot or live view that re-reads on access? (from #019)
+- System-vs-user gateway precedence: user overrides system? (from #019)
+- Should ListGateways include source info (user vs system)? (from #019)
+- Should gateway package depend on edge package directly or use plugin/callback pattern? (from #019)
+- Full OIDC browser flow as openshell/v1/oidc/ package (from #019, future brainstorm)
+- Gateway management operations (Add, Remove, SetActive) if Go programs need them (from #019, future brainstorm)
+- Multi-gateway client support (connecting to multiple gateways from one process) (from #019, future brainstorm)
 
 ## Resolved Threads
 - Interface evolution: follow client-go pattern, accept interface growth, provide fake, use concrete `*Client` in production
