@@ -3,6 +3,7 @@ module github.com/rhuss/openshell-sdk-go
 go 1.25.0
 
 require (
+	github.com/coder/websocket v1.8.15
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/oauth2 v0.36.0
 	google.golang.org/grpc v1.81.1

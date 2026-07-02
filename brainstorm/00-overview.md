@@ -1,6 +1,6 @@
 # Brainstorm Overview
 
-Last updated: 2026-07-01
+Last updated: 2026-07-02
 
 ## Active Sessions
 
@@ -9,7 +9,7 @@ Last updated: 2026-07-01
 | 001 | 2026-06-27 | go-sdk | active | - | - |
 | 015 | 2026-06-30 | local-port-listener | active | - | - |
 | 016 | 2026-07-01 | reverse-forwarding | active | - | [#18](https://github.com/rhuss/openshell-sdk-go/issues/18) |
-| 017 | 2026-07-01 | sdk-core-auth | active | - | - |
+| 018 | 2026-07-02 | edge-auth | active | - | [#20](https://github.com/rhuss/openshell-sdk-go/issues/20) |
 
 ## Attic (implemented)
 
@@ -28,6 +28,7 @@ Last updated: 2026-07-01
 | 012 | 2026-06-30 | context-cancel-cleanup | 011 |
 | 013 | 2026-06-30 | typed-sandbox-policy | 012 |
 | 014 | 2026-06-30 | name-id-consistency | 013 |
+| 017 | 2026-07-01 | sdk-core-auth | 015 |
 
 ## Dependency Chain
 
@@ -52,7 +53,7 @@ Last updated: 2026-07-01
 - Upstream proto cleanup: file on NVIDIA/OpenShell after SDK changes merge (from #014)
 - Repo ownership: `rhuss` now, transfer to NVIDIA later (from #001, #002)
 - SDK versioning: track gateway versions or independent semver? (from #001)
-- Auth patterns: OIDC/OAuth flows deferred to dedicated brainstorm, separate from credential refresh (from #001, core token refresh addressed in #017)
+- Auth patterns: OIDC/OAuth flows deferred to dedicated brainstorm (from #001, core token refresh implemented in spec 015)
 - Multi-gateway client support (multi-cluster)? (from #004)
 - NetworkPolicyRule and related sandbox.v1 types: inspect sandbox proto for exact SDK type shape (from #009)
 - ListSandboxPolicies `global` flag: should SDK expose this or keep sandbox-scoped only? (from #009)
@@ -68,11 +69,16 @@ Last updated: 2026-07-01
 - Reverse forwarding auth model: reuse existing credentials or separate token? (from #016)
 - WithSSHTunnel for reverse direction: needed or always direct TCP? (from #016)
 - Connection limit for RemoteListen: part of v1 or deferred? (from #016)
-- oauth2.Token: vendor/re-export from types package or let callers import golang.org/x/oauth2 directly? (from #017)
-- RefreshableToken leeway default: 10s (k8s) or expiry-based (Python SDK)? (from #017)
-- 401-triggered token reset: worth implementing for gRPC or overkill? (from #017)
 - CLI convenience layer: gateway config loading, disk-aware fileTokenSource, FromGatewayConfig(name) (from #017, separate brainstorm)
 - Full OIDC browser flow: discovery, auth code + PKCE, callback server as optional openshell/v1/oidc package (from #017, separate brainstorm)
+- WithExtraHeaders: should empty-string values be silently skipped or sent as empty headers? (from #018)
+- Tunnel proxy: connection pool or goroutine-per-connection? (from #018)
+- Tunnel proxy: should TunnelOption include WithTLS for the WebSocket connection itself? (from #018)
+- Tunnel proxy: error logging strategy, use types.Logger or separate mechanism? (from #018)
+- edge.CloudflareAccess: validate non-empty edgeToken or leave to server? (from #018)
+- Tunnel proxy: should Close() drain in-flight connections or force-close? (from #018)
+- Dynamic edge token refresh (WithHeaderFunc) if edge tokens need independent refresh cycles (from #018, future brainstorm)
+- Other edge proxy convenience constructors (Google IAP, Zscaler) when concrete use cases arise (from #018, future brainstorm)
 
 ## Resolved Threads
 - Interface evolution: follow client-go pattern, accept interface growth, provide fake, use concrete `*Client` in production
@@ -112,6 +118,9 @@ Last updated: 2026-07-01
 - Forward() gap fix: WithServiceID() only, SSH target options deferred (from #010)
 - WithServiceID on Tunnel: yes, for symmetry with Forward() (from #010)
 - Tunnel() sandbox name vs ID: resolved by spec 013, Tunnel accepts name and resolves internally (from #010)
+- oauth2.Token: callers import golang.org/x/oauth2 directly; SDK does not re-export (from #017, resolved in spec 015)
+- RefreshableToken leeway default: 10s, matching k8s client-go (from #017, resolved in spec 015)
+- 401-triggered token reset: not implemented, overkill for gRPC (from #017, resolved in spec 015)
 
 ## Parked Ideas
 (none)
