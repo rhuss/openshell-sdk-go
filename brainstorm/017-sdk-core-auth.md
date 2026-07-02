@@ -67,7 +67,7 @@ tests.
 
 ## Key Requirements
 
-- `RefreshableToken(src oauth2.TokenSource, opts ...RefreshOption) AuthProvider`
+- `RefreshableToken(src oauth2.TokenSource, opts ...RefreshOption) (AuthProvider, error)`
   constructor in the core SDK
 - Single-flight coalescing via RWMutex (k8s client-go pattern, not
   `singleflight` package, since we need to cache the result)

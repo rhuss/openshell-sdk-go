@@ -128,9 +128,19 @@ spurious context-cancelled error, which then propagates to the caller as
 the Close() result. The correct order is: graceful close, then cancel,
 then wait for background goroutines.
 
+### XIII. Documentation Accompanies Features
+
+Features that add or change public API surface MUST update documentation
+in the same PR. This includes: README.md feature list and examples,
+package-level doc.go with usage examples per Constitution VIII, and any
+generated documentation site content. A feature PR that adds exported
+symbols without corresponding README and doc.go updates is incomplete.
+Trivial internal changes (refactors, bug fixes, test-only changes) are
+exempt.
+
 This constitution governs all design decisions for the OpenShell SDK
 for Go. Amendments require documentation and a clear migration plan for
 any breaking changes. All pull requests must verify compliance with these
 principles.
 
-**Version**: 1.4.0 | **Ratified**: 2026-06-27 | **Last Amended**: 2026-06-29
+**Version**: 1.5.0 | **Ratified**: 2026-06-27 | **Last Amended**: 2026-07-01

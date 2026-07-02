@@ -134,6 +134,27 @@
 //	}
 //	fmt.Printf("Refresh status: %s (next: %s)\n", status.Status, status.NextRefreshAt)
 //
+// # Token Refresh
+//
+// Use RefreshableToken for automatic OAuth2 token caching and refresh.
+// Concurrent callers share a single refresh call:
+//
+//	tokenSource := oauth2Config.TokenSource(ctx, initialToken)
+//	auth, err := v1.RefreshableToken(tokenSource,
+//	    v1.WithLeeway(30*time.Second),
+//	)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	client, err := v1.NewClient(v1.Config{
+//	    Address: "gateway.example.com:443",
+//	    Auth:    auth,
+//	})
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	defer client.Close()
+//
 // # SSH Session Management
 //
 // Create an SSH session for a sandbox and use the returned connection details.
