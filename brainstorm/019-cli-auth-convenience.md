@@ -1,7 +1,7 @@
 # Brainstorm: CLI Auth Convenience Layer
 
 **Date:** 2026-07-02
-**Status:** active
+**Status:** implemented
 **Issue:** https://github.com/rhuss/openshell-sdk-go/issues/21
 
 ## Problem Framing

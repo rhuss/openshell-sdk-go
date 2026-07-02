@@ -1,6 +1,6 @@
 # Brainstorm Overview
 
-Last updated: 2026-07-02 (018 implemented, 019 expanded)
+Last updated: 2026-07-02 (019 implemented)
 
 ## Active Sessions
 
@@ -10,7 +10,6 @@ Last updated: 2026-07-02 (018 implemented, 019 expanded)
 | 015 | 2026-06-30 | local-port-listener | active | - | - |
 | 016 | 2026-07-01 | reverse-forwarding | active | - | [#18](https://github.com/rhuss/openshell-sdk-go/issues/18) |
 | 018 | 2026-07-02 | edge-auth | spec-created | 016 | [#20](https://github.com/rhuss/openshell-sdk-go/issues/20) |
-| 019 | 2026-07-02 | cli-auth-convenience | active | - | [#21](https://github.com/rhuss/openshell-sdk-go/issues/21) |
 
 ## Attic (implemented)
 
@@ -30,6 +29,7 @@ Last updated: 2026-07-02 (018 implemented, 019 expanded)
 | 013 | 2026-06-30 | typed-sandbox-policy | 012 |
 | 014 | 2026-06-30 | name-id-consistency | 013 |
 | 017 | 2026-07-01 | sdk-core-auth | 015 |
+| 019 | 2026-07-02 | cli-auth-convenience | 017 |
 
 ## Dependency Chain
 
