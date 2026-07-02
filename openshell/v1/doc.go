@@ -155,6 +155,43 @@
 //	}
 //	defer client.Close()
 //
+// # Extra Headers
+//
+// Use WithExtraHeaders to attach additional per-RPC headers to any auth
+// provider. This is useful for edge proxies, API gateways, or any middleware
+// that requires custom headers alongside standard authentication:
+//
+//	base := v1.StaticToken("my-token")
+//	auth, err := v1.WithExtraHeaders(base, map[string]string{
+//	    "x-proxy-key": "proxy-secret",
+//	    "x-tenant-id": "acme-corp",
+//	})
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	client, err := v1.NewClient(v1.Config{
+//	    Address: "gateway.example.com:443",
+//	    Auth:    auth,
+//	})
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	defer client.Close()
+//
+// Keys are normalized to lowercase (per HTTP/2 RFC 9113). On key collision,
+// extra headers take precedence over base auth headers. Empty-string values
+// are silently dropped. WithExtraHeaders composes with any AuthProvider,
+// including RefreshableToken:
+//
+//	tokenSource := oauth2Config.TokenSource(ctx, initialToken)
+//	refreshAuth, err := v1.RefreshableToken(tokenSource)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	auth, err := v1.WithExtraHeaders(refreshAuth, map[string]string{
+//	    "x-proxy-key": "proxy-secret",
+//	})
+//
 // # SSH Session Management
 //
 // Create an SSH session for a sandbox and use the returned connection details.

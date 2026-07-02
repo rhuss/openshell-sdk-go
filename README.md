@@ -106,6 +106,52 @@ Concurrent callers share a single refresh call. If the token source fails, the
 SDK falls back to the cached token with a logged warning. See the
 [Auth](https://ro14nd.de/openshell-sdk-go/api/auth.html) docs for details.
 
+### With edge proxy headers
+
+When a gateway sits behind a zero-trust reverse proxy, use `WithExtraHeaders` to
+attach proxy-specific headers alongside standard auth:
+
+```go
+base := v1.StaticToken("my-gateway-token")
+auth, err := v1.WithExtraHeaders(base, map[string]string{
+    "x-proxy-auth": "proxy-secret",
+})
+if err != nil {
+    log.Fatal(err)
+}
+client, err := v1.NewClient(v1.Config{
+    Address: "gateway.example.com:443",
+    Auth:    auth,
+})
+```
+
+For Cloudflare Access, use the convenience constructor in the `edge` package:
+
+```go
+import "github.com/rhuss/openshell-sdk-go/openshell/v1/edge"
+
+auth, err := edge.CloudflareAccess(base, os.Getenv("CF_ACCESS_TOKEN"))
+```
+
+For gRPC behind edge proxies that reject HTTP/2, use the WebSocket tunnel:
+
+```go
+tunnel, err := edge.NewTunnelProxy(
+    "wss://gateway.example.com/ws",
+    os.Getenv("CF_ACCESS_TOKEN"),
+)
+if err != nil {
+    log.Fatal(err)
+}
+defer tunnel.Close()
+
+client, err := v1.NewClient(v1.Config{
+    Address: tunnel.Addr(),
+    Auth:    v1.StaticToken("my-token"),
+    TLS:     &v1.TLSConfig{Insecure: true}, // local tunnel, no TLS
+})
+```
+
 See the [Getting Started](https://ro14nd.de/openshell-sdk-go/getting-started.html) guide for the full walkthrough.
 
 ## Architecture
@@ -143,6 +189,7 @@ consumers import a single package. See the [Architecture](https://ro14nd.de/open
 | Health checking | `HealthInterface` | [Health](https://ro14nd.de/openshell-sdk-go/api/health.html) |
 | SSH tunneling and TCP forwarding | `SSHInterface`, `TCPInterface` | [SSH](https://ro14nd.de/openshell-sdk-go/api/ssh.html), [TCP](https://ro14nd.de/openshell-sdk-go/api/tcp.html) |
 | Auth: static token, refreshable token (oauth2.TokenSource) | `AuthProvider` | [Auth](https://ro14nd.de/openshell-sdk-go/api/auth.html) |
+| Edge auth: extra headers, Cloudflare Access, WebSocket tunnel | `AuthProvider`, `edge.TunnelProxy` | [Edge](https://ro14nd.de/openshell-sdk-go/api/edge.html) |
 | Typed errors (`IsNotFound`, `IsAlreadyExists`, `IsConflict`, ...) | `StatusError` | [Error Handling](https://ro14nd.de/openshell-sdk-go/error-handling.html) |
 | Real-time watch with auto-stop on terminal phase | `WatchInterface[T]` | [Sandboxes](https://ro14nd.de/openshell-sdk-go/api/sandboxes.html) |
 | Fake client for testing (no gRPC server needed) | `fake.Client` | [Testing](https://ro14nd.de/openshell-sdk-go/testing.html) |
