@@ -1,6 +1,6 @@
 # Brainstorm Overview
 
-Last updated: 2026-07-02 (019 implemented)
+Last updated: 2026-07-03 (020 brainstormed)
 
 ## Active Sessions
 
@@ -10,6 +10,7 @@ Last updated: 2026-07-02 (019 implemented)
 | 015 | 2026-06-30 | local-port-listener | active | - | - |
 | 016 | 2026-07-01 | reverse-forwarding | active | - | [#18](https://github.com/rhuss/openshell-sdk-go/issues/18) |
 | 018 | 2026-07-02 | edge-auth | spec-created | 016 | [#20](https://github.com/rhuss/openshell-sdk-go/issues/20) |
+| 020 | 2026-07-03 | oidc-login | active | - | [#24](https://github.com/rhuss/openshell-sdk-go/issues/24) |
 
 ## Attic (implemented)
 
@@ -71,10 +72,14 @@ Last updated: 2026-07-02 (019 implemented)
 - WithSSHTunnel for reverse direction: needed or always direct TCP? (from #016)
 - Connection limit for RemoteListen: part of v1 or deferred? (from #016)
 - CLI convenience layer: gateway config loading, disk-aware fileTokenSource, FromGatewayConfig(name) (from #017, separate brainstorm)
-- Full OIDC browser flow: discovery, auth code + PKCE, callback server as optional openshell/v1/oidc package (from #017, separate brainstorm)
+- Full OIDC browser flow: now brainstormed as #020, active (from #017, #019)
+- OIDC client_id source for gateway-aware login: metadata.json field, separate oidc_config.json, or derived? (from #020)
+- OIDC custom scopes: hardcode required scopes or allow custom? (from #020)
+- Token refresh ownership: oidc package or RefreshableToken? (from #020)
+- Device code flow display: callback, stdout, or channel? (from #020)
+- ID token validation: verify signature/audience or trust token endpoint? (from #020)
 - Dynamic edge token refresh (WithHeaderFunc) if edge tokens need independent refresh cycles (from #018, future brainstorm)
 - Other edge proxy convenience constructors (Google IAP, Zscaler) when concrete use cases arise (from #018, future brainstorm)
-- Full OIDC browser flow as openshell/v1/oidc/ package (from #019, future brainstorm)
 - Gateway management operations (Add, Remove, SetActive) if Go programs need them (from #019, future brainstorm)
 - Multi-gateway client support (connecting to multiple gateways from one process) (from #019, future brainstorm)
 
