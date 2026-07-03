@@ -1,6 +1,6 @@
 # Brainstorm Overview
 
-Last updated: 2026-07-03 (022 brainstormed)
+Last updated: 2026-07-03 (023 brainstormed)
 
 ## Active Sessions
 
@@ -13,6 +13,7 @@ Last updated: 2026-07-03 (022 brainstormed)
 | 020 | 2026-07-03 | oidc-login | spec-created | 018 | [#24](https://github.com/rhuss/openshell-sdk-go/issues/24) |
 | 021 | 2026-07-03 | sdk-dashboard-tui | active | - | [#25](https://github.com/rhuss/openshell-sdk-go/issues/25) |
 | 022 | 2026-07-03 | auth-guide | active | - | [#28](https://github.com/rhuss/openshell-sdk-go/issues/28) |
+| 023 | 2026-07-03 | schema-docs | active | - | [#29](https://github.com/rhuss/openshell-sdk-go/issues/29) |
 
 ## Attic (implemented)
 
