@@ -27,6 +27,7 @@
 - [Config](api/config.md)
 - [Policy](api/policy.md)
 - [Gateway](api/gateway.md)
+- [OIDC](api/oidc.md)
 
 # Guides
 

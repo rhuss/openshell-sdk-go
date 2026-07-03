@@ -148,6 +148,59 @@ func TestParseAuthMode(t *testing.T) {
 	}
 }
 
+// --- T010: OIDC config field tests ---
+
+func TestParseMetadata_OIDCFields(t *testing.T) {
+	dir := t.TempDir()
+	writeJSON(t, dir, `{
+		"endpoint":"host:443",
+		"auth_mode":"oidc",
+		"name":"oidc-gw",
+		"oidc_issuer":"https://auth.example.com",
+		"oidc_client_id":"my-client-id"
+	}`)
+
+	cfg, err := parseMetadata(dir)
+	require.NoError(t, err)
+	assert.Equal(t, "oidc-gw", cfg.Name)
+	assert.Equal(t, AuthModeOIDC, cfg.AuthMode)
+	assert.Equal(t, "https://auth.example.com", cfg.OIDCIssuer)
+	assert.Equal(t, "my-client-id", cfg.OIDCClientID)
+}
+
+func TestParseMetadata_OIDCFieldsMissing(t *testing.T) {
+	// When OIDC fields are absent (older gateway or non-OIDC mode),
+	// the Config should have empty strings for OIDCIssuer/OIDCClientID.
+	dir := t.TempDir()
+	writeJSON(t, dir, `{
+		"endpoint":"host:443",
+		"auth_mode":"cloudflare_jwt",
+		"name":"legacy-gw"
+	}`)
+
+	cfg, err := parseMetadata(dir)
+	require.NoError(t, err)
+	assert.Equal(t, "", cfg.OIDCIssuer)
+	assert.Equal(t, "", cfg.OIDCClientID)
+}
+
+func TestParseMetadata_OIDCFieldsEmpty(t *testing.T) {
+	// Explicit empty strings for OIDC fields should be handled
+	// gracefully (backward compatibility).
+	dir := t.TempDir()
+	writeJSON(t, dir, `{
+		"endpoint":"host:443",
+		"auth_mode":"oidc",
+		"oidc_issuer":"",
+		"oidc_client_id":""
+	}`)
+
+	cfg, err := parseMetadata(dir)
+	require.NoError(t, err)
+	assert.Equal(t, "", cfg.OIDCIssuer)
+	assert.Equal(t, "", cfg.OIDCClientID)
+}
+
 // writeJSON is a test helper that writes a metadata.json file.
 func writeJSON(t *testing.T, dir, content string) {
 	t.Helper()

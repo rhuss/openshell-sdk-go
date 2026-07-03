@@ -152,6 +152,47 @@ client, err := v1.NewClient(v1.Config{
 })
 ```
 
+### OIDC Login
+
+The `oidc` package provides gateway-aware OIDC authentication with browser,
+keyboard, device code, and client credentials flows:
+
+```go
+import "github.com/rhuss/openshell-sdk-go/openshell/v1/oidc"
+
+// Gateway-aware login: reads OIDC config from gateway metadata
+token, err := oidc.Login(ctx, "my-gateway")
+if err != nil {
+    log.Fatal(err)
+}
+
+// Use the token with the SDK client
+client, err := v1.NewClient(v1.Config{
+    Address: "gateway.example.com:443",
+    Auth:    v1.StaticToken(token.AccessToken),
+})
+```
+
+For headless environments, use the device code flow:
+
+```go
+token, err := oidc.DeviceLogin(ctx,
+    oidc.WithIssuer("https://auth.example.com"),
+    oidc.WithClientID("my-app"),
+)
+```
+
+For service accounts, use client credentials:
+
+```go
+token, err := oidc.ClientCredentials(ctx,
+    oidc.WithGateway("my-gateway"),
+    oidc.WithClientSecret("service-secret"),
+)
+```
+
+See the [oidc package docs](https://pkg.go.dev/github.com/rhuss/openshell-sdk-go/openshell/v1/oidc) for all options and flows.
+
 See the [Getting Started](https://ro14nd.de/openshell-sdk-go/getting-started.html) guide for the full walkthrough.
 
 ## Architecture
@@ -193,6 +234,7 @@ consumers import a single package. See the [Architecture](https://ro14nd.de/open
 | Typed errors (`IsNotFound`, `IsAlreadyExists`, `IsConflict`, ...) | `StatusError` | [Error Handling](https://ro14nd.de/openshell-sdk-go/error-handling.html) |
 | Real-time watch with auto-stop on terminal phase | `WatchInterface[T]` | [Sandboxes](https://ro14nd.de/openshell-sdk-go/api/sandboxes.html) |
 | Fake client for testing (no gRPC server needed) | `fake.Client` | [Testing](https://ro14nd.de/openshell-sdk-go/testing.html) |
+| OIDC login (browser, keyboard, device code, client credentials) | `oidc.Login`, `oidc.DeviceLogin`, `oidc.ClientCredentials` | [OIDC](https://pkg.go.dev/github.com/rhuss/openshell-sdk-go/openshell/v1/oidc) |
 | Gateway config convenience (load CLI gateway configs, auto-wire auth) | `gateway.NewClient`, `gateway.LoadConfig` | [Gateway](https://ro14nd.de/openshell-sdk-go/api/gateway.html) |
 
 ## Prerequisites
