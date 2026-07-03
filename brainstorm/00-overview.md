@@ -1,6 +1,6 @@
 # Brainstorm Overview
 
-Last updated: 2026-07-03 (021 brainstormed)
+Last updated: 2026-07-03 (022 brainstormed)
 
 ## Active Sessions
 
@@ -10,8 +10,9 @@ Last updated: 2026-07-03 (021 brainstormed)
 | 015 | 2026-06-30 | local-port-listener | active | - | - |
 | 016 | 2026-07-01 | reverse-forwarding | active | - | [#18](https://github.com/rhuss/openshell-sdk-go/issues/18) |
 | 018 | 2026-07-02 | edge-auth | spec-created | 016 | [#20](https://github.com/rhuss/openshell-sdk-go/issues/20) |
-| 020 | 2026-07-03 | oidc-login | active | - | [#24](https://github.com/rhuss/openshell-sdk-go/issues/24) |
+| 020 | 2026-07-03 | oidc-login | spec-created | 018 | [#24](https://github.com/rhuss/openshell-sdk-go/issues/24) |
 | 021 | 2026-07-03 | sdk-dashboard-tui | active | - | [#25](https://github.com/rhuss/openshell-sdk-go/issues/25) |
+| 022 | 2026-07-03 | auth-guide | active | - | [#28](https://github.com/rhuss/openshell-sdk-go/issues/28) |
 
 ## Attic (implemented)
 
