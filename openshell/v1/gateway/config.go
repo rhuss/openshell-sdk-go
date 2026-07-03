@@ -68,6 +68,14 @@ type Config struct {
 
 	// Dir is the absolute path to the gateway config directory.
 	Dir string
+
+	// OIDCIssuer is the OIDC provider's issuer URL read from
+	// metadata.json. Empty when the gateway does not use OIDC auth.
+	OIDCIssuer string
+
+	// OIDCClientID is the OAuth2 client ID read from metadata.json.
+	// Empty when the gateway does not use OIDC auth.
+	OIDCClientID string
 }
 
 // Info is a lightweight summary of a gateway for listing purposes.
@@ -87,9 +95,11 @@ type Info struct {
 // metadataJSON is the on-disk representation of metadata.json.
 // Unknown fields are silently ignored for forward compatibility.
 type metadataJSON struct {
-	Endpoint string `json:"endpoint"`
-	AuthMode string `json:"auth_mode"`
-	Name     string `json:"name"`
+	Endpoint     string `json:"endpoint"`
+	AuthMode     string `json:"auth_mode"`
+	Name         string `json:"name"`
+	OIDCIssuer   string `json:"oidc_issuer"`
+	OIDCClientID string `json:"oidc_client_id"`
 }
 
 // parseAuthMode converts a raw auth_mode string to the typed AuthMode.
@@ -137,9 +147,11 @@ func parseMetadata(dir string) (*Config, error) {
 	}
 
 	return &Config{
-		Name:     meta.Name,
-		Endpoint: meta.Endpoint,
-		AuthMode: mode,
-		Dir:      dir,
+		Name:         meta.Name,
+		Endpoint:     meta.Endpoint,
+		AuthMode:     mode,
+		Dir:          dir,
+		OIDCIssuer:   meta.OIDCIssuer,
+		OIDCClientID: meta.OIDCClientID,
 	}, nil
 }
