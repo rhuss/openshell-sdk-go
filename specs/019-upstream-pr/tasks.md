@@ -78,9 +78,9 @@ These constraints apply to ALL tasks and are inherited implicitly:
 - [ ] T013 [US2] Initialize examples repo with `go.mod` declaring module `github.com/rhuss/openshell-examples` and dependency on `github.com/NVIDIA/OpenShell/sdk/go`
 - [ ] T014 [US2] Copy `examples/oshell/` source files (connection.go, demo.go, README.md) from SDK dev repo to examples repo root
 - [ ] T015 [US2] Rewrite import paths in examples repo from `github.com/rhuss/openshell-sdk-go` to `github.com/NVIDIA/OpenShell/sdk/go`
-- [ ] T016 [US2] Add temporary `replace` directive in examples `go.mod` pointing to local SDK copy for pre-merge development
+- [ ] T016 [US2] Add temporary `replace` directive in examples `go.mod` pointing to local SDK copy for pre-merge development (use `go.work` or remove the directive before pushing)
 - [ ] T017 [US2] Verify examples repo compiles with `go build ./...`
-- [ ] T018 [US2] Push examples repo to GitHub
+- [ ] T018 [US2] Remove the temporary `replace` directive from examples `go.mod` and push examples repo to GitHub
 
 **Checkpoint**: Examples repo exists at github.com/rhuss/openshell-examples and compiles independently.
 
@@ -149,7 +149,7 @@ These constraints apply to ALL tasks and are inherited implicitly:
 ### Implementation for User Story 6
 
 - [ ] T030 [US6] Write PR description in a local file: include SDK overview, feature list, file tree summary, reference to issue [#2044](https://github.com/NVIDIA/OpenShell/issues/2044), spec-driven development methodology note, and question about `specs/` directory retention (see research.md R7 for commit message template)
-- [ ] T031 [US6] Squash all commits on the `go-sdk` branch into a single commit with DCO sign-off (`Signed-off-by: Roland Huss <roland@jolokia.org>`) and comprehensive commit message
+- [ ] T031 [US6] Squash all commits on the `go-sdk` branch into a single commit with DCO sign-off (`Signed-off-by: Roland Huß <roland@jolokia.org>`) and comprehensive commit message
 - [ ] T032 [US6] Open draft PR against `NVIDIA/OpenShell` main branch using `gh pr create --draft`
 - [ ] T033 [US6] Verify PR file tree contains `sdk/go/` (source + proto + specs), `docs/sdks/go/` (MDX pages), `tasks/go.toml`, and modified `docs/index.yml` and `.github/workflows/branch-checks.yml`
 

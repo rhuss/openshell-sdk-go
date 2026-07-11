@@ -32,8 +32,9 @@ cp -r /path/to/openshell-sdk-go/specs sdk/go/specs
 # Rewrite module path
 OLD="github.com/rhuss/openshell-sdk-go"
 NEW="github.com/NVIDIA/OpenShell/sdk/go"
-find sdk/go -name '*.go' -exec sed -i '' "s|$OLD|$NEW|g" {} +
-sed -i '' "s|$OLD|$NEW|g" sdk/go/go.mod sdk/go/mise.toml
+find sdk/go -name '*.go' -exec sed -i.bak "s|$OLD|$NEW|g" {} +
+sed -i.bak "s|$OLD|$NEW|g" sdk/go/go.mod sdk/go/mise.toml
+find sdk/go -name '*.bak' -delete
 
 # Regenerate go.sum
 cd sdk/go && go mod tidy && cd ../..

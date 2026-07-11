@@ -43,7 +43,7 @@ squashed commit referencing upstream issue #2044.
 | XII. Graceful Shutdown | N/A | No shutdown code |
 | XIII. Docs Accompany Features | PASS | Story 3 delivers Fern MDX documentation |
 
-**Gate result**: PASS (all applicable principles satisfied)
+**Gate result**: CHECK (Principle VI secret scan pending; all other principles satisfied)
 
 ## Project Structure
 
