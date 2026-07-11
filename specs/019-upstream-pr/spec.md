@@ -236,8 +236,11 @@ all prior stories being complete.
   so consumers can `go get` the SDK without needing protoc installed.
 - **FR-010**: The `specs/` directory MUST be included in the PR under
   `sdk/go/specs/`.
-- **FR-011**: The following MUST be excluded from the PR: `brainstorm/`,
-  `.specify/`, `.claude/`, `CLAUDE.md`, `AGENTS.md`, `docs/` (mdbook).
+- **FR-011**: The following from the SDK development repo MUST NOT be
+  copied to the upstream fork: `brainstorm/`, `.specify/`, `.claude/`,
+  `CLAUDE.md`, `AGENTS.md`, `docs/` (the mdbook documentation site).
+  Note: this does not affect the new Fern MDX pages created under
+  `docs/sdks/go/` per FR-005, which are authored directly in the fork.
 - **FR-012**: The PR MUST be opened as a draft against the
   `NVIDIA/OpenShell` main branch with a single squashed commit
   containing all changes.

@@ -102,7 +102,10 @@ go:
 **Proto task adaptation**: The current `proto:gen` and `proto:check` tasks
 in `mise.toml` use `MODULE="github.com/rhuss/openshell-sdk-go"`. After
 rewrite, this becomes `MODULE="github.com/NVIDIA/OpenShell/sdk/go"`.
-The task at `tasks/go.toml` wraps `cd sdk/go && mise run proto:check`.
+The `tasks/go.toml` file provides two tasks for the monorepo CI:
+- `go:proto` wraps `cd sdk/go && mise run proto:gen` (regeneration)
+- `go:proto:check` wraps `cd sdk/go && mise run proto:check` (freshness validation)
+The CI job calls `go:proto:check`; contributors run `go:proto` to regenerate.
 
 ## R5: Examples Repository
 

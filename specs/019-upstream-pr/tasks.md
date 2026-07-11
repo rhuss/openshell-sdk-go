@@ -80,7 +80,7 @@ These constraints apply to ALL tasks and are inherited implicitly:
 - [ ] T015 [US2] Rewrite import paths in examples repo from `github.com/rhuss/openshell-sdk-go` to `github.com/NVIDIA/OpenShell/sdk/go`
 - [ ] T016 [US2] Add temporary `replace` directive in examples `go.mod` pointing to local SDK copy for pre-merge development (use `go.work` or remove the directive before pushing)
 - [ ] T017 [US2] Verify examples repo compiles with `go build ./...`
-- [ ] T018 [US2] Remove the temporary `replace` directive from examples `go.mod` and push examples repo to GitHub
+- [ ] T018 [US2] Remove the temporary `replace` directive from examples `go.mod` and push examples repo to GitHub. Note: the SDK dependency will not resolve via `go get` until the upstream PR is merged. The pushed repo serves as a reference; a follow-up commit updates imports after merge.
 
 **Checkpoint**: Examples repo exists at github.com/rhuss/openshell-examples and compiles independently.
 

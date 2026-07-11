@@ -36,8 +36,8 @@ find sdk/go -name '*.go' -exec sed -i.bak "s|$OLD|$NEW|g" {} +
 sed -i.bak "s|$OLD|$NEW|g" sdk/go/go.mod sdk/go/mise.toml
 find sdk/go -name '*.bak' -delete
 
-# Regenerate go.sum
-cd sdk/go && go mod tidy && cd ../..
+# Regenerate proto bindings with new module path, then tidy
+cd sdk/go && mise run proto:gen && go mod tidy && cd ../..
 ```
 
 ### Step 3: Verify build and tests
