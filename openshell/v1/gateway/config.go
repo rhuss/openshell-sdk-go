@@ -95,7 +95,7 @@ type Info struct {
 // metadataJSON is the on-disk representation of metadata.json.
 // Unknown fields are silently ignored for forward compatibility.
 type metadataJSON struct {
-	Endpoint     string `json:"endpoint"`
+	Endpoint     string `json:"gateway_endpoint"`
 	AuthMode     string `json:"auth_mode"`
 	Name         string `json:"name"`
 	OIDCIssuer   string `json:"oidc_issuer"`
@@ -138,7 +138,7 @@ func parseMetadata(dir string) (*Config, error) {
 	}
 
 	if meta.Endpoint == "" {
-		return nil, fmt.Errorf("%w: missing endpoint in %s", ErrConfigParse, path)
+		return nil, fmt.Errorf("%w: missing gateway_endpoint in %s", ErrConfigParse, path)
 	}
 
 	mode, err := parseAuthMode(meta.AuthMode)

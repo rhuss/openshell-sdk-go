@@ -9,6 +9,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"os"
+	"strings"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -24,7 +25,11 @@ type TLSParams struct {
 }
 
 // NewConnection creates a gRPC client connection.
+// The address may include an http:// or https:// scheme (as written by the
+// upstream gateway), which is stripped since gRPC expects host:port.
 func NewConnection(address string, tlsCfg *TLSParams, auth credentials.PerRPCCredentials) (*grpc.ClientConn, error) {
+	address = strings.TrimPrefix(address, "https://")
+	address = strings.TrimPrefix(address, "http://")
 	opts := []grpc.DialOption{}
 
 	if tlsCfg != nil && tlsCfg.Insecure {

@@ -16,7 +16,7 @@ import (
 
 func TestParseMetadata_ValidConfig(t *testing.T) {
 	dir := t.TempDir()
-	writeJSON(t, dir, `{"endpoint":"localhost:8080","auth_mode":"none","name":"prod"}`)
+	writeJSON(t, dir, `{"gateway_endpoint":"localhost:8080","auth_mode":"none","name":"prod"}`)
 
 	cfg, err := parseMetadata(dir)
 	require.NoError(t, err)
@@ -28,7 +28,7 @@ func TestParseMetadata_ValidConfig(t *testing.T) {
 
 func TestParseMetadata_EmptyAuthMode(t *testing.T) {
 	dir := t.TempDir()
-	writeJSON(t, dir, `{"endpoint":"host:443"}`)
+	writeJSON(t, dir, `{"gateway_endpoint":"host:443"}`)
 
 	cfg, err := parseMetadata(dir)
 	require.NoError(t, err)
@@ -52,9 +52,9 @@ func TestParseMetadata_AllAuthModes(t *testing.T) {
 		t.Run("mode_"+tc.mode, func(t *testing.T) {
 			dir := t.TempDir()
 			if tc.mode == "" {
-				writeJSON(t, dir, `{"endpoint":"host:443"}`)
+				writeJSON(t, dir, `{"gateway_endpoint":"host:443"}`)
 			} else {
-				writeJSON(t, dir, `{"endpoint":"host:443","auth_mode":"`+tc.mode+`"}`)
+				writeJSON(t, dir, `{"gateway_endpoint":"host:443","auth_mode":"`+tc.mode+`"}`)
 			}
 
 			cfg, err := parseMetadata(dir)
@@ -71,7 +71,7 @@ func TestParseMetadata_MissingEndpoint(t *testing.T) {
 	_, err := parseMetadata(dir)
 	require.Error(t, err)
 	assert.ErrorIs(t, err, ErrConfigParse)
-	assert.Contains(t, err.Error(), "missing endpoint")
+	assert.Contains(t, err.Error(), "missing gateway_endpoint")
 }
 
 func TestParseMetadata_MissingFile(t *testing.T) {
@@ -95,7 +95,7 @@ func TestParseMetadata_MalformedJSON(t *testing.T) {
 func TestParseMetadata_UnknownFieldsIgnored(t *testing.T) {
 	dir := t.TempDir()
 	writeJSON(t, dir, `{
-		"endpoint":"host:443",
+		"gateway_endpoint":"host:443",
 		"auth_mode":"none",
 		"name":"prod",
 		"future_field":"some_value",
@@ -110,7 +110,7 @@ func TestParseMetadata_UnknownFieldsIgnored(t *testing.T) {
 
 func TestParseMetadata_UnsupportedAuthMode(t *testing.T) {
 	dir := t.TempDir()
-	writeJSON(t, dir, `{"endpoint":"host:443","auth_mode":"kerberos"}`)
+	writeJSON(t, dir, `{"gateway_endpoint":"host:443","auth_mode":"kerberos"}`)
 
 	_, err := parseMetadata(dir)
 	require.Error(t, err)
@@ -153,7 +153,7 @@ func TestParseAuthMode(t *testing.T) {
 func TestParseMetadata_OIDCFields(t *testing.T) {
 	dir := t.TempDir()
 	writeJSON(t, dir, `{
-		"endpoint":"host:443",
+		"gateway_endpoint":"host:443",
 		"auth_mode":"oidc",
 		"name":"oidc-gw",
 		"oidc_issuer":"https://auth.example.com",
@@ -173,7 +173,7 @@ func TestParseMetadata_OIDCFieldsMissing(t *testing.T) {
 	// the Config should have empty strings for OIDCIssuer/OIDCClientID.
 	dir := t.TempDir()
 	writeJSON(t, dir, `{
-		"endpoint":"host:443",
+		"gateway_endpoint":"host:443",
 		"auth_mode":"cloudflare_jwt",
 		"name":"legacy-gw"
 	}`)
@@ -189,7 +189,7 @@ func TestParseMetadata_OIDCFieldsEmpty(t *testing.T) {
 	// gracefully (backward compatibility).
 	dir := t.TempDir()
 	writeJSON(t, dir, `{
-		"endpoint":"host:443",
+		"gateway_endpoint":"host:443",
 		"auth_mode":"oidc",
 		"oidc_issuer":"",
 		"oidc_client_id":""

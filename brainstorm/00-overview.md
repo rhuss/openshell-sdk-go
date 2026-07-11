@@ -1,6 +1,6 @@
 # Brainstorm Overview
 
-Last updated: 2026-07-03 (020 brainstormed)
+Last updated: 2026-07-03 (021 brainstormed)
 
 ## Active Sessions
 
@@ -11,6 +11,7 @@ Last updated: 2026-07-03 (020 brainstormed)
 | 016 | 2026-07-01 | reverse-forwarding | active | - | [#18](https://github.com/rhuss/openshell-sdk-go/issues/18) |
 | 018 | 2026-07-02 | edge-auth | spec-created | 016 | [#20](https://github.com/rhuss/openshell-sdk-go/issues/20) |
 | 020 | 2026-07-03 | oidc-login | active | - | [#24](https://github.com/rhuss/openshell-sdk-go/issues/24) |
+| 021 | 2026-07-03 | sdk-dashboard-tui | active | - | [#25](https://github.com/rhuss/openshell-sdk-go/issues/25) |
 
 ## Attic (implemented)
 
@@ -78,6 +79,10 @@ Last updated: 2026-07-03 (020 brainstormed)
 - Token refresh ownership: oidc package or RefreshableToken? (from #020)
 - Device code flow display: callback, stdout, or channel? (from #020)
 - ID token validation: verify signature/audience or trust token endpoint? (from #020)
+- Mock/demo mode for oshell dashboard: include fake client mode for running without a real gateway? (from #021)
+- Color theme for oshell: OpenShell brand, popular palette (Catppuccin/Nord), or auto-detect light/dark? (from #021)
+- Keyboard shortcuts: vi conventions (j/k) or arrow keys only? (from #021)
+- Exec tab UX: simple textbox or scrollable command history? (from #021)
 - Dynamic edge token refresh (WithHeaderFunc) if edge tokens need independent refresh cycles (from #018, future brainstorm)
 - Other edge proxy convenience constructors (Google IAP, Zscaler) when concrete use cases arise (from #018, future brainstorm)
 - Gateway management operations (Add, Remove, SetActive) if Go programs need them (from #019, future brainstorm)
