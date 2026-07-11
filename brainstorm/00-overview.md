@@ -14,7 +14,7 @@ Last updated: 2026-07-11 (024 brainstormed)
 | 021 | 2026-07-03 | sdk-dashboard-tui | active | - | [#25](https://github.com/rhuss/openshell-sdk-go/issues/25) |
 | 022 | 2026-07-03 | auth-guide | active | - | [#28](https://github.com/rhuss/openshell-sdk-go/issues/28) |
 | 023 | 2026-07-03 | schema-docs | active | - | [#29](https://github.com/rhuss/openshell-sdk-go/issues/29) |
-| 024 | 2026-07-11 | upstream-pr | active | - | [NVIDIA/OpenShell#2044](https://github.com/NVIDIA/OpenShell/issues/2044) |
+| 024 | 2026-07-11 | upstream-pr | specified | 019 | [NVIDIA/OpenShell#2044](https://github.com/NVIDIA/OpenShell/issues/2044) |
 
 ## Attic (implemented)
 
