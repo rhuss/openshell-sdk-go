@@ -1,6 +1,6 @@
 # Brainstorm Overview
 
-Last updated: 2026-07-03 (023 brainstormed)
+Last updated: 2026-07-11 (024 brainstormed)
 
 ## Active Sessions
 
@@ -14,6 +14,7 @@ Last updated: 2026-07-03 (023 brainstormed)
 | 021 | 2026-07-03 | sdk-dashboard-tui | active | - | [#25](https://github.com/rhuss/openshell-sdk-go/issues/25) |
 | 022 | 2026-07-03 | auth-guide | active | - | [#28](https://github.com/rhuss/openshell-sdk-go/issues/28) |
 | 023 | 2026-07-03 | schema-docs | active | - | [#29](https://github.com/rhuss/openshell-sdk-go/issues/29) |
+| 024 | 2026-07-11 | upstream-pr | active | - | [NVIDIA/OpenShell#2044](https://github.com/NVIDIA/OpenShell/issues/2044) |
 
 ## Attic (implemented)
 
@@ -89,6 +90,11 @@ Last updated: 2026-07-03 (023 brainstormed)
 - Other edge proxy convenience constructors (Google IAP, Zscaler) when concrete use cases arise (from #018, future brainstorm)
 - Gateway management operations (Add, Remove, SetActive) if Go programs need them (from #019, future brainstorm)
 - Multi-gateway client support (connecting to multiple gateways from one process) (from #019, future brainstorm)
+- Should sdk/go/ have its own CODEOWNERS entry for Go-specific review? (from #024)
+- Should Go SDK CI steps run only when sdk/go/ or proto/ files change (path filter)? (from #024)
+- Does the Fern docs build need Go SDK pages validated separately? (from #024)
+- Should the Go SDK have its own release tagging scheme (e.g., sdk/go/v0.1.0)? (from #024)
+- How should `option go_package` be added to upstream proto files without breaking existing consumers? (from #024)
 
 ## Resolved Threads
 - Interface evolution: follow client-go pattern, accept interface growth, provide fake, use concrete `*Client` in production
