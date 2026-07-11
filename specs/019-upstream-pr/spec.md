@@ -198,6 +198,14 @@ all prior stories being complete.
   The proto generation task supplies the package option via protoc
   flags rather than modifying the proto source files.
 
+## Clarifications
+
+### Session 2026-07-11
+
+- Q: Should creating the actual GitHub repo for examples be in scope, or only prepare the extraction? → A: Create the GitHub repo now and push the extracted examples.
+- Q: How deep should the Fern MDX documentation pages be? → A: Concise reference pages (1-2 pages each) with key concepts and short code snippets.
+- Q: Should the draft PR use a single squashed commit or separate commits per story? → A: Single squashed commit with a comprehensive commit message.
+
 ## Requirements
 
 ### Functional Requirements
@@ -209,12 +217,14 @@ all prior stories being complete.
   with no behavior changes.
 - **FR-003**: The `examples/oshell/` directory MUST be moved to
   `github.com/rhuss/openshell-examples` as a separate repository with
-  its own `go.mod`.
+  its own `go.mod`. The GitHub repo MUST be created and the extracted
+  code pushed as part of this feature (not deferred).
 - **FR-004**: The examples repository MUST depend on the SDK via the new
   upstream module path.
 - **FR-005**: Fern MDX documentation pages MUST be created under
   `docs/sdks/go/` covering getting-started, architecture, error-handling,
-  and authentication topics.
+  and authentication topics. Each page SHOULD be concise (1-2 pages) with
+  key concepts and short code snippets, not full tutorial walkthroughs.
 - **FR-006**: The MDX pages MUST be wired into `docs/index.yml` so they
   appear in the Fern docs site navigation.
 - **FR-007**: A `go:proto` mise task MUST be created in `tasks/go.toml`
@@ -229,7 +239,8 @@ all prior stories being complete.
 - **FR-011**: The following MUST be excluded from the PR: `brainstorm/`,
   `.specify/`, `.claude/`, `CLAUDE.md`, `AGENTS.md`, `docs/` (mdbook).
 - **FR-012**: The PR MUST be opened as a draft against the
-  `NVIDIA/OpenShell` main branch.
+  `NVIDIA/OpenShell` main branch with a single squashed commit
+  containing all changes.
 - **FR-013**: The PR description MUST reference issue
   [#2044](https://github.com/NVIDIA/OpenShell/issues/2044).
 - **FR-014**: The PR description MUST mention the spec-driven development
