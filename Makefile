@@ -1,6 +1,6 @@
 MISE := $(shell command -v mise 2>/dev/null)
 
-.PHONY: test test-integration lint fmt build ci docs-check
+.PHONY: test test-integration lint fmt build ci docs-check proto
 
 test:
 ifndef MISE
@@ -43,3 +43,9 @@ ifndef MISE
 	$(error mise is not installed. Install from https://mise.jdx.dev)
 endif
 	mise run docs:check
+
+proto:
+ifndef MISE
+	$(error mise is not installed. Install from https://mise.jdx.dev)
+endif
+	mise run proto:gen
