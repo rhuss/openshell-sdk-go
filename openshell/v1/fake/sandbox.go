@@ -27,6 +27,11 @@ func copySandbox(sb *types.Sandbox) *types.Sandbox {
 	}
 	cp := *sb
 	cp.Labels = copyStringMap(sb.Labels)
+	cp.Annotations = copyStringMap(sb.Annotations)
+	if sb.DeletionTimestamp != nil {
+		t := *sb.DeletionTimestamp
+		cp.DeletionTimestamp = &t
+	}
 	cp.Spec = copySandboxSpec(sb.Spec)
 	cp.Status = copySandboxStatus(sb.Status)
 	return &cp
