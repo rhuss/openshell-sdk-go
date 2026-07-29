@@ -25,6 +25,11 @@ func copyProvider(p *types.Provider) *types.Provider {
 	}
 	cp := *p
 	cp.Labels = copyStringMap(p.Labels)
+	cp.Annotations = copyStringMap(p.Annotations)
+	if p.DeletionTimestamp != nil {
+		t := *p.DeletionTimestamp
+		cp.DeletionTimestamp = &t
+	}
 	cp.Spec = copyProviderSpec(p.Spec)
 	return &cp
 }
