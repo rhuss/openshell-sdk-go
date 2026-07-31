@@ -29,6 +29,7 @@ func ServiceEndpointFromProto(resp *pb.ServiceEndpointResponse) *types.ServiceEn
 
 		if m := ep.GetMetadata(); m != nil {
 			result.ID = m.GetId()
+			result.Workspace = m.GetWorkspace()
 		}
 	}
 
@@ -44,7 +45,8 @@ func ServiceEndpointToProto(se *types.ServiceEndpoint) *pb.ServiceEndpointRespon
 	return &pb.ServiceEndpointResponse{
 		Endpoint: &pb.ServiceEndpoint{
 			Metadata: &dm.ObjectMeta{
-				Id: se.ID,
+				Id:        se.ID,
+				Workspace: se.Workspace,
 			},
 			SandboxId:   se.SandboxID,
 			SandboxName: se.SandboxName,

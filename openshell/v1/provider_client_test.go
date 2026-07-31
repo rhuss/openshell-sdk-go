@@ -126,7 +126,7 @@ func TestProviderCreate(t *testing.T) {
 		},
 	}
 
-	result, err := client.Create(context.Background(), p)
+	result, err := client.Create(context.Background(), "default", p)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -141,7 +141,7 @@ func TestProviderCreate_AlreadyExists(t *testing.T) {
 	client, cleanup := setupProviderTest(t, mock)
 	defer cleanup()
 
-	_, err := client.Create(context.Background(), &Provider{Name: "dup"})
+	_, err := client.Create(context.Background(), "default", &Provider{Name: "dup"})
 
 	require.Error(t, err)
 	assert.True(t, IsAlreadyExists(err))
@@ -156,7 +156,7 @@ func TestProviderGet(t *testing.T) {
 	client, cleanup := setupProviderTest(t, mock)
 	defer cleanup()
 
-	result, err := client.Get(context.Background(), "existing")
+	result, err := client.Get(context.Background(), "default", "existing")
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -169,7 +169,7 @@ func TestProviderGet_NotFound(t *testing.T) {
 	client, cleanup := setupProviderTest(t, mock)
 	defer cleanup()
 
-	_, err := client.Get(context.Background(), "nonexistent")
+	_, err := client.Get(context.Background(), "default", "nonexistent")
 
 	require.Error(t, err)
 	assert.True(t, IsNotFound(err))
@@ -188,7 +188,7 @@ func TestProviderList(t *testing.T) {
 	client, cleanup := setupProviderTest(t, mock)
 	defer cleanup()
 
-	result, err := client.List(context.Background())
+	result, err := client.List(context.Background(), "default")
 
 	require.NoError(t, err)
 	assert.Len(t, result, 2)
@@ -199,7 +199,7 @@ func TestProviderList_Empty(t *testing.T) {
 	client, cleanup := setupProviderTest(t, mock)
 	defer cleanup()
 
-	result, err := client.List(context.Background())
+	result, err := client.List(context.Background(), "default")
 
 	require.NoError(t, err)
 	assert.Empty(t, result)
@@ -222,7 +222,7 @@ func TestProviderUpdate(t *testing.T) {
 		},
 	}
 
-	result, err := client.Update(context.Background(), p)
+	result, err := client.Update(context.Background(), "default", p)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -234,7 +234,7 @@ func TestProviderUpdate_NotFound(t *testing.T) {
 	client, cleanup := setupProviderTest(t, mock)
 	defer cleanup()
 
-	_, err := client.Update(context.Background(), &Provider{Name: "missing"})
+	_, err := client.Update(context.Background(), "default", &Provider{Name: "missing"})
 
 	require.Error(t, err)
 	assert.True(t, IsNotFound(err))
@@ -248,7 +248,7 @@ func TestProviderDelete(t *testing.T) {
 	client, cleanup := setupProviderTest(t, mock)
 	defer cleanup()
 
-	err := client.Delete(context.Background(), "deleteme")
+	err := client.Delete(context.Background(), "default", "deleteme")
 
 	require.NoError(t, err)
 	assert.Empty(t, mock.providers["deleteme"])
@@ -260,7 +260,7 @@ func TestProviderDelete_NotFound(t *testing.T) {
 	client, cleanup := setupProviderTest(t, mock)
 	defer cleanup()
 
-	err := client.Delete(context.Background(), "nonexistent")
+	err := client.Delete(context.Background(), "default", "nonexistent")
 
 	require.Error(t, err)
 	assert.True(t, IsNotFound(err))
@@ -279,7 +279,7 @@ func TestProviderEnsure_Creates(t *testing.T) {
 		},
 	}
 
-	result, err := client.Ensure(context.Background(), p)
+	result, err := client.Ensure(context.Background(), "default", p)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -304,7 +304,7 @@ func TestProviderEnsure_Updates(t *testing.T) {
 		},
 	}
 
-	result, err := client.Ensure(context.Background(), p)
+	result, err := client.Ensure(context.Background(), "default", p)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)

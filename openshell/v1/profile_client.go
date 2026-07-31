@@ -19,8 +19,10 @@ func newProfileClient(conn grpc.ClientConnInterface) *profileClient {
 	return &profileClient{client: pb.NewOpenShellClient(conn)}
 }
 
-func (p *profileClient) List(ctx context.Context, opts ...ListOptions) ([]*ProviderProfile, error) {
-	req := &pb.ListProviderProfilesRequest{}
+func (p *profileClient) List(ctx context.Context, workspace string, opts ...ListOptions) ([]*ProviderProfile, error) {
+	req := &pb.ListProviderProfilesRequest{
+		Workspace: workspace,
+	}
 	if len(opts) > 0 {
 		if opts[0].Limit < 0 {
 			return nil, &StatusError{Code: ErrorInvalidArgument, Message: "limit must not be negative"}
@@ -44,9 +46,10 @@ func (p *profileClient) List(ctx context.Context, opts ...ListOptions) ([]*Provi
 	return profiles, nil
 }
 
-func (p *profileClient) Get(ctx context.Context, id string) (*ProviderProfile, error) {
+func (p *profileClient) Get(ctx context.Context, workspace, id string) (*ProviderProfile, error) {
 	resp, err := p.client.GetProviderProfile(ctx, &pb.GetProviderProfileRequest{
-		Id: id,
+		Id:        id,
+		Workspace: workspace,
 	})
 	if err != nil {
 		return nil, converter.FromGRPCError(err)
@@ -54,14 +57,15 @@ func (p *profileClient) Get(ctx context.Context, id string) (*ProviderProfile, e
 	return converter.ProviderProfileFromProto(resp.GetProfile()), nil
 }
 
-func (p *profileClient) Import(ctx context.Context, items []ProfileImportItem) (*ImportResult, error) {
+func (p *profileClient) Import(ctx context.Context, workspace string, items []ProfileImportItem) (*ImportResult, error) {
 	pbItems := make([]*pb.ProviderProfileImportItem, len(items))
 	for i := range items {
 		pbItems[i] = converter.ProfileImportItemToProto(&items[i])
 	}
 
 	resp, err := p.client.ImportProviderProfiles(ctx, &pb.ImportProviderProfilesRequest{
-		Profiles: pbItems,
+		Profiles:  pbItems,
+		Workspace: workspace,
 	})
 	if err != nil {
 		return nil, converter.FromGRPCError(err)
@@ -86,11 +90,12 @@ func (p *profileClient) Import(ctx context.Context, items []ProfileImportItem) (
 	return result, nil
 }
 
-func (p *profileClient) Update(ctx context.Context, id string, expectedResourceVersion uint64, item ProfileImportItem) (*UpdateResult, error) {
+func (p *profileClient) Update(ctx context.Context, workspace, id string, expectedResourceVersion uint64, item ProfileImportItem) (*UpdateResult, error) {
 	resp, err := p.client.UpdateProviderProfiles(ctx, &pb.UpdateProviderProfilesRequest{
 		Id:                      id,
 		Profile:                 converter.ProfileImportItemToProto(&item),
 		ExpectedResourceVersion: expectedResourceVersion,
+		Workspace:               workspace,
 	})
 	if err != nil {
 		return nil, converter.FromGRPCError(err)
@@ -110,14 +115,15 @@ func (p *profileClient) Update(ctx context.Context, id string, expectedResourceV
 	return result, nil
 }
 
-func (p *profileClient) Lint(ctx context.Context, items []ProfileImportItem) (*LintResult, error) {
+func (p *profileClient) Lint(ctx context.Context, workspace string, items []ProfileImportItem) (*LintResult, error) {
 	pbItems := make([]*pb.ProviderProfileImportItem, len(items))
 	for i := range items {
 		pbItems[i] = converter.ProfileImportItemToProto(&items[i])
 	}
 
 	resp, err := p.client.LintProviderProfiles(ctx, &pb.LintProviderProfilesRequest{
-		Profiles: pbItems,
+		Profiles:  pbItems,
+		Workspace: workspace,
 	})
 	if err != nil {
 		return nil, converter.FromGRPCError(err)
@@ -136,9 +142,10 @@ func (p *profileClient) Lint(ctx context.Context, items []ProfileImportItem) (*L
 	return result, nil
 }
 
-func (p *profileClient) Delete(ctx context.Context, id string) (bool, error) {
+func (p *profileClient) Delete(ctx context.Context, workspace, id string) (bool, error) {
 	resp, err := p.client.DeleteProviderProfile(ctx, &pb.DeleteProviderProfileRequest{
-		Id: id,
+		Id:        id,
+		Workspace: workspace,
 	})
 	if err != nil {
 		return false, converter.FromGRPCError(err)

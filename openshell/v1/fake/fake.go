@@ -127,15 +127,15 @@ func (fc *Client) Close() error {
 // AddSandbox inserts a sandbox directly into the store without triggering
 // watch events. This is intended for pre-seeding test fixtures before the
 // test begins. The sandbox is deep-copied on insert.
-func (fc *Client) AddSandbox(sb *types.Sandbox) {
-	fc.sandboxStore.Insert(sb)
+func (fc *Client) AddSandbox(workspace string, sb *types.Sandbox) {
+	fc.sandboxStore.Insert(workspace, sb)
 }
 
 // AddProvider inserts a provider directly into the store without triggering
 // any side effects. This is intended for pre-seeding test fixtures before
 // the test begins. The provider is deep-copied on insert.
-func (fc *Client) AddProvider(p *types.Provider) {
-	fc.providerStore.Insert(p)
+func (fc *Client) AddProvider(workspace string, p *types.Provider) {
+	fc.providerStore.Insert(workspace, p)
 }
 
 // Compile-time interface check.

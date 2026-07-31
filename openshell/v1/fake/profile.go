@@ -22,7 +22,7 @@ func newFakeProfileClient(closedFunc func() bool) *fakeProfileClient {
 }
 
 // List returns Unimplemented.
-func (c *fakeProfileClient) List(_ context.Context, _ ...v1.ListOptions) ([]*types.ProviderProfile, error) {
+func (c *fakeProfileClient) List(_ context.Context, _ string, _ ...v1.ListOptions) ([]*types.ProviderProfile, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
@@ -30,7 +30,7 @@ func (c *fakeProfileClient) List(_ context.Context, _ ...v1.ListOptions) ([]*typ
 }
 
 // Get returns Unimplemented.
-func (c *fakeProfileClient) Get(_ context.Context, _ string) (*types.ProviderProfile, error) {
+func (c *fakeProfileClient) Get(_ context.Context, _, _ string) (*types.ProviderProfile, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
@@ -38,7 +38,7 @@ func (c *fakeProfileClient) Get(_ context.Context, _ string) (*types.ProviderPro
 }
 
 // Import returns Unimplemented.
-func (c *fakeProfileClient) Import(_ context.Context, _ []types.ProfileImportItem) (*types.ImportResult, error) {
+func (c *fakeProfileClient) Import(_ context.Context, _ string, _ []types.ProfileImportItem) (*types.ImportResult, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
@@ -46,7 +46,7 @@ func (c *fakeProfileClient) Import(_ context.Context, _ []types.ProfileImportIte
 }
 
 // Update returns Unimplemented.
-func (c *fakeProfileClient) Update(_ context.Context, _ string, _ uint64, _ types.ProfileImportItem) (*types.UpdateResult, error) {
+func (c *fakeProfileClient) Update(_ context.Context, _, _ string, _ uint64, _ types.ProfileImportItem) (*types.UpdateResult, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
@@ -54,7 +54,7 @@ func (c *fakeProfileClient) Update(_ context.Context, _ string, _ uint64, _ type
 }
 
 // Lint returns Unimplemented.
-func (c *fakeProfileClient) Lint(_ context.Context, _ []types.ProfileImportItem) (*types.LintResult, error) {
+func (c *fakeProfileClient) Lint(_ context.Context, _ string, _ []types.ProfileImportItem) (*types.LintResult, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
@@ -62,7 +62,7 @@ func (c *fakeProfileClient) Lint(_ context.Context, _ []types.ProfileImportItem)
 }
 
 // Delete returns Unimplemented.
-func (c *fakeProfileClient) Delete(_ context.Context, _ string) (bool, error) {
+func (c *fakeProfileClient) Delete(_ context.Context, _, _ string) (bool, error) {
 	if c.closedFunc() {
 		return false, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}

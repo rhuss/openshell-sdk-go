@@ -18,28 +18,28 @@ import (
 
 func TestFakeTCP_Forward_ReturnsUnimplemented(t *testing.T) {
 	c := newFakeTCPClient(func() bool { return false })
-	_, err := c.Forward(context.Background(), "sandbox-1", 8080)
+	_, err := c.Forward(context.Background(), "default", "sandbox-1", 8080)
 	require.Error(t, err)
 	assert.True(t, types.IsUnimplemented(err))
 }
 
 func TestFakeTCP_Forward_ClosedReturnsUnavailable(t *testing.T) {
 	c := newFakeTCPClient(func() bool { return true })
-	_, err := c.Forward(context.Background(), "sandbox-1", 8080)
+	_, err := c.Forward(context.Background(), "default", "sandbox-1", 8080)
 	require.Error(t, err)
 	assert.True(t, types.IsUnavailable(err))
 }
 
 func TestFakeTCP_Forward_WithForwardOption(t *testing.T) {
 	c := newFakeTCPClient(func() bool { return false })
-	_, err := c.Forward(context.Background(), "sandbox-1", 8080, v1.WithForwardServiceID("audit-svc"))
+	_, err := c.Forward(context.Background(), "default", "sandbox-1", 8080, v1.WithForwardServiceID("audit-svc"))
 	require.Error(t, err)
 	assert.True(t, types.IsUnimplemented(err))
 }
 
 func TestFakeTCP_Forward_InvalidPort(t *testing.T) {
 	c := newFakeTCPClient(func() bool { return false })
-	_, err := c.Forward(context.Background(), "sandbox-1", 0)
+	_, err := c.Forward(context.Background(), "default", "sandbox-1", 0)
 	require.Error(t, err)
 	assert.True(t, types.IsInvalidArgument(err))
 }
@@ -48,7 +48,7 @@ func TestFakeTCP_Forward_InvalidPort(t *testing.T) {
 
 func TestFakeTCP_Listen_EmptySandboxName(t *testing.T) {
 	c := newFakeTCPClient(func() bool { return false })
-	ln, err := c.Listen(context.Background(), "", 8080, 0)
+	ln, err := c.Listen(context.Background(), "default", "", 8080, 0)
 	assert.Nil(t, ln)
 	require.Error(t, err)
 	assert.True(t, types.IsInvalidArgument(err))
@@ -67,7 +67,7 @@ func TestFakeTCP_Listen_InvalidRemotePort(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ln, err := c.Listen(context.Background(), "my-sandbox", tt.port, 0)
+			ln, err := c.Listen(context.Background(), "default", "my-sandbox", tt.port, 0)
 			assert.Nil(t, ln)
 			require.Error(t, err)
 			assert.True(t, types.IsInvalidArgument(err))
@@ -77,7 +77,7 @@ func TestFakeTCP_Listen_InvalidRemotePort(t *testing.T) {
 
 func TestFakeTCP_Listen_ValidInputsReturnUnimplemented(t *testing.T) {
 	c := newFakeTCPClient(func() bool { return false })
-	ln, err := c.Listen(context.Background(), "my-sandbox", 8080, 0)
+	ln, err := c.Listen(context.Background(), "default", "my-sandbox", 8080, 0)
 	assert.Nil(t, ln)
 	require.Error(t, err)
 	assert.True(t, types.IsUnimplemented(err))
@@ -85,7 +85,7 @@ func TestFakeTCP_Listen_ValidInputsReturnUnimplemented(t *testing.T) {
 
 func TestFakeTCP_Listen_ClosedReturnsUnavailable(t *testing.T) {
 	c := newFakeTCPClient(func() bool { return true })
-	ln, err := c.Listen(context.Background(), "my-sandbox", 8080, 0)
+	ln, err := c.Listen(context.Background(), "default", "my-sandbox", 8080, 0)
 	assert.Nil(t, ln)
 	require.Error(t, err)
 	assert.True(t, types.IsUnavailable(err))
@@ -93,7 +93,7 @@ func TestFakeTCP_Listen_ClosedReturnsUnavailable(t *testing.T) {
 
 func TestFakeTCP_Listen_WithOptions(t *testing.T) {
 	c := newFakeTCPClient(func() bool { return false })
-	ln, err := c.Listen(context.Background(), "my-sandbox", 8080, 0,
+	ln, err := c.Listen(context.Background(), "default", "my-sandbox", 8080, 0,
 		v1.WithBindAddress("0.0.0.0"),
 		v1.WithSSHTunnel(),
 		v1.WithListenServiceID("svc-1"),

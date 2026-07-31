@@ -24,7 +24,7 @@ func newFakeExecClient(closedFunc func() bool) *fakeExecClient {
 }
 
 // Run returns Unimplemented.
-func (c *fakeExecClient) Run(_ context.Context, _ string, _ []string, _ ...v1.ExecOptions) (*types.ExecResult, error) {
+func (c *fakeExecClient) Run(_ context.Context, _, _ string, _ []string, _ ...v1.ExecOptions) (*types.ExecResult, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
@@ -32,7 +32,7 @@ func (c *fakeExecClient) Run(_ context.Context, _ string, _ []string, _ ...v1.Ex
 }
 
 // Stream returns Unimplemented.
-func (c *fakeExecClient) Stream(_ context.Context, _ string, _ []string, _ ...v1.ExecOptions) (v1.ExecStream, error) {
+func (c *fakeExecClient) Stream(_ context.Context, _, _ string, _ []string, _ ...v1.ExecOptions) (v1.ExecStream, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
@@ -40,7 +40,7 @@ func (c *fakeExecClient) Stream(_ context.Context, _ string, _ []string, _ ...v1
 }
 
 // Interactive returns Unimplemented.
-func (c *fakeExecClient) Interactive(_ context.Context, _ string, _ []string, _, _ uint32, _ ...v1.ExecOptions) (v1.InteractiveSession, error) {
+func (c *fakeExecClient) Interactive(_ context.Context, _, _ string, _ []string, _, _ uint32, _ ...v1.ExecOptions) (v1.InteractiveSession, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}

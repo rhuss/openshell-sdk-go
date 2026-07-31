@@ -25,19 +25,18 @@ func newProviderClient(conn grpc.ClientConnInterface) *providerClient {
 	}
 }
 
-// Profiles returns a sub-client for provider profile operations.
 func (p *providerClient) Profiles() ProfileInterface {
 	return p.profiles
 }
 
-// Refresh returns a sub-client for credential refresh operations.
 func (p *providerClient) Refresh() RefreshInterface {
 	return p.refresh
 }
 
-func (p *providerClient) Create(ctx context.Context, provider *Provider) (*Provider, error) {
+func (p *providerClient) Create(ctx context.Context, workspace string, provider *Provider) (*Provider, error) {
 	resp, err := p.client.CreateProvider(ctx, &pb.CreateProviderRequest{
-		Provider: converter.ProviderToProto(provider),
+		Provider:  converter.ProviderToProto(provider),
+		Workspace: workspace,
 	})
 	if err != nil {
 		return nil, converter.FromGRPCError(err)
@@ -45,9 +44,10 @@ func (p *providerClient) Create(ctx context.Context, provider *Provider) (*Provi
 	return converter.ProviderFromProto(resp.GetProvider()), nil
 }
 
-func (p *providerClient) Get(ctx context.Context, name string) (*Provider, error) {
+func (p *providerClient) Get(ctx context.Context, workspace, name string) (*Provider, error) {
 	resp, err := p.client.GetProvider(ctx, &pb.GetProviderRequest{
-		Name: name,
+		Name:      name,
+		Workspace: workspace,
 	})
 	if err != nil {
 		return nil, converter.FromGRPCError(err)
@@ -55,11 +55,14 @@ func (p *providerClient) Get(ctx context.Context, name string) (*Provider, error
 	return converter.ProviderFromProto(resp.GetProvider()), nil
 }
 
-func (p *providerClient) List(ctx context.Context, opts ...ListOptions) ([]*Provider, error) {
-	req := &pb.ListProvidersRequest{}
+func (p *providerClient) List(ctx context.Context, workspace string, opts ...ListOptions) ([]*Provider, error) {
+	req := &pb.ListProvidersRequest{
+		Workspace: workspace,
+	}
 	if len(opts) > 0 {
 		req.Limit = uint32(opts[0].Limit)
 		req.Offset = uint32(opts[0].Offset)
+		req.AllWorkspaces = opts[0].AllWorkspaces
 	}
 
 	resp, err := p.client.ListProviders(ctx, req)
@@ -74,10 +77,11 @@ func (p *providerClient) List(ctx context.Context, opts ...ListOptions) ([]*Prov
 	return providers, nil
 }
 
-func (p *providerClient) Update(ctx context.Context, provider *Provider) (*Provider, error) {
+func (p *providerClient) Update(ctx context.Context, workspace string, provider *Provider) (*Provider, error) {
 	proto := converter.ProviderToProto(provider)
 	req := &pb.UpdateProviderRequest{
-		Provider: proto,
+		Provider:  proto,
+		Workspace: workspace,
 	}
 	if proto != nil {
 		req.CredentialExpiresAtMs = proto.CredentialExpiresAtMs
@@ -90,9 +94,10 @@ func (p *providerClient) Update(ctx context.Context, provider *Provider) (*Provi
 	return converter.ProviderFromProto(resp.GetProvider()), nil
 }
 
-func (p *providerClient) Delete(ctx context.Context, name string) error {
+func (p *providerClient) Delete(ctx context.Context, workspace, name string) error {
 	_, err := p.client.DeleteProvider(ctx, &pb.DeleteProviderRequest{
-		Name: name,
+		Name:      name,
+		Workspace: workspace,
 	})
 	if err != nil {
 		return converter.FromGRPCError(err)
@@ -100,20 +105,20 @@ func (p *providerClient) Delete(ctx context.Context, name string) error {
 	return nil
 }
 
-func (p *providerClient) Ensure(ctx context.Context, provider *Provider) (*Provider, error) {
+func (p *providerClient) Ensure(ctx context.Context, workspace string, provider *Provider) (*Provider, error) {
 	if provider == nil {
 		return nil, &StatusError{Code: ErrorInvalidArgument, Message: "provider must not be nil"}
 	}
-	existing, err := p.Get(ctx, provider.Name)
+	existing, err := p.Get(ctx, workspace, provider.Name)
 	if err != nil {
 		if !IsNotFound(err) {
 			return nil, err
 		}
-		return p.Create(ctx, provider)
+		return p.Create(ctx, workspace, provider)
 	}
 
 	updated := *provider
 	updated.ID = existing.ID
 	updated.ResourceVersion = existing.ResourceVersion
-	return p.Update(ctx, &updated)
+	return p.Update(ctx, workspace, &updated)
 }

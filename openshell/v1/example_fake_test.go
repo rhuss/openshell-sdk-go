@@ -20,7 +20,7 @@ func ExampleNewClient_addSandbox() {
 	defer client.Close() //nolint:errcheck
 
 	// Pre-seed a sandbox that already exists in Ready state
-	client.AddSandbox(&types.Sandbox{
+	client.AddSandbox("default", &types.Sandbox{
 		Name: "pre-existing",
 		Status: types.SandboxStatus{
 			Phase: types.SandboxReady,
@@ -30,7 +30,7 @@ func ExampleNewClient_addSandbox() {
 
 	ctx := context.Background()
 
-	sb, err := client.Sandboxes().Get(ctx, "pre-existing")
+	sb, err := client.Sandboxes().Get(ctx, "default", "pre-existing")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -48,14 +48,14 @@ func ExampleNewClient_addProvider() {
 	defer client.Close() //nolint:errcheck
 
 	// Pre-seed a provider
-	client.AddProvider(&types.Provider{
+	client.AddProvider("default", &types.Provider{
 		Name: "seeded-provider",
 		Type: "openai",
 	})
 
 	ctx := context.Background()
 
-	providers, err := client.Providers().List(ctx)
+	providers, err := client.Providers().List(ctx, "default")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -97,14 +97,14 @@ func ExampleNewClient_watchEvents() {
 	ctx := context.Background()
 
 	// Start watching before creating
-	watcher, err := client.Sandboxes().Watch(ctx, "my-sandbox")
+	watcher, err := client.Sandboxes().Watch(ctx, "default", "my-sandbox")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer watcher.Stop()
 
 	// Create triggers an ADDED event
-	_, err = client.Sandboxes().Create(ctx, "my-sandbox", &v1.SandboxSpec{}, nil)
+	_, err = client.Sandboxes().Create(ctx, "default", "my-sandbox", &v1.SandboxSpec{}, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -127,7 +127,7 @@ func ExampleNewClient_stopOnTerminal() {
 	ctx := context.Background()
 
 	// Watch with StopOnTerminal
-	watcher, err := client.Sandboxes().Watch(ctx, "my-sandbox", v1.WatchOptions{
+	watcher, err := client.Sandboxes().Watch(ctx, "default", "my-sandbox", v1.WatchOptions{
 		StopOnTerminal: true,
 	})
 	if err != nil {
@@ -135,11 +135,11 @@ func ExampleNewClient_stopOnTerminal() {
 	}
 
 	// Create and transition to Ready
-	_, err = client.Sandboxes().Create(ctx, "my-sandbox", &v1.SandboxSpec{}, nil)
+	_, err = client.Sandboxes().Create(ctx, "default", "my-sandbox", &v1.SandboxSpec{}, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
-	_, err = client.Sandboxes().WaitReady(ctx, "my-sandbox")
+	_, err = client.Sandboxes().WaitReady(ctx, "default", "my-sandbox")
 	if err != nil {
 		log.Fatal(err)
 	}

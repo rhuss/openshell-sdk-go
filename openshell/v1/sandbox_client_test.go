@@ -219,7 +219,7 @@ func TestSandboxCreate(t *testing.T) {
 	}
 	labels := map[string]string{"env": "dev"}
 
-	result, err := client.Create(context.Background(), "my-sandbox", spec, labels)
+	result, err := client.Create(context.Background(), "default", "my-sandbox", spec, labels)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -235,7 +235,7 @@ func TestSandboxCreate_AlreadyExists(t *testing.T) {
 	client, cleanup := setupSandboxTest(t, mock)
 	defer cleanup()
 
-	_, err := client.Create(context.Background(), "dup", &SandboxSpec{}, nil)
+	_, err := client.Create(context.Background(), "default", "dup", &SandboxSpec{}, nil)
 
 	require.Error(t, err)
 	assert.True(t, IsAlreadyExists(err))
@@ -251,7 +251,7 @@ func TestSandboxGet(t *testing.T) {
 	client, cleanup := setupSandboxTest(t, mock)
 	defer cleanup()
 
-	result, err := client.Get(context.Background(), "existing")
+	result, err := client.Get(context.Background(), "default", "existing")
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -266,7 +266,7 @@ func TestSandboxGet_NotFound(t *testing.T) {
 	client, cleanup := setupSandboxTest(t, mock)
 	defer cleanup()
 
-	_, err := client.Get(context.Background(), "nonexistent")
+	_, err := client.Get(context.Background(), "default", "nonexistent")
 
 	require.Error(t, err)
 	assert.True(t, IsNotFound(err))
@@ -285,7 +285,7 @@ func TestSandboxList(t *testing.T) {
 	client, cleanup := setupSandboxTest(t, mock)
 	defer cleanup()
 
-	result, err := client.List(context.Background())
+	result, err := client.List(context.Background(), "default")
 
 	require.NoError(t, err)
 	assert.Len(t, result, 2)
@@ -296,7 +296,7 @@ func TestSandboxList_Empty(t *testing.T) {
 	client, cleanup := setupSandboxTest(t, mock)
 	defer cleanup()
 
-	result, err := client.List(context.Background())
+	result, err := client.List(context.Background(), "default")
 
 	require.NoError(t, err)
 	assert.Empty(t, result)
@@ -311,7 +311,7 @@ func TestSandboxList_WithOptions(t *testing.T) {
 	client, cleanup := setupSandboxTest(t, mock)
 	defer cleanup()
 
-	result, err := client.List(context.Background(), ListOptions{Limit: 10, Offset: 0})
+	result, err := client.List(context.Background(), "default", ListOptions{Limit: 10, Offset: 0})
 
 	require.NoError(t, err)
 	assert.Len(t, result, 1)
@@ -325,7 +325,7 @@ func TestSandboxDelete(t *testing.T) {
 	client, cleanup := setupSandboxTest(t, mock)
 	defer cleanup()
 
-	err := client.Delete(context.Background(), "deleteme")
+	err := client.Delete(context.Background(), "default", "deleteme")
 
 	require.NoError(t, err)
 	assert.Empty(t, mock.sandboxes["deleteme"])
@@ -336,7 +336,7 @@ func TestSandboxDelete_NotFound(t *testing.T) {
 	client, cleanup := setupSandboxTest(t, mock)
 	defer cleanup()
 
-	err := client.Delete(context.Background(), "nonexistent")
+	err := client.Delete(context.Background(), "default", "nonexistent")
 
 	require.Error(t, err)
 	assert.True(t, IsNotFound(err))
@@ -354,7 +354,7 @@ func TestSandboxAttachProvider(t *testing.T) {
 	client, cleanup := setupSandboxTest(t, mock)
 	defer cleanup()
 
-	result, err := client.AttachProvider(context.Background(), "my-sb", "new-prov", 2)
+	result, err := client.AttachProvider(context.Background(), "default", "my-sb", "new-prov", 2)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -368,7 +368,7 @@ func TestSandboxAttachProvider_NotFound(t *testing.T) {
 	client, cleanup := setupSandboxTest(t, mock)
 	defer cleanup()
 
-	_, err := client.AttachProvider(context.Background(), "missing", "prov", 1)
+	_, err := client.AttachProvider(context.Background(), "default", "missing", "prov", 1)
 
 	require.Error(t, err)
 	assert.True(t, IsNotFound(err))
@@ -380,7 +380,7 @@ func TestSandboxAttachProvider_Error(t *testing.T) {
 	client, cleanup := setupSandboxTest(t, mock)
 	defer cleanup()
 
-	_, err := client.AttachProvider(context.Background(), "sb", "prov", 99)
+	_, err := client.AttachProvider(context.Background(), "default", "sb", "prov", 99)
 
 	require.Error(t, err)
 	assert.True(t, IsInvalidArgument(err))
@@ -396,7 +396,7 @@ func TestSandboxDetachProvider(t *testing.T) {
 	client, cleanup := setupSandboxTest(t, mock)
 	defer cleanup()
 
-	result, err := client.DetachProvider(context.Background(), "my-sb", "prov-a", 3)
+	result, err := client.DetachProvider(context.Background(), "default", "my-sb", "prov-a", 3)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -410,7 +410,7 @@ func TestSandboxDetachProvider_NotFound(t *testing.T) {
 	client, cleanup := setupSandboxTest(t, mock)
 	defer cleanup()
 
-	_, err := client.DetachProvider(context.Background(), "missing", "prov", 1)
+	_, err := client.DetachProvider(context.Background(), "default", "missing", "prov", 1)
 
 	require.Error(t, err)
 	assert.True(t, IsNotFound(err))
@@ -425,7 +425,7 @@ func TestSandboxListProviders(t *testing.T) {
 	client, cleanup := setupSandboxTest(t, mock)
 	defer cleanup()
 
-	result, err := client.ListProviders(context.Background(), "my-sb")
+	result, err := client.ListProviders(context.Background(), "default", "my-sb")
 
 	require.NoError(t, err)
 	assert.Len(t, result, 2)
@@ -436,7 +436,7 @@ func TestSandboxListProviders_Empty(t *testing.T) {
 	client, cleanup := setupSandboxTest(t, mock)
 	defer cleanup()
 
-	result, err := client.ListProviders(context.Background(), "empty-sb")
+	result, err := client.ListProviders(context.Background(), "default", "empty-sb")
 
 	require.NoError(t, err)
 	assert.Empty(t, result)
@@ -448,7 +448,7 @@ func TestSandboxListProviders_Error(t *testing.T) {
 	client, cleanup := setupSandboxTest(t, mock)
 	defer cleanup()
 
-	_, err := client.ListProviders(context.Background(), "sb")
+	_, err := client.ListProviders(context.Background(), "default", "sb")
 
 	require.Error(t, err)
 	assert.True(t, IsUnavailable(err))
@@ -465,7 +465,7 @@ func TestSandboxWaitReady_AlreadyReady(t *testing.T) {
 	client, cleanup := setupSandboxTest(t, mock)
 	defer cleanup()
 
-	result, err := client.WaitReady(context.Background(), "ready-sb")
+	result, err := client.WaitReady(context.Background(), "default", "ready-sb")
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -490,7 +490,7 @@ func TestSandboxWaitReady_BecomesReady(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	result, err := client.WaitReady(ctx, "pending-sb", WaitOptions{PollInterval: 20 * time.Millisecond})
+	result, err := client.WaitReady(ctx, "default", "pending-sb", WaitOptions{PollInterval: 20 * time.Millisecond})
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -509,7 +509,7 @@ func TestSandboxWaitReady_ContextTimeout(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 
-	_, err := client.WaitReady(ctx, "stuck-sb", WaitOptions{PollInterval: 20 * time.Millisecond})
+	_, err := client.WaitReady(ctx, "default", "stuck-sb", WaitOptions{PollInterval: 20 * time.Millisecond})
 
 	require.Error(t, err)
 }
@@ -523,7 +523,7 @@ func TestSandboxWaitReady_SandboxFailed(t *testing.T) {
 	client, cleanup := setupSandboxTest(t, mock)
 	defer cleanup()
 
-	_, err := client.WaitReady(context.Background(), "fail-sb")
+	_, err := client.WaitReady(context.Background(), "default", "fail-sb")
 
 	require.Error(t, err)
 }
@@ -533,7 +533,7 @@ func TestSandboxWaitReady_NotFound(t *testing.T) {
 	client, cleanup := setupSandboxTest(t, mock)
 	defer cleanup()
 
-	_, err := client.WaitReady(context.Background(), "nonexistent")
+	_, err := client.WaitReady(context.Background(), "default", "nonexistent")
 
 	require.Error(t, err)
 	assert.True(t, IsNotFound(err))
@@ -560,7 +560,7 @@ func TestSandboxWatch_ReceivesEvents(t *testing.T) {
 	client, cleanup := setupSandboxTest(t, mock)
 	defer cleanup()
 
-	w, err := client.Watch(context.Background(), "sb-1")
+	w, err := client.Watch(context.Background(), "default", "sb-1")
 	require.NoError(t, err)
 	defer w.Stop()
 
@@ -592,7 +592,7 @@ func TestSandboxWatch_FiltersSandboxEventsOnly(t *testing.T) {
 	client, cleanup := setupSandboxTest(t, mock)
 	defer cleanup()
 
-	w, err := client.Watch(context.Background(), "sb-1")
+	w, err := client.Watch(context.Background(), "default", "sb-1")
 	require.NoError(t, err)
 	defer w.Stop()
 
@@ -624,7 +624,7 @@ func TestSandboxWatch_StopCancelsStream(t *testing.T) {
 	client, cleanup := setupSandboxTest(t, mock)
 	defer cleanup()
 
-	w, err := client.Watch(context.Background(), "sb-1")
+	w, err := client.Watch(context.Background(), "default", "sb-1")
 	require.NoError(t, err)
 
 	<-w.ResultChan()
@@ -648,7 +648,7 @@ func TestSandboxWatch_RPCError(t *testing.T) {
 	client, cleanup := setupSandboxTest(t, mock)
 	defer cleanup()
 
-	_, err := client.Watch(context.Background(), "watch-err")
+	_, err := client.Watch(context.Background(), "default", "watch-err")
 
 	require.Error(t, err)
 	assert.True(t, IsUnavailable(err))
@@ -673,7 +673,7 @@ func TestSandboxWatch_ResolvesNameToID(t *testing.T) {
 	client, cleanup := setupSandboxTest(t, mock)
 	defer cleanup()
 
-	w, err := client.Watch(context.Background(), "my-sandbox")
+	w, err := client.Watch(context.Background(), "default", "my-sandbox")
 	require.NoError(t, err)
 	defer w.Stop()
 
@@ -690,7 +690,7 @@ func TestSandboxWatch_ResolutionError(t *testing.T) {
 	client, cleanup := setupSandboxTest(t, mock)
 	defer cleanup()
 
-	_, err := client.Watch(context.Background(), "nonexistent")
+	_, err := client.Watch(context.Background(), "default", "nonexistent")
 
 	require.Error(t, err)
 	assert.True(t, IsNotFound(err), "Watch should return NotFound when sandbox name cannot be resolved")
@@ -701,7 +701,7 @@ func TestSandboxWatch_EmptySandboxName(t *testing.T) {
 	client, cleanup := setupSandboxTest(t, mock)
 	defer cleanup()
 
-	_, err := client.Watch(context.Background(), "")
+	_, err := client.Watch(context.Background(), "default", "")
 
 	require.Error(t, err)
 	assert.True(t, IsInvalidArgument(err), "Watch should reject empty sandbox name")
@@ -730,7 +730,7 @@ func TestSandboxWatch_StopOnTerminal_Ready(t *testing.T) {
 	client, cleanup := setupSandboxTest(t, mock)
 	defer cleanup()
 
-	w, err := client.Watch(context.Background(), "sb-1", WatchOptions{StopOnTerminal: true})
+	w, err := client.Watch(context.Background(), "default", "sb-1", WatchOptions{StopOnTerminal: true})
 	require.NoError(t, err)
 	defer w.Stop()
 
@@ -774,7 +774,7 @@ func TestSandboxWatch_StopOnTerminal_Error(t *testing.T) {
 	client, cleanup := setupSandboxTest(t, mock)
 	defer cleanup()
 
-	w, err := client.Watch(context.Background(), "sb-1", WatchOptions{StopOnTerminal: true})
+	w, err := client.Watch(context.Background(), "default", "sb-1", WatchOptions{StopOnTerminal: true})
 	require.NoError(t, err)
 	defer w.Stop()
 
@@ -813,7 +813,7 @@ func TestSandboxWatch_StopOnTerminal_False_DoesNotClose(t *testing.T) {
 	defer cleanup()
 
 	// Default: StopOnTerminal=false — watcher should NOT auto-close on Ready
-	w, err := client.Watch(context.Background(), "sb-1")
+	w, err := client.Watch(context.Background(), "default", "sb-1")
 	require.NoError(t, err)
 	defer w.Stop()
 
@@ -849,7 +849,7 @@ func TestSandboxGetLogs(t *testing.T) {
 	client, cleanup := setupSandboxTest(t, mock)
 	defer cleanup()
 
-	result, err := client.GetLogs(context.Background(), "log-sb")
+	result, err := client.GetLogs(context.Background(), "default", "log-sb")
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -881,7 +881,7 @@ func TestSandboxGetLogs_WithOptions(t *testing.T) {
 	defer cleanup()
 
 	since := time.Date(2023, 11, 14, 0, 0, 0, 0, time.UTC)
-	result, err := client.GetLogs(context.Background(), "opts-sb",
+	result, err := client.GetLogs(context.Background(), "default", "opts-sb",
 		WithLogLines(50),
 		WithLogSince(since),
 		WithLogSources("gateway", "sandbox"),
@@ -910,7 +910,7 @@ func TestSandboxGetLogs_SandboxNotFound(t *testing.T) {
 	client, cleanup := setupSandboxTest(t, mock)
 	defer cleanup()
 
-	_, err := client.GetLogs(context.Background(), "nonexistent")
+	_, err := client.GetLogs(context.Background(), "default", "nonexistent")
 
 	require.Error(t, err)
 	assert.True(t, IsNotFound(err))
@@ -926,7 +926,7 @@ func TestSandboxGetLogs_RPCError(t *testing.T) {
 	client, cleanup := setupSandboxTest(t, mock)
 	defer cleanup()
 
-	_, err := client.GetLogs(context.Background(), "rpc-err-sb")
+	_, err := client.GetLogs(context.Background(), "default", "rpc-err-sb")
 
 	require.Error(t, err)
 	assert.True(t, IsUnavailable(err))
@@ -944,7 +944,7 @@ func TestSandboxGetLogs_EmptyResult(t *testing.T) {
 	client, cleanup := setupSandboxTest(t, mock)
 	defer cleanup()
 
-	result, err := client.GetLogs(context.Background(), "empty-sb")
+	result, err := client.GetLogs(context.Background(), "default", "empty-sb")
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -962,7 +962,7 @@ func TestSandboxGetLogs_SinceZeroNotSent(t *testing.T) {
 	defer cleanup()
 
 	// Call without WithLogSince — SinceMs should be 0 (not set)
-	_, err := client.GetLogs(context.Background(), "zero-sb")
+	_, err := client.GetLogs(context.Background(), "default", "zero-sb")
 
 	require.NoError(t, err)
 	mock.mu.Lock()

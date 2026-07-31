@@ -211,7 +211,7 @@ func newFakeSandboxClient(
 }
 
 // Create creates a new sandbox with Provisioning phase.
-func (c *fakeSandboxClient) Create(_ context.Context, name string, spec *types.SandboxSpec, labels map[string]string) (*types.Sandbox, error) {
+func (c *fakeSandboxClient) Create(_ context.Context, workspace, name string, spec *types.SandboxSpec, labels map[string]string) (*types.Sandbox, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
@@ -222,6 +222,7 @@ func (c *fakeSandboxClient) Create(_ context.Context, name string, spec *types.S
 
 	sb := &types.Sandbox{
 		Name:            name,
+		Workspace:       workspace,
 		CreatedAt:       time.Now(),
 		Labels:          copyStringMap(labels),
 		ResourceVersion: 1,
@@ -232,7 +233,7 @@ func (c *fakeSandboxClient) Create(_ context.Context, name string, spec *types.S
 		},
 	}
 
-	result, err := c.store.Create(sb)
+	result, err := c.store.Create(workspace, sb)
 	if err != nil {
 		return nil, err
 	}
@@ -246,30 +247,32 @@ func (c *fakeSandboxClient) Create(_ context.Context, name string, spec *types.S
 }
 
 // Get retrieves a sandbox by name.
-func (c *fakeSandboxClient) Get(_ context.Context, name string) (*types.Sandbox, error) {
+func (c *fakeSandboxClient) Get(_ context.Context, workspace, name string) (*types.Sandbox, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
-	return c.store.Get(name)
+	return c.store.Get(workspace, name)
 }
 
 // List returns all sandboxes. ListOptions are accepted for interface
 // compatibility but filtering is not implemented.
-func (c *fakeSandboxClient) List(_ context.Context, _ ...v1.ListOptions) ([]*types.Sandbox, error) {
+func (c *fakeSandboxClient) List(_ context.Context, workspace string, opts ...v1.ListOptions) ([]*types.Sandbox, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
-	return c.store.List(), nil
+	if len(opts) > 0 && opts[0].AllWorkspaces {
+		return c.store.ListAll(), nil
+	}
+	return c.store.List(workspace), nil
 }
 
 // Delete removes a sandbox by name. The operation is idempotent.
-func (c *fakeSandboxClient) Delete(_ context.Context, name string) error {
+func (c *fakeSandboxClient) Delete(_ context.Context, workspace, name string) error {
 	if c.closedFunc() {
 		return &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
 
-	// Atomically remove and retrieve the last-known object for the DELETED event.
-	deleted, existed := c.store.DeleteAndGet(name)
+	deleted, existed := c.store.DeleteAndGet(workspace, name)
 	if !existed {
 		// Not found — idempotent delete
 		return nil
@@ -286,19 +289,18 @@ func (c *fakeSandboxClient) Delete(_ context.Context, name string) error {
 // WaitReady transitions a sandbox to the Ready phase. In the fake
 // implementation this happens synchronously — context cancellation is
 // checked first to support timeout testing.
-func (c *fakeSandboxClient) WaitReady(ctx context.Context, name string, _ ...v1.WaitOptions) (*types.Sandbox, error) {
+func (c *fakeSandboxClient) WaitReady(ctx context.Context, workspace, name string, _ ...v1.WaitOptions) (*types.Sandbox, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
 
-	// Check context before proceeding
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	default:
 	}
 
-	sb, err := c.store.Get(name)
+	sb, err := c.store.Get(workspace, name)
 	if err != nil {
 		return nil, err
 	}
@@ -308,11 +310,10 @@ func (c *fakeSandboxClient) WaitReady(ctx context.Context, name string, _ ...v1.
 		return sb, nil
 	}
 
-	// Transition to Ready
 	sb.Status.Phase = types.SandboxReady
 	sb.ResourceVersion++
 
-	updated, err := c.store.Update(sb)
+	updated, err := c.store.Update(workspace, sb)
 	if err != nil {
 		return nil, fmt.Errorf("updating sandbox phase: %w", err)
 	}
@@ -329,7 +330,7 @@ func (c *fakeSandboxClient) WaitReady(ctx context.Context, name string, _ ...v1.
 // events for that sandbox are delivered. When StopOnTerminal is set, the
 // watcher auto-closes after delivering a terminal phase event (SandboxReady
 // or SandboxError).
-func (c *fakeSandboxClient) Watch(_ context.Context, name string, opts ...v1.WatchOptions) (types.WatchInterface[*types.Sandbox], error) {
+func (c *fakeSandboxClient) Watch(_ context.Context, _, name string, opts ...v1.WatchOptions) (types.WatchInterface[*types.Sandbox], error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
@@ -389,12 +390,12 @@ func (w *terminalWatcher) Stop() {
 // If the provider is already attached, Attached is false (idempotent).
 // The sandbox's ResourceVersion is incremented and a MODIFIED event is
 // broadcast.
-func (c *fakeSandboxClient) AttachProvider(_ context.Context, sandboxName, providerName string, _ uint64) (*types.AttachProviderResult, error) {
+func (c *fakeSandboxClient) AttachProvider(_ context.Context, workspace, sandboxName, providerName string, _ uint64) (*types.AttachProviderResult, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
 
-	sb, err := c.store.Get(sandboxName)
+	sb, err := c.store.Get(workspace, sandboxName)
 	if err != nil {
 		return nil, err
 	}
@@ -412,7 +413,7 @@ func (c *fakeSandboxClient) AttachProvider(_ context.Context, sandboxName, provi
 	sb.Spec.Providers = append(sb.Spec.Providers, providerName)
 	sb.ResourceVersion++
 
-	updated, err := c.store.Update(sb)
+	updated, err := c.store.Update(workspace, sb)
 	if err != nil {
 		return nil, err
 	}
@@ -432,12 +433,12 @@ func (c *fakeSandboxClient) AttachProvider(_ context.Context, sandboxName, provi
 // list. If the provider is not attached, Detached is false (idempotent).
 // The sandbox's ResourceVersion is incremented and a MODIFIED event is
 // broadcast when a provider is actually removed.
-func (c *fakeSandboxClient) DetachProvider(_ context.Context, sandboxName, providerName string, _ uint64) (*types.DetachProviderResult, error) {
+func (c *fakeSandboxClient) DetachProvider(_ context.Context, workspace, sandboxName, providerName string, _ uint64) (*types.DetachProviderResult, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
 
-	sb, err := c.store.Get(sandboxName)
+	sb, err := c.store.Get(workspace, sandboxName)
 	if err != nil {
 		return nil, err
 	}
@@ -463,7 +464,7 @@ func (c *fakeSandboxClient) DetachProvider(_ context.Context, sandboxName, provi
 	sb.Spec.Providers = providers
 	sb.ResourceVersion++
 
-	updated, err := c.store.Update(sb)
+	updated, err := c.store.Update(workspace, sb)
 	if err != nil {
 		return nil, err
 	}
@@ -480,7 +481,7 @@ func (c *fakeSandboxClient) DetachProvider(_ context.Context, sandboxName, provi
 }
 
 // GetLogs returns Unimplemented — fake log retrieval is not yet supported.
-func (c *fakeSandboxClient) GetLogs(_ context.Context, _ string, _ ...v1.LogOption) (*types.LogResult, error) {
+func (c *fakeSandboxClient) GetLogs(_ context.Context, _, _ string, _ ...v1.LogOption) (*types.LogResult, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
@@ -491,12 +492,12 @@ func (c *fakeSandboxClient) GetLogs(_ context.Context, _ string, _ ...v1.LogOpti
 // attached to the sandbox. The returned providers contain only the Name
 // field, since the fake client does not maintain a full provider registry
 // per sandbox.
-func (c *fakeSandboxClient) ListProviders(_ context.Context, sandboxName string) ([]*types.Provider, error) {
+func (c *fakeSandboxClient) ListProviders(_ context.Context, workspace, sandboxName string) ([]*types.Provider, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
 
-	sb, err := c.store.Get(sandboxName)
+	sb, err := c.store.Get(workspace, sandboxName)
 	if err != nil {
 		return nil, err
 	}

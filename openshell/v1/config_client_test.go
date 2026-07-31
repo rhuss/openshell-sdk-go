@@ -136,7 +136,7 @@ func TestConfigGetSandbox(t *testing.T) {
 	client, cleanup := setupConfigTest(t, mock)
 	defer cleanup()
 
-	sc, err := client.GetSandbox(context.Background(), "my-sandbox")
+	sc, err := client.GetSandbox(context.Background(), "default", "my-sandbox")
 
 	require.NoError(t, err)
 	require.NotNil(t, sc)
@@ -191,13 +191,13 @@ func TestConfigGetSandbox_DeepCopy(t *testing.T) {
 	client, cleanup := setupConfigTest(t, mock)
 	defer cleanup()
 
-	sc, err := client.GetSandbox(context.Background(), "sb1")
+	sc, err := client.GetSandbox(context.Background(), "default", "sb1")
 	require.NoError(t, err)
 
 	// Mutate the returned setting — should not affect future calls.
 	sc.Settings["key"] = EffectiveSetting{}
 
-	sc2, err := client.GetSandbox(context.Background(), "sb1")
+	sc2, err := client.GetSandbox(context.Background(), "default", "sb1")
 	require.NoError(t, err)
 
 	// The server still returns the original value — verifies we're not
@@ -213,7 +213,7 @@ func TestConfigGetSandbox_Error(t *testing.T) {
 	client, cleanup := setupConfigTest(t, mock)
 	defer cleanup()
 
-	sc, err := client.GetSandbox(context.Background(), "my-sandbox")
+	sc, err := client.GetSandbox(context.Background(), "default", "my-sandbox")
 
 	assert.Nil(t, sc)
 	require.Error(t, err)
@@ -229,7 +229,7 @@ func TestConfigGetSandbox_ResolvesNameToID(t *testing.T) {
 	client, cleanup := setupConfigTest(t, mock)
 	defer cleanup()
 
-	sc, err := client.GetSandbox(context.Background(), "my-sandbox")
+	sc, err := client.GetSandbox(context.Background(), "default", "my-sandbox")
 	require.NoError(t, err)
 	require.NotNil(t, sc)
 
@@ -263,7 +263,7 @@ func TestConfigGetSandbox_ResolutionError(t *testing.T) {
 	}
 	client := newConfigClient(conn, resolver)
 
-	sc, err := client.GetSandbox(context.Background(), "nonexistent")
+	sc, err := client.GetSandbox(context.Background(), "default", "nonexistent")
 	assert.Nil(t, sc)
 	require.Error(t, err)
 	assert.True(t, IsNotFound(err))
@@ -345,7 +345,7 @@ func TestConfigUpdate_SandboxScope(t *testing.T) {
 		ExpectedResourceVersion: 4,
 	}
 
-	result, err := client.Update(context.Background(), update)
+	result, err := client.Update(context.Background(), "default", update)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -386,7 +386,7 @@ func TestConfigUpdate_GlobalScope(t *testing.T) {
 		},
 	}
 
-	result, err := client.Update(context.Background(), update)
+	result, err := client.Update(context.Background(), "default", update)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -416,7 +416,7 @@ func TestConfigUpdate_DeleteSetting(t *testing.T) {
 		DeleteSetting: true,
 	}
 
-	result, err := client.Update(context.Background(), update)
+	result, err := client.Update(context.Background(), "default", update)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -450,7 +450,7 @@ func TestConfigUpdate_WithPolicy(t *testing.T) {
 		},
 	}
 
-	result, err := client.Update(context.Background(), update)
+	result, err := client.Update(context.Background(), "default", update)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -480,7 +480,7 @@ func TestConfigUpdate_Error(t *testing.T) {
 		ExpectedResourceVersion: 99,
 	}
 
-	result, err := client.Update(context.Background(), update)
+	result, err := client.Update(context.Background(), "default", update)
 
 	assert.Nil(t, result)
 	require.Error(t, err)
@@ -494,7 +494,7 @@ func TestConfigUpdate_NilUpdate(t *testing.T) {
 	client, cleanup := setupConfigTest(t, mock)
 	defer cleanup()
 
-	result, err := client.Update(context.Background(), nil)
+	result, err := client.Update(context.Background(), "default", nil)
 
 	assert.Nil(t, result)
 	require.Error(t, err)
@@ -515,7 +515,7 @@ func TestConfigUpdate_MergeOperationsAccepted(t *testing.T) {
 		MergeOperations: []types.PolicyMergeOperation{{RemoveRule: &types.RemoveNetworkRule{RuleName: "test"}}},
 	}
 
-	result, err := client.Update(context.Background(), update)
+	result, err := client.Update(context.Background(), "default", update)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -541,7 +541,7 @@ func TestConfigUpdate_ErrorConflict(t *testing.T) {
 		ExpectedResourceVersion: 5,
 	}
 
-	result, err := client.Update(context.Background(), update)
+	result, err := client.Update(context.Background(), "default", update)
 
 	assert.Nil(t, result)
 	require.Error(t, err)
@@ -553,7 +553,7 @@ func TestConfigGetSandbox_EmptySandboxName(t *testing.T) {
 	client, cleanup := setupConfigTest(t, mock)
 	defer cleanup()
 
-	cfg, err := client.GetSandbox(context.Background(), "")
+	cfg, err := client.GetSandbox(context.Background(), "default", "")
 	assert.Nil(t, cfg)
 	require.Error(t, err)
 	assert.True(t, IsInvalidArgument(err))

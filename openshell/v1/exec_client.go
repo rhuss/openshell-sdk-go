@@ -22,11 +22,11 @@ func newExecClient(conn grpc.ClientConnInterface, sandboxes SandboxInterface) *e
 	return &execClient{client: pb.NewOpenShellClient(conn), sandboxes: sandboxes}
 }
 
-func (e *execClient) Run(ctx context.Context, sandboxName string, command []string, opts ...ExecOptions) (*ExecResult, error) {
+func (e *execClient) Run(ctx context.Context, workspace, sandboxName string, command []string, opts ...ExecOptions) (*ExecResult, error) {
 	if sandboxName == "" {
 		return nil, &StatusError{Code: ErrorInvalidArgument, Message: "sandbox name must not be empty"}
 	}
-	sb, err := e.sandboxes.Get(ctx, sandboxName)
+	sb, err := e.sandboxes.Get(ctx, workspace, sandboxName)
 	if err != nil {
 		return nil, err
 	}
@@ -57,11 +57,11 @@ func (e *execClient) Run(ctx context.Context, sandboxName string, command []stri
 	return converter.ExecResultFromEvents(events)
 }
 
-func (e *execClient) Stream(ctx context.Context, sandboxName string, command []string, opts ...ExecOptions) (ExecStream, error) {
+func (e *execClient) Stream(ctx context.Context, workspace, sandboxName string, command []string, opts ...ExecOptions) (ExecStream, error) {
 	if sandboxName == "" {
 		return nil, &StatusError{Code: ErrorInvalidArgument, Message: "sandbox name must not be empty"}
 	}
-	sb, err := e.sandboxes.Get(ctx, sandboxName)
+	sb, err := e.sandboxes.Get(ctx, workspace, sandboxName)
 	if err != nil {
 		return nil, err
 	}
@@ -82,11 +82,11 @@ func (e *execClient) Stream(ctx context.Context, sandboxName string, command []s
 	return &execStream{stream: stream, cancel: cancel}, nil
 }
 
-func (e *execClient) Interactive(ctx context.Context, sandboxName string, command []string, cols, rows uint32, opts ...ExecOptions) (InteractiveSession, error) {
+func (e *execClient) Interactive(ctx context.Context, workspace, sandboxName string, command []string, cols, rows uint32, opts ...ExecOptions) (InteractiveSession, error) {
 	if sandboxName == "" {
 		return nil, &StatusError{Code: ErrorInvalidArgument, Message: "sandbox name must not be empty"}
 	}
-	sb, err := e.sandboxes.Get(ctx, sandboxName)
+	sb, err := e.sandboxes.Get(ctx, workspace, sandboxName)
 	if err != nil {
 		return nil, err
 	}

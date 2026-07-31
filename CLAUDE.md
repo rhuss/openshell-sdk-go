@@ -11,4 +11,5 @@ export OPENAI_API_KEY="$OPENSHELL_OPENAI_API_KEY"
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
+at specs/021-workspace-scoping/plan.md
 <!-- SPECKIT END -->

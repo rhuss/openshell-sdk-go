@@ -107,7 +107,7 @@ func TestTCPForward_InitFrame(t *testing.T) {
 	client, cleanup := setupTCPTest(t, mock)
 	defer cleanup()
 
-	rwc, err := client.Forward(context.Background(), "my-sandbox", 8080)
+	rwc, err := client.Forward(context.Background(), "default", "my-sandbox", 8080)
 	require.NoError(t, err)
 	require.NotNil(t, rwc)
 	defer func() { _ = rwc.Close() }()
@@ -145,7 +145,7 @@ func TestTCPForward_ReadWrite(t *testing.T) {
 	client, cleanup := setupTCPTest(t, mock)
 	defer cleanup()
 
-	rwc, err := client.Forward(context.Background(), "test-sandbox", 3000)
+	rwc, err := client.Forward(context.Background(), "default", "test-sandbox", 3000)
 	require.NoError(t, err)
 	defer func() { _ = rwc.Close() }()
 
@@ -173,7 +173,7 @@ func TestTCPForward_Close(t *testing.T) {
 	client, cleanup := setupTCPTest(t, mock)
 	defer cleanup()
 
-	rwc, err := client.Forward(context.Background(), "my-sandbox", 5432)
+	rwc, err := client.Forward(context.Background(), "default", "my-sandbox", 5432)
 	require.NoError(t, err)
 
 	err = rwc.Close()
@@ -194,7 +194,7 @@ func TestTCPForward_PartialRead(t *testing.T) {
 	client, cleanup := setupTCPTest(t, mock)
 	defer cleanup()
 
-	rwc, err := client.Forward(context.Background(), "my-sandbox", 8080)
+	rwc, err := client.Forward(context.Background(), "default", "my-sandbox", 8080)
 	require.NoError(t, err)
 	defer func() { _ = rwc.Close() }()
 
@@ -219,7 +219,7 @@ func TestTCPForward_ConcurrentReadWrite(t *testing.T) {
 	client, cleanup := setupTCPTest(t, mock)
 	defer cleanup()
 
-	rwc, err := client.Forward(context.Background(), "my-sandbox", 8080)
+	rwc, err := client.Forward(context.Background(), "default", "my-sandbox", 8080)
 	require.NoError(t, err)
 	defer func() { _ = rwc.Close() }()
 
@@ -274,7 +274,7 @@ func TestTCPForward_PortValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rwc, err := client.Forward(context.Background(), "my-sandbox", tt.port)
+			rwc, err := client.Forward(context.Background(), "default", "my-sandbox", tt.port)
 			assert.Nil(t, rwc)
 			require.Error(t, err)
 			assert.True(t, IsInvalidArgument(err), "expected InvalidArgument, got: %v", err)
@@ -283,7 +283,7 @@ func TestTCPForward_PortValidation(t *testing.T) {
 
 	// Valid boundary ports should not get client-side rejection.
 	for _, port := range []uint32{1, 65535} {
-		rwc, err := client.Forward(context.Background(), "my-sandbox", port)
+		rwc, err := client.Forward(context.Background(), "default", "my-sandbox", port)
 		require.NoError(t, err, "port %d should be valid", port)
 		require.NotNil(t, rwc)
 		_ = rwc.Close()
@@ -296,7 +296,7 @@ func TestTCPForward_ContextCancellation(t *testing.T) {
 	defer cleanup()
 
 	ctx, cancel := context.WithCancel(context.Background())
-	rwc, err := client.Forward(ctx, "my-sandbox", 8080)
+	rwc, err := client.Forward(ctx, "default", "my-sandbox", 8080)
 	require.NoError(t, err)
 	require.NotNil(t, rwc)
 
@@ -318,7 +318,7 @@ func TestTCPForward_WithServiceID(t *testing.T) {
 	client, cleanup := setupTCPTest(t, mock)
 	defer cleanup()
 
-	rwc, err := client.Forward(context.Background(), "my-sandbox", 8080, WithForwardServiceID("audit-svc"))
+	rwc, err := client.Forward(context.Background(), "default", "my-sandbox", 8080, WithForwardServiceID("audit-svc"))
 	require.NoError(t, err)
 	require.NotNil(t, rwc)
 	defer func() { _ = rwc.Close() }()
@@ -344,7 +344,7 @@ func TestTCPForward_WithoutOptions_BackwardCompat(t *testing.T) {
 	client, cleanup := setupTCPTest(t, mock)
 	defer cleanup()
 
-	rwc, err := client.Forward(context.Background(), "my-sandbox", 8080)
+	rwc, err := client.Forward(context.Background(), "default", "my-sandbox", 8080)
 	require.NoError(t, err)
 	require.NotNil(t, rwc)
 	defer func() { _ = rwc.Close() }()
@@ -369,7 +369,7 @@ func TestTCPForward_ServerError(t *testing.T) {
 	client, cleanup := setupTCPTest(t, mock)
 	defer cleanup()
 
-	rwc, err := client.Forward(context.Background(), "my-sandbox", 8080)
+	rwc, err := client.Forward(context.Background(), "default", "my-sandbox", 8080)
 
 	// The stream opens successfully (gRPC bidi streams don't fail on open),
 	// but the first write or read should surface the server error.
@@ -398,7 +398,7 @@ func TestTCPForward_ResolvesNameToID(t *testing.T) {
 	client, cleanup := setupTCPTest(t, mock)
 	defer cleanup()
 
-	rwc, err := client.Forward(context.Background(), "my-sandbox", 8080)
+	rwc, err := client.Forward(context.Background(), "default", "my-sandbox", 8080)
 	require.NoError(t, err)
 	require.NotNil(t, rwc)
 	defer func() { _ = rwc.Close() }()
@@ -443,7 +443,7 @@ func TestTCPForward_ResolutionError(t *testing.T) {
 	}
 	client := newTCPClient(conn, resolver, nil)
 
-	rwc, err := client.Forward(context.Background(), "nonexistent", 8080)
+	rwc, err := client.Forward(context.Background(), "default", "nonexistent", 8080)
 	assert.Nil(t, rwc)
 	require.Error(t, err)
 	assert.True(t, IsNotFound(err))
@@ -454,7 +454,7 @@ func TestTCPForward_EmptySandboxName(t *testing.T) {
 	client, cleanup := setupTCPTest(t, mock)
 	defer cleanup()
 
-	rwc, err := client.Forward(context.Background(), "", 8080)
+	rwc, err := client.Forward(context.Background(), "default", "", 8080)
 	assert.Nil(t, rwc)
 	require.Error(t, err)
 	assert.True(t, IsInvalidArgument(err))
@@ -467,7 +467,7 @@ func TestTCPListen_ReturnsValidListener(t *testing.T) {
 	client, cleanup := setupTCPTest(t, mock)
 	defer cleanup()
 
-	ln, err := client.Listen(context.Background(), "my-sandbox", 8080, 0)
+	ln, err := client.Listen(context.Background(), "default", "my-sandbox", 8080, 0)
 	require.NoError(t, err)
 	require.NotNil(t, ln)
 	defer func() { _ = ln.Close() }()
@@ -485,7 +485,7 @@ func TestTCPListen_ConcurrentConnections(t *testing.T) {
 	client, cleanup := setupTCPTest(t, mock)
 	defer cleanup()
 
-	ln, err := client.Listen(context.Background(), "my-sandbox", 8080, 0)
+	ln, err := client.Listen(context.Background(), "default", "my-sandbox", 8080, 0)
 	require.NoError(t, err)
 	require.NotNil(t, ln)
 	defer func() { _ = ln.Close() }()
@@ -553,7 +553,7 @@ func TestTCPListen_EphemeralPort(t *testing.T) {
 	defer cleanup()
 
 	// localPort=0 → OS assigns an ephemeral port.
-	ln, err := client.Listen(context.Background(), "my-sandbox", 8080, 0)
+	ln, err := client.Listen(context.Background(), "default", "my-sandbox", 8080, 0)
 	require.NoError(t, err)
 	require.NotNil(t, ln)
 	defer func() { _ = ln.Close() }()
@@ -589,7 +589,7 @@ func TestTCPListen_EmptySandboxName(t *testing.T) {
 	client, cleanup := setupTCPTest(t, mock)
 	defer cleanup()
 
-	ln, err := client.Listen(context.Background(), "", 8080, 0)
+	ln, err := client.Listen(context.Background(), "default", "", 8080, 0)
 	assert.Nil(t, ln)
 	require.Error(t, err)
 	assert.True(t, IsInvalidArgument(err))
@@ -600,7 +600,7 @@ func TestTCPListen_BidirectionalDataFlow(t *testing.T) {
 	client, cleanup := setupTCPTest(t, mock)
 	defer cleanup()
 
-	ln, err := client.Listen(context.Background(), "my-sandbox", 8080, 0)
+	ln, err := client.Listen(context.Background(), "default", "my-sandbox", 8080, 0)
 	require.NoError(t, err)
 	require.NotNil(t, ln)
 	defer func() { _ = ln.Close() }()
@@ -659,7 +659,7 @@ func TestTCPListen_InvalidRemotePort(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ln, err := client.Listen(context.Background(), "my-sandbox", tt.port, 0)
+			ln, err := client.Listen(context.Background(), "default", "my-sandbox", tt.port, 0)
 			assert.Nil(t, ln)
 			require.Error(t, err)
 			assert.True(t, IsInvalidArgument(err), "expected InvalidArgument, got: %v", err)
@@ -674,7 +674,7 @@ func TestTCPListen_CloseTerminatesConnections(t *testing.T) {
 	client, cleanup := setupTCPTest(t, mock)
 	defer cleanup()
 
-	ln, err := client.Listen(context.Background(), "my-sandbox", 8080, 0)
+	ln, err := client.Listen(context.Background(), "default", "my-sandbox", 8080, 0)
 	require.NoError(t, err)
 
 	const numConns = 3
@@ -728,7 +728,7 @@ func TestTCPListen_ContextCancellation(t *testing.T) {
 	defer cleanup()
 
 	ctx, cancel := context.WithCancel(context.Background())
-	ln, err := client.Listen(ctx, "my-sandbox", 8080, 0)
+	ln, err := client.Listen(ctx, "default", "my-sandbox", 8080, 0)
 	require.NoError(t, err)
 	require.NotNil(t, ln)
 
@@ -767,7 +767,7 @@ func TestTCPListen_AcceptOnClosedListener(t *testing.T) {
 	client, cleanup := setupTCPTest(t, mock)
 	defer cleanup()
 
-	ln, err := client.Listen(context.Background(), "my-sandbox", 8080, 0)
+	ln, err := client.Listen(context.Background(), "default", "my-sandbox", 8080, 0)
 	require.NoError(t, err)
 
 	// Close the listener immediately.
@@ -793,7 +793,7 @@ func TestTCPListen_WithBindAddress(t *testing.T) {
 	// 127.0.0.2+ by default). The default-case assertion below confirms
 	// that omitting the option also produces 127.0.0.1.
 	ln, err := client.Listen(
-		context.Background(), "my-sandbox", 8080, 0,
+		context.Background(), "default", "my-sandbox", 8080, 0,
 		WithBindAddress("127.0.0.1"),
 	)
 	require.NoError(t, err)
@@ -806,7 +806,7 @@ func TestTCPListen_WithBindAddress(t *testing.T) {
 
 	// Also verify that without WithBindAddress the default is 127.0.0.1.
 	lnDefault, err := client.Listen(
-		context.Background(), "my-sandbox", 8080, 0,
+		context.Background(), "default", "my-sandbox", 8080, 0,
 	)
 	require.NoError(t, err)
 	defer func() { _ = lnDefault.Close() }()
@@ -825,16 +825,16 @@ type mockSSHClient struct {
 	tunnelCalls int
 }
 
-func (m *mockSSHClient) CreateSession(_ context.Context, _ string) (*SSHSession, error) {
+func (m *mockSSHClient) CreateSession(_ context.Context, _, _ string) (*SSHSession, error) {
 	return nil, fmt.Errorf("not implemented in mock")
 }
 
-func (m *mockSSHClient) RevokeSession(_ context.Context, _ string) (bool, error) {
+func (m *mockSSHClient) RevokeSession(_ context.Context, _, _ string) (bool, error) {
 	return false, fmt.Errorf("not implemented in mock")
 }
 
 // Tunnel returns a pipe that echoes data back, and increments the call counter.
-func (m *mockSSHClient) Tunnel(_ context.Context, _ string, _ uint32, _ ...TunnelOption) (io.ReadWriteCloser, error) {
+func (m *mockSSHClient) Tunnel(_ context.Context, _, _ string, _ uint32, _ ...TunnelOption) (io.ReadWriteCloser, error) {
 	m.mu.Lock()
 	m.tunnelCalls++
 	m.mu.Unlock()
@@ -901,7 +901,7 @@ func TestTCPListen_WithSSHTunnel(t *testing.T) {
 	client := newTCPClient(conn, &stubSandboxResolver{}, sshMock)
 
 	ln, err := client.Listen(
-		context.Background(), "my-sandbox", 8080, 0,
+		context.Background(), "default", "my-sandbox", 8080, 0,
 		WithSSHTunnel(),
 		WithListenServiceID("ssh-svc"),
 	)
@@ -946,7 +946,7 @@ func TestTCPListen_CallerSpecifiedPort(t *testing.T) {
 	defer cleanup()
 
 	const wantPort = 19876
-	ln, err := client.Listen(context.Background(), "my-sandbox", 8080, wantPort)
+	ln, err := client.Listen(context.Background(), "default", "my-sandbox", 8080, wantPort)
 	require.NoError(t, err)
 	require.NotNil(t, ln)
 	defer func() { _ = ln.Close() }()
@@ -975,7 +975,7 @@ func TestTCPListen_ServiceIDPropagated(t *testing.T) {
 	client, cleanup := setupTCPTest(t, mock)
 	defer cleanup()
 
-	ln, err := client.Listen(context.Background(), "my-sandbox", 8080, 0,
+	ln, err := client.Listen(context.Background(), "default", "my-sandbox", 8080, 0,
 		WithListenServiceID("test-svc-id"),
 	)
 	require.NoError(t, err)
@@ -1007,7 +1007,7 @@ func TestTCPListen_ConcurrentAccept(t *testing.T) {
 	client, cleanup := setupTCPTest(t, mock)
 	defer cleanup()
 
-	ln, err := client.Listen(context.Background(), "my-sandbox", 8080, 0)
+	ln, err := client.Listen(context.Background(), "default", "my-sandbox", 8080, 0)
 	require.NoError(t, err)
 	defer func() { _ = ln.Close() }()
 
@@ -1073,7 +1073,7 @@ func TestTCPListen_WithSSHTunnel_NilSSH(t *testing.T) {
 	}()
 
 	client := newTCPClient(conn, &stubSandboxResolver{}, nil)
-	_, err = client.Listen(context.Background(), "my-sandbox", 8080, 0, WithSSHTunnel())
+	_, err = client.Listen(context.Background(), "default", "my-sandbox", 8080, 0, WithSSHTunnel())
 	require.Error(t, err)
 	assert.True(t, IsInvalidArgument(err), "WithSSHTunnel with nil SSH client should return InvalidArgument")
 }
@@ -1087,7 +1087,7 @@ type flippableResolver struct {
 	failErr error
 }
 
-func (r *flippableResolver) Get(_ context.Context, name string) (*Sandbox, error) {
+func (r *flippableResolver) Get(_ context.Context, _, name string) (*Sandbox, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.failErr != nil {
@@ -1096,29 +1096,31 @@ func (r *flippableResolver) Get(_ context.Context, name string) (*Sandbox, error
 	return &Sandbox{ID: "sb-" + name, Name: name}, nil
 }
 
-func (r *flippableResolver) Create(context.Context, string, *SandboxSpec, map[string]string) (*Sandbox, error) {
+func (r *flippableResolver) Create(context.Context, string, string, *SandboxSpec, map[string]string) (*Sandbox, error) {
 	panic("not implemented")
 }
-func (r *flippableResolver) List(context.Context, ...ListOptions) ([]*Sandbox, error) {
+func (r *flippableResolver) List(context.Context, string, ...ListOptions) ([]*Sandbox, error) {
 	panic("not implemented")
 }
-func (r *flippableResolver) Delete(context.Context, string) error { panic("not implemented") }
-func (r *flippableResolver) AttachProvider(context.Context, string, string, uint64) (*AttachProviderResult, error) {
+func (r *flippableResolver) Delete(context.Context, string, string) error {
 	panic("not implemented")
 }
-func (r *flippableResolver) DetachProvider(context.Context, string, string, uint64) (*DetachProviderResult, error) {
+func (r *flippableResolver) AttachProvider(context.Context, string, string, string, uint64) (*AttachProviderResult, error) {
 	panic("not implemented")
 }
-func (r *flippableResolver) ListProviders(context.Context, string) ([]*Provider, error) {
+func (r *flippableResolver) DetachProvider(context.Context, string, string, string, uint64) (*DetachProviderResult, error) {
 	panic("not implemented")
 }
-func (r *flippableResolver) WaitReady(context.Context, string, ...WaitOptions) (*Sandbox, error) {
+func (r *flippableResolver) ListProviders(context.Context, string, string) ([]*Provider, error) {
 	panic("not implemented")
 }
-func (r *flippableResolver) Watch(context.Context, string, ...WatchOptions) (WatchInterface[*Sandbox], error) {
+func (r *flippableResolver) WaitReady(context.Context, string, string, ...WaitOptions) (*Sandbox, error) {
 	panic("not implemented")
 }
-func (r *flippableResolver) GetLogs(context.Context, string, ...LogOption) (*LogResult, error) {
+func (r *flippableResolver) Watch(context.Context, string, string, ...WatchOptions) (WatchInterface[*Sandbox], error) {
+	panic("not implemented")
+}
+func (r *flippableResolver) GetLogs(context.Context, string, string, ...LogOption) (*LogResult, error) {
 	panic("not implemented")
 }
 
@@ -1236,7 +1238,7 @@ func TestTCPListen_TunnelFailureWithContextCancel(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	ln, err := client.Listen(ctx, "my-sandbox", 8080, 0)
+	ln, err := client.Listen(ctx, "default", "my-sandbox", 8080, 0)
 	require.NoError(t, err)
 
 	acceptErr := make(chan error, 1)

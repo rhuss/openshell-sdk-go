@@ -22,7 +22,7 @@ func newFakeConfigClient(closedFunc func() bool) *fakeConfigClient {
 }
 
 // GetSandbox returns Unimplemented.
-func (c *fakeConfigClient) GetSandbox(_ context.Context, _ string) (*types.SandboxConfig, error) {
+func (c *fakeConfigClient) GetSandbox(_ context.Context, _, _ string) (*types.SandboxConfig, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
@@ -39,7 +39,7 @@ func (c *fakeConfigClient) GetGateway(_ context.Context) (*types.GatewayConfig, 
 
 // Update returns Unimplemented. A nil update is rejected with InvalidArgument
 // to match the real client's behavior.
-func (c *fakeConfigClient) Update(_ context.Context, update *types.ConfigUpdate) (*types.ConfigUpdateResult, error) {
+func (c *fakeConfigClient) Update(_ context.Context, _ string, update *types.ConfigUpdate) (*types.ConfigUpdateResult, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}

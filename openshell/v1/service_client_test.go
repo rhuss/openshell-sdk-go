@@ -145,7 +145,7 @@ func TestServiceExpose(t *testing.T) {
 	client, cleanup := setupServiceTest(t, mock)
 	defer cleanup()
 
-	ep, err := client.Expose(context.Background(), "web-app", "api", 8080, true)
+	ep, err := client.Expose(context.Background(), "default", "web-app", "api", 8080, true)
 
 	require.NoError(t, err)
 	require.NotNil(t, ep)
@@ -162,7 +162,7 @@ func TestServiceExpose_NoDomain(t *testing.T) {
 	client, cleanup := setupServiceTest(t, mock)
 	defer cleanup()
 
-	ep, err := client.Expose(context.Background(), "web-app", "api", 8080, false)
+	ep, err := client.Expose(context.Background(), "default", "web-app", "api", 8080, false)
 
 	require.NoError(t, err)
 	require.NotNil(t, ep)
@@ -176,7 +176,7 @@ func TestServiceExpose_Error(t *testing.T) {
 	client, cleanup := setupServiceTest(t, mock)
 	defer cleanup()
 
-	ep, err := client.Expose(context.Background(), "missing", "api", 8080, true)
+	ep, err := client.Expose(context.Background(), "default", "missing", "api", 8080, true)
 
 	assert.Nil(t, ep)
 	require.Error(t, err)
@@ -189,10 +189,10 @@ func TestServiceGet(t *testing.T) {
 	defer cleanup()
 
 	// First expose, then get
-	_, err := client.Expose(context.Background(), "web-app", "api", 8080, true)
+	_, err := client.Expose(context.Background(), "default", "web-app", "api", 8080, true)
 	require.NoError(t, err)
 
-	ep, err := client.Get(context.Background(), "web-app", "api")
+	ep, err := client.Get(context.Background(), "default", "web-app", "api")
 
 	require.NoError(t, err)
 	require.NotNil(t, ep)
@@ -205,7 +205,7 @@ func TestServiceGet_NotFound(t *testing.T) {
 	client, cleanup := setupServiceTest(t, mock)
 	defer cleanup()
 
-	ep, err := client.Get(context.Background(), "web-app", "nonexistent")
+	ep, err := client.Get(context.Background(), "default", "web-app", "nonexistent")
 
 	assert.Nil(t, ep)
 	require.Error(t, err)
@@ -218,7 +218,7 @@ func TestServiceGet_Error(t *testing.T) {
 	client, cleanup := setupServiceTest(t, mock)
 	defer cleanup()
 
-	ep, err := client.Get(context.Background(), "web-app", "api")
+	ep, err := client.Get(context.Background(), "default", "web-app", "api")
 
 	assert.Nil(t, ep)
 	require.Error(t, err)
@@ -230,12 +230,12 @@ func TestServiceList(t *testing.T) {
 	defer cleanup()
 
 	// Expose two services
-	_, err := client.Expose(context.Background(), "web-app", "api", 8080, true)
+	_, err := client.Expose(context.Background(), "default", "web-app", "api", 8080, true)
 	require.NoError(t, err)
-	_, err = client.Expose(context.Background(), "web-app", "web", 3000, false)
+	_, err = client.Expose(context.Background(), "default", "web-app", "web", 3000, false)
 	require.NoError(t, err)
 
-	endpoints, err := client.List(context.Background(), "web-app")
+	endpoints, err := client.List(context.Background(), "default", "web-app")
 
 	require.NoError(t, err)
 	assert.Len(t, endpoints, 2)
@@ -246,7 +246,7 @@ func TestServiceList_Empty(t *testing.T) {
 	client, cleanup := setupServiceTest(t, mock)
 	defer cleanup()
 
-	endpoints, err := client.List(context.Background(), "web-app")
+	endpoints, err := client.List(context.Background(), "default", "web-app")
 
 	require.NoError(t, err)
 	assert.Empty(t, endpoints)
@@ -257,10 +257,10 @@ func TestServiceList_WithOptions(t *testing.T) {
 	client, cleanup := setupServiceTest(t, mock)
 	defer cleanup()
 
-	_, err := client.Expose(context.Background(), "web-app", "api", 8080, true)
+	_, err := client.Expose(context.Background(), "default", "web-app", "api", 8080, true)
 	require.NoError(t, err)
 
-	endpoints, err := client.List(context.Background(), "web-app", ListOptions{Limit: 10, Offset: 0})
+	endpoints, err := client.List(context.Background(), "default", "web-app", ListOptions{Limit: 10, Offset: 0})
 
 	require.NoError(t, err)
 	assert.Len(t, endpoints, 1)
@@ -272,7 +272,7 @@ func TestServiceList_Error(t *testing.T) {
 	client, cleanup := setupServiceTest(t, mock)
 	defer cleanup()
 
-	endpoints, err := client.List(context.Background(), "web-app")
+	endpoints, err := client.List(context.Background(), "default", "web-app")
 
 	assert.Nil(t, endpoints)
 	require.Error(t, err)
@@ -285,15 +285,15 @@ func TestServiceDelete(t *testing.T) {
 	defer cleanup()
 
 	// Expose then delete
-	_, err := client.Expose(context.Background(), "web-app", "api", 8080, true)
+	_, err := client.Expose(context.Background(), "default", "web-app", "api", 8080, true)
 	require.NoError(t, err)
 
-	err = client.Delete(context.Background(), "web-app", "api")
+	err = client.Delete(context.Background(), "default", "web-app", "api")
 
 	require.NoError(t, err)
 
 	// Verify subsequent Get returns NotFound
-	ep, err := client.Get(context.Background(), "web-app", "api")
+	ep, err := client.Get(context.Background(), "default", "web-app", "api")
 	assert.Nil(t, ep)
 	require.Error(t, err)
 	assert.True(t, IsNotFound(err))
@@ -304,7 +304,7 @@ func TestServiceDelete_NotFound(t *testing.T) {
 	client, cleanup := setupServiceTest(t, mock)
 	defer cleanup()
 
-	err := client.Delete(context.Background(), "web-app", "nonexistent")
+	err := client.Delete(context.Background(), "default", "web-app", "nonexistent")
 
 	require.Error(t, err)
 	assert.True(t, IsNotFound(err))
@@ -316,7 +316,7 @@ func TestServiceDelete_Error(t *testing.T) {
 	client, cleanup := setupServiceTest(t, mock)
 	defer cleanup()
 
-	err := client.Delete(context.Background(), "web-app", "api")
+	err := client.Delete(context.Background(), "default", "web-app", "api")
 
 	require.Error(t, err)
 }

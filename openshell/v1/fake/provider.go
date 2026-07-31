@@ -87,78 +87,86 @@ func (c *fakeProviderClient) Refresh() v1.RefreshInterface {
 
 // Create adds a new provider. CreatedAt and ResourceVersion are set
 // automatically.
-func (c *fakeProviderClient) Create(_ context.Context, provider *types.Provider) (*types.Provider, error) {
+func (c *fakeProviderClient) Create(_ context.Context, workspace string, provider *types.Provider) (*types.Provider, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
 
 	p := copyProvider(provider)
+	p.Workspace = workspace
 	p.CreatedAt = time.Now()
 	p.ResourceVersion = 1
 
-	return c.store.Create(p)
+	return c.store.Create(workspace, p)
 }
 
 // Get retrieves a provider by name.
-func (c *fakeProviderClient) Get(_ context.Context, name string) (*types.Provider, error) {
+func (c *fakeProviderClient) Get(_ context.Context, workspace, name string) (*types.Provider, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
-	return c.store.Get(name)
+	return c.store.Get(workspace, name)
 }
 
 // List returns all providers. ListOptions are accepted for interface
 // compatibility but filtering is not implemented.
-func (c *fakeProviderClient) List(_ context.Context, _ ...v1.ListOptions) ([]*types.Provider, error) {
+func (c *fakeProviderClient) List(_ context.Context, workspace string, opts ...v1.ListOptions) ([]*types.Provider, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
-	return c.store.List(), nil
+	if len(opts) > 0 && opts[0].AllWorkspaces {
+		return c.store.ListAll(), nil
+	}
+	return c.store.List(workspace), nil
 }
 
 // Update replaces an existing provider's data. ResourceVersion is
 // incremented automatically.
-func (c *fakeProviderClient) Update(_ context.Context, provider *types.Provider) (*types.Provider, error) {
+func (c *fakeProviderClient) Update(_ context.Context, workspace string, provider *types.Provider) (*types.Provider, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
 
-	// Fetch existing to preserve CreatedAt and increment ResourceVersion
-	existing, err := c.store.Get(provider.Name)
+	existing, err := c.store.Get(workspace, provider.Name)
 	if err != nil {
 		return nil, err
 	}
 
 	p := copyProvider(provider)
+	p.Workspace = workspace
 	p.CreatedAt = existing.CreatedAt
 	p.ResourceVersion = existing.ResourceVersion + 1
 
-	return c.store.Update(p)
+	return c.store.Update(workspace, p)
 }
 
 // Delete removes a provider by name. The operation is idempotent.
-func (c *fakeProviderClient) Delete(_ context.Context, name string) error {
+func (c *fakeProviderClient) Delete(_ context.Context, workspace, name string) error {
 	if c.closedFunc() {
 		return &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
-	c.store.Delete(name)
+	c.store.Delete(workspace, name)
 	return nil
 }
 
 // Ensure creates a provider if it does not exist, or updates it if it does.
-func (c *fakeProviderClient) Ensure(ctx context.Context, provider *types.Provider) (*types.Provider, error) {
+func (c *fakeProviderClient) Ensure(ctx context.Context, workspace string, provider *types.Provider) (*types.Provider, error) {
+	if provider == nil {
+		return nil, &types.StatusError{Code: types.ErrorInvalidArgument, Message: "provider must not be nil"}
+	}
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
 
-	_, err := c.store.Get(provider.Name)
+	existing, err := c.store.Get(workspace, provider.Name)
 	if err != nil {
-		// Not found — create
 		if types.IsNotFound(err) {
-			return c.Create(ctx, provider)
+			return c.Create(ctx, workspace, provider)
 		}
 		return nil, err
 	}
-	// Exists — update
-	return c.Update(ctx, provider)
+	updated := copyProvider(provider)
+	updated.ID = existing.ID
+	updated.ResourceVersion = existing.ResourceVersion
+	return c.Update(ctx, workspace, updated)
 }

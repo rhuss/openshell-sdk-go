@@ -24,7 +24,7 @@ func newFakeSSHClient(closedFunc func() bool) *fakeSSHClient {
 }
 
 // CreateSession returns Unimplemented.
-func (c *fakeSSHClient) CreateSession(_ context.Context, _ string) (*types.SSHSession, error) {
+func (c *fakeSSHClient) CreateSession(_ context.Context, _, _ string) (*types.SSHSession, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
@@ -32,7 +32,7 @@ func (c *fakeSSHClient) CreateSession(_ context.Context, _ string) (*types.SSHSe
 }
 
 // RevokeSession returns Unimplemented.
-func (c *fakeSSHClient) RevokeSession(_ context.Context, _ string) (bool, error) {
+func (c *fakeSSHClient) RevokeSession(_ context.Context, _, _ string) (bool, error) {
 	if c.closedFunc() {
 		return false, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
@@ -41,7 +41,7 @@ func (c *fakeSSHClient) RevokeSession(_ context.Context, _ string) (bool, error)
 
 // Tunnel returns Unimplemented. Ports outside 1-65535 and empty sandbox names
 // are rejected with InvalidArgument to match the real client's behavior.
-func (c *fakeSSHClient) Tunnel(_ context.Context, sandboxName string, port uint32, _ ...v1.TunnelOption) (io.ReadWriteCloser, error) {
+func (c *fakeSSHClient) Tunnel(_ context.Context, _, sandboxName string, port uint32, _ ...v1.TunnelOption) (io.ReadWriteCloser, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}

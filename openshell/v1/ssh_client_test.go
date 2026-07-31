@@ -132,11 +132,11 @@ type mockSandboxResolver struct {
 	err       error
 }
 
-func (m *mockSandboxResolver) Create(_ context.Context, _ string, _ *SandboxSpec, _ map[string]string) (*Sandbox, error) {
+func (m *mockSandboxResolver) Create(_ context.Context, _, _ string, _ *SandboxSpec, _ map[string]string) (*Sandbox, error) {
 	return nil, nil
 }
 
-func (m *mockSandboxResolver) Get(_ context.Context, name string) (*Sandbox, error) {
+func (m *mockSandboxResolver) Get(_ context.Context, _, name string) (*Sandbox, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -147,26 +147,26 @@ func (m *mockSandboxResolver) Get(_ context.Context, name string) (*Sandbox, err
 	return sb, nil
 }
 
-func (m *mockSandboxResolver) List(_ context.Context, _ ...ListOptions) ([]*Sandbox, error) {
+func (m *mockSandboxResolver) List(_ context.Context, _ string, _ ...ListOptions) ([]*Sandbox, error) {
 	return nil, nil
 }
-func (m *mockSandboxResolver) Delete(_ context.Context, _ string) error { return nil }
-func (m *mockSandboxResolver) AttachProvider(_ context.Context, _, _ string, _ uint64) (*AttachProviderResult, error) {
+func (m *mockSandboxResolver) Delete(_ context.Context, _, _ string) error { return nil }
+func (m *mockSandboxResolver) AttachProvider(_ context.Context, _, _, _ string, _ uint64) (*AttachProviderResult, error) {
 	return nil, nil
 }
-func (m *mockSandboxResolver) DetachProvider(_ context.Context, _, _ string, _ uint64) (*DetachProviderResult, error) {
+func (m *mockSandboxResolver) DetachProvider(_ context.Context, _, _, _ string, _ uint64) (*DetachProviderResult, error) {
 	return nil, nil
 }
-func (m *mockSandboxResolver) ListProviders(_ context.Context, _ string) ([]*Provider, error) {
+func (m *mockSandboxResolver) ListProviders(_ context.Context, _, _ string) ([]*Provider, error) {
 	return nil, nil
 }
-func (m *mockSandboxResolver) WaitReady(_ context.Context, _ string, _ ...WaitOptions) (*Sandbox, error) {
+func (m *mockSandboxResolver) WaitReady(_ context.Context, _, _ string, _ ...WaitOptions) (*Sandbox, error) {
 	return nil, nil
 }
-func (m *mockSandboxResolver) Watch(_ context.Context, _ string, _ ...WatchOptions) (WatchInterface[*Sandbox], error) {
+func (m *mockSandboxResolver) Watch(_ context.Context, _, _ string, _ ...WatchOptions) (WatchInterface[*Sandbox], error) {
 	return nil, nil
 }
-func (m *mockSandboxResolver) GetLogs(_ context.Context, _ string, _ ...LogOption) (*LogResult, error) {
+func (m *mockSandboxResolver) GetLogs(_ context.Context, _, _ string, _ ...LogOption) (*LogResult, error) {
 	return nil, nil
 }
 
@@ -205,7 +205,7 @@ func TestSSHCreateSession(t *testing.T) {
 	client, cleanup := setupSSHTest(t, mock)
 	defer cleanup()
 
-	session, err := client.CreateSession(context.Background(), "my-sandbox")
+	session, err := client.CreateSession(context.Background(), "default", "my-sandbox")
 
 	require.NoError(t, err)
 	require.NotNil(t, session)
@@ -224,7 +224,7 @@ func TestSSHCreateSession_Error(t *testing.T) {
 	client, cleanup := setupSSHTest(t, mock)
 	defer cleanup()
 
-	session, err := client.CreateSession(context.Background(), "missing")
+	session, err := client.CreateSession(context.Background(), "default", "missing")
 
 	assert.Nil(t, session)
 	require.Error(t, err)
@@ -237,11 +237,11 @@ func TestSSHRevokeSession(t *testing.T) {
 	defer cleanup()
 
 	// Create a session first.
-	session, err := client.CreateSession(context.Background(), "my-sandbox")
+	session, err := client.CreateSession(context.Background(), "default", "my-sandbox")
 	require.NoError(t, err)
 
 	// Revoke it — should return true.
-	revoked, err := client.RevokeSession(context.Background(), session.Token)
+	revoked, err := client.RevokeSession(context.Background(), "default",session.Token)
 
 	require.NoError(t, err)
 	assert.True(t, revoked)
@@ -253,13 +253,13 @@ func TestSSHRevokeSession_AlreadyRevoked(t *testing.T) {
 	defer cleanup()
 
 	// Create and revoke.
-	session, err := client.CreateSession(context.Background(), "my-sandbox")
+	session, err := client.CreateSession(context.Background(), "default", "my-sandbox")
 	require.NoError(t, err)
-	_, err = client.RevokeSession(context.Background(), session.Token)
+	_, err = client.RevokeSession(context.Background(), "default",session.Token)
 	require.NoError(t, err)
 
 	// Revoke again — should return false (already revoked).
-	revoked, err := client.RevokeSession(context.Background(), session.Token)
+	revoked, err := client.RevokeSession(context.Background(), "default",session.Token)
 
 	require.NoError(t, err)
 	assert.False(t, revoked)
@@ -271,7 +271,7 @@ func TestSSHRevokeSession_Error(t *testing.T) {
 	client, cleanup := setupSSHTest(t, mock)
 	defer cleanup()
 
-	revoked, err := client.RevokeSession(context.Background(), "some-token")
+	revoked, err := client.RevokeSession(context.Background(), "default","some-token")
 
 	assert.False(t, revoked)
 	require.Error(t, err)
@@ -296,7 +296,7 @@ func TestSSHTunnel_Success(t *testing.T) {
 	client, cleanup := setupSSHTestWithSandboxes(t, mock, resolver)
 	defer cleanup()
 
-	rwc, err := client.Tunnel(context.Background(), "my-sandbox", 22)
+	rwc, err := client.Tunnel(context.Background(), "default", "my-sandbox", 22)
 	require.NoError(t, err)
 	require.NotNil(t, rwc)
 	defer func() { _ = rwc.Close() }()
@@ -327,7 +327,7 @@ func TestSSHTunnel_WithServiceID(t *testing.T) {
 	client, cleanup := setupSSHTestWithSandboxes(t, mock, resolver)
 	defer cleanup()
 
-	rwc, err := client.Tunnel(context.Background(), "my-sandbox", 22, WithTunnelServiceID("audit-svc"))
+	rwc, err := client.Tunnel(context.Background(), "default", "my-sandbox", 22, WithTunnelServiceID("audit-svc"))
 	require.NoError(t, err)
 	require.NotNil(t, rwc)
 	defer func() { _ = rwc.Close() }()
@@ -362,7 +362,7 @@ func TestSSHTunnel_InvalidPort(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rwc, err := client.Tunnel(context.Background(), "my-sandbox", tt.port)
+			rwc, err := client.Tunnel(context.Background(), "default", "my-sandbox", tt.port)
 			assert.Nil(t, rwc)
 			require.Error(t, err)
 			assert.True(t, IsInvalidArgument(err))
@@ -376,7 +376,7 @@ func TestSSHTunnel_EmptySandboxName(t *testing.T) {
 	client, cleanup := setupSSHTestWithSandboxes(t, mock, resolver)
 	defer cleanup()
 
-	rwc, err := client.Tunnel(context.Background(), "", 22)
+	rwc, err := client.Tunnel(context.Background(), "default", "", 22)
 	assert.Nil(t, rwc)
 	require.Error(t, err)
 	assert.True(t, IsInvalidArgument(err))
@@ -388,7 +388,7 @@ func TestSSHTunnel_SandboxNotFound(t *testing.T) {
 	client, cleanup := setupSSHTestWithSandboxes(t, mock, resolver)
 	defer cleanup()
 
-	rwc, err := client.Tunnel(context.Background(), "nonexistent", 22)
+	rwc, err := client.Tunnel(context.Background(), "default", "nonexistent", 22)
 	assert.Nil(t, rwc)
 	require.Error(t, err)
 	assert.True(t, IsNotFound(err))
@@ -401,7 +401,7 @@ func TestSSHTunnel_SessionRevokedOnForwardFailure(t *testing.T) {
 	client, cleanup := setupSSHTestWithSandboxes(t, mock, resolver)
 	defer cleanup()
 
-	rwc, err := client.Tunnel(context.Background(), "my-sandbox", 22)
+	rwc, err := client.Tunnel(context.Background(), "default", "my-sandbox", 22)
 
 	if err != nil {
 		assert.Nil(t, rwc)
@@ -432,7 +432,7 @@ func TestSSHTunnel_SessionRevokedOnClose(t *testing.T) {
 	client, cleanup := setupSSHTestWithSandboxes(t, mock, resolver)
 	defer cleanup()
 
-	rwc, err := client.Tunnel(context.Background(), "my-sandbox", 22)
+	rwc, err := client.Tunnel(context.Background(), "default", "my-sandbox", 22)
 	require.NoError(t, err)
 
 	// Close the tunnel, which should revoke the session.
@@ -457,7 +457,7 @@ func TestSSHTunnel_DoubleClose(t *testing.T) {
 	client, cleanup := setupSSHTestWithSandboxes(t, mock, resolver)
 	defer cleanup()
 
-	rwc, err := client.Tunnel(context.Background(), "my-sandbox", 22)
+	rwc, err := client.Tunnel(context.Background(), "default", "my-sandbox", 22)
 	require.NoError(t, err)
 
 	err = rwc.Close()
@@ -475,7 +475,7 @@ func TestSSHTunnel_ContextCancellation(t *testing.T) {
 	defer cleanup()
 
 	ctx, cancel := context.WithCancel(context.Background())
-	rwc, err := client.Tunnel(ctx, "my-sandbox", 22)
+	rwc, err := client.Tunnel(ctx, "default", "my-sandbox", 22)
 	require.NoError(t, err)
 	require.NotNil(t, rwc)
 
@@ -498,7 +498,7 @@ func TestSSHTunnel_TokenNotExposed(t *testing.T) {
 	client, cleanup := setupSSHTestWithSandboxes(t, mock, resolver)
 	defer cleanup()
 
-	rwc, err := client.Tunnel(context.Background(), "my-sandbox", 22)
+	rwc, err := client.Tunnel(context.Background(), "default", "my-sandbox", 22)
 	require.NoError(t, err)
 	require.NotNil(t, rwc)
 	defer func() { _ = rwc.Close() }()
@@ -515,7 +515,7 @@ func TestSSHTunnel_ContextCancelRevokesSession(t *testing.T) {
 	defer cleanup()
 
 	ctx, cancel := context.WithCancel(context.Background())
-	rwc, err := client.Tunnel(ctx, "my-sandbox", 22)
+	rwc, err := client.Tunnel(ctx, "default", "my-sandbox", 22)
 	require.NoError(t, err)
 	require.NotNil(t, rwc)
 
@@ -540,7 +540,7 @@ func TestSSHTunnel_ContextCancelThenClose(t *testing.T) {
 	defer cleanup()
 
 	ctx, cancel := context.WithCancel(context.Background())
-	rwc, err := client.Tunnel(ctx, "my-sandbox", 22)
+	rwc, err := client.Tunnel(ctx, "default", "my-sandbox", 22)
 	require.NoError(t, err)
 	require.NotNil(t, rwc)
 
@@ -575,7 +575,7 @@ func TestSSHTunnel_CloseBeforeContextCancel(t *testing.T) {
 	defer cleanup()
 
 	ctx, cancel := context.WithCancel(context.Background())
-	rwc, err := client.Tunnel(ctx, "my-sandbox", 22)
+	rwc, err := client.Tunnel(ctx, "default", "my-sandbox", 22)
 	require.NoError(t, err)
 	require.NotNil(t, rwc)
 

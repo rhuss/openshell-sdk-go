@@ -26,7 +26,7 @@ func newTCPClient(conn grpc.ClientConnInterface, sandboxes SandboxInterface, ssh
 	return &tcpClient{client: pb.NewOpenShellClient(conn), sandboxes: sandboxes, ssh: ssh}
 }
 
-func (t *tcpClient) Forward(ctx context.Context, sandboxName string, port uint32, opts ...ForwardOption) (io.ReadWriteCloser, error) {
+func (t *tcpClient) Forward(ctx context.Context, workspace, sandboxName string, port uint32, opts ...ForwardOption) (io.ReadWriteCloser, error) {
 	if sandboxName == "" {
 		return nil, &StatusError{Code: ErrorInvalidArgument, Message: "sandbox name must not be empty"}
 	}
@@ -37,8 +37,7 @@ func (t *tcpClient) Forward(ctx context.Context, sandboxName string, port uint32
 		}
 	}
 
-	// Resolve sandbox name to ID — the proto RPC takes SandboxId, not name.
-	sb, err := t.sandboxes.Get(ctx, sandboxName)
+	sb, err := t.sandboxes.Get(ctx, workspace, sandboxName)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +85,7 @@ func (t *tcpClient) Forward(ctx context.Context, sandboxName string, port uint32
 	return conn, nil
 }
 
-func (t *tcpClient) Listen(ctx context.Context, sandboxName string, remotePort uint32, localPort uint32, opts ...ListenOption) (net.Listener, error) {
+func (t *tcpClient) Listen(ctx context.Context, workspace, sandboxName string, remotePort uint32, localPort uint32, opts ...ListenOption) (net.Listener, error) {
 	if sandboxName == "" {
 		return nil, &StatusError{Code: ErrorInvalidArgument, Message: "sandbox name must not be empty"}
 	}
@@ -128,6 +127,7 @@ func (t *tcpClient) Listen(ctx context.Context, sandboxName string, remotePort u
 		cancel:      cancel,
 		tcp:         t,
 		ssh:         t.ssh,
+		workspace:   workspace,
 		sandboxName: sandboxName,
 		remotePort:  remotePort,
 		cfg:         cfg,
@@ -150,6 +150,7 @@ type tunnelListener struct {
 	cancel      context.CancelFunc
 	tcp         *tcpClient
 	ssh         SSHInterface
+	workspace   string
 	sandboxName string
 	remotePort  uint32
 	cfg         listenConfig
@@ -178,13 +179,13 @@ func (tl *tunnelListener) Accept() (net.Conn, error) {
 			if tl.cfg.serviceID != "" {
 				tunnelOpts = append(tunnelOpts, WithTunnelServiceID(tl.cfg.serviceID))
 			}
-			tunnel, err = tl.ssh.Tunnel(tl.ctx, tl.sandboxName, tl.remotePort, tunnelOpts...)
+			tunnel, err = tl.ssh.Tunnel(tl.ctx, tl.workspace, tl.sandboxName, tl.remotePort, tunnelOpts...)
 		} else {
 			var fwdOpts []ForwardOption
 			if tl.cfg.serviceID != "" {
 				fwdOpts = append(fwdOpts, WithForwardServiceID(tl.cfg.serviceID))
 			}
-			tunnel, err = tl.tcp.Forward(tl.ctx, tl.sandboxName, tl.remotePort, fwdOpts...)
+			tunnel, err = tl.tcp.Forward(tl.ctx, tl.workspace, tl.sandboxName, tl.remotePort, fwdOpts...)
 		}
 
 		if err != nil {
