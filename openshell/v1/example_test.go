@@ -21,21 +21,21 @@ func ExampleClient_Sandboxes() {
 	ctx := context.Background()
 
 	// Create a sandbox
-	sb, err := client.Sandboxes().Create(ctx, "my-sandbox", &v1.SandboxSpec{}, nil)
+	sb, err := client.Sandboxes().Create(ctx, "default", "my-sandbox", &v1.SandboxSpec{}, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("Phase after create:", sb.Status.Phase)
 
 	// Wait for the sandbox to become ready
-	sb, err = client.Sandboxes().WaitReady(ctx, "my-sandbox")
+	sb, err = client.Sandboxes().WaitReady(ctx, "default", "my-sandbox")
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("Phase after wait:", sb.Status.Phase)
 
 	// Clean up
-	if err := client.Sandboxes().Delete(ctx, "my-sandbox"); err != nil {
+	if err := client.Sandboxes().Delete(ctx, "default", "my-sandbox"); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println("Deleted")
@@ -53,7 +53,7 @@ func ExampleClient_Providers() {
 	ctx := context.Background()
 
 	// Register a provider
-	_, err := client.Providers().Create(ctx, &v1.Provider{
+	_, err := client.Providers().Create(ctx, "default", &v1.Provider{
 		Name: "my-openai",
 		Type: "openai",
 	})
@@ -62,7 +62,7 @@ func ExampleClient_Providers() {
 	}
 
 	// List all providers
-	providers, err := client.Providers().List(ctx)
+	providers, err := client.Providers().List(ctx, "default")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -98,7 +98,7 @@ func ExampleClient_Exec() {
 
 	ctx := context.Background()
 
-	_, err := client.Exec().Run(ctx, "my-sandbox", []string{"echo", "hello"})
+	_, err := client.Exec().Run(ctx, "default", "my-sandbox", []string{"echo", "hello"})
 	if v1.IsUnimplemented(err) {
 		fmt.Println("Exec requires a real gateway")
 	}
@@ -119,7 +119,7 @@ func ExampleClient_TCP() {
 	ctx := context.Background()
 
 	// Bind local port 0 (OS-assigned) to sandbox port 8080.
-	ln, err := client.TCP().Listen(ctx, "my-sandbox", 8080, 0)
+	ln, err := client.TCP().Listen(ctx, "default", "my-sandbox", 8080, 0)
 	if v1.IsUnimplemented(err) {
 		fmt.Println("Listen requires a real gateway")
 	}
@@ -145,7 +145,7 @@ func ExampleIsNotFound() {
 
 	ctx := context.Background()
 
-	_, err := client.Sandboxes().Get(ctx, "nonexistent")
+	_, err := client.Sandboxes().Get(ctx, "default", "nonexistent")
 	if v1.IsNotFound(err) {
 		fmt.Println("Sandbox not found")
 	}
@@ -161,13 +161,13 @@ func ExampleIsAlreadyExists() {
 	ctx := context.Background()
 
 	// Create a sandbox
-	_, err := client.Sandboxes().Create(ctx, "my-sandbox", &v1.SandboxSpec{}, nil)
+	_, err := client.Sandboxes().Create(ctx, "default", "my-sandbox", &v1.SandboxSpec{}, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Try to create the same sandbox again
-	_, err = client.Sandboxes().Create(ctx, "my-sandbox", &v1.SandboxSpec{}, nil)
+	_, err = client.Sandboxes().Create(ctx, "default", "my-sandbox", &v1.SandboxSpec{}, nil)
 	if v1.IsAlreadyExists(err) {
 		fmt.Println("Sandbox already exists")
 	}
@@ -182,7 +182,7 @@ func ExampleIsUnavailable() {
 
 	ctx := context.Background()
 
-	_, err := client.Sandboxes().Get(ctx, "any")
+	_, err := client.Sandboxes().Get(ctx, "default", "any")
 	if v1.IsUnavailable(err) {
 		fmt.Println("Client is closed")
 	}

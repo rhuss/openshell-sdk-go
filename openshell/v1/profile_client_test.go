@@ -219,7 +219,7 @@ func TestProfileList(t *testing.T) {
 	client, cleanup := setupProfileTest(t, mock)
 	defer cleanup()
 
-	profiles, err := client.List(context.Background())
+	profiles, err := client.List(context.Background(), "default")
 
 	require.NoError(t, err)
 	assert.Len(t, profiles, 2)
@@ -230,7 +230,7 @@ func TestProfileList_Empty(t *testing.T) {
 	client, cleanup := setupProfileTest(t, mock)
 	defer cleanup()
 
-	profiles, err := client.List(context.Background())
+	profiles, err := client.List(context.Background(), "default")
 
 	require.NoError(t, err)
 	assert.Empty(t, profiles)
@@ -242,7 +242,7 @@ func TestProfileList_WithOptions(t *testing.T) {
 	client, cleanup := setupProfileTest(t, mock)
 	defer cleanup()
 
-	profiles, err := client.List(context.Background(), ListOptions{Limit: 10, Offset: 5})
+	profiles, err := client.List(context.Background(), "default", ListOptions{Limit: 10, Offset: 5})
 
 	require.NoError(t, err)
 	assert.Len(t, profiles, 1)
@@ -257,7 +257,7 @@ func TestProfileList_Error(t *testing.T) {
 	client, cleanup := setupProfileTest(t, mock)
 	defer cleanup()
 
-	profiles, err := client.List(context.Background())
+	profiles, err := client.List(context.Background(), "default")
 
 	assert.Nil(t, profiles)
 	require.Error(t, err)
@@ -272,7 +272,7 @@ func TestProfileGet(t *testing.T) {
 	client, cleanup := setupProfileTest(t, mock)
 	defer cleanup()
 
-	profile, err := client.Get(context.Background(), "p1")
+	profile, err := client.Get(context.Background(), "default", "p1")
 
 	require.NoError(t, err)
 	require.NotNil(t, profile)
@@ -299,7 +299,7 @@ func TestProfileGet_NotFound(t *testing.T) {
 	client, cleanup := setupProfileTest(t, mock)
 	defer cleanup()
 
-	profile, err := client.Get(context.Background(), "nonexistent")
+	profile, err := client.Get(context.Background(), "default", "nonexistent")
 
 	assert.Nil(t, profile)
 	require.Error(t, err)
@@ -312,7 +312,7 @@ func TestProfileGet_Error(t *testing.T) {
 	client, cleanup := setupProfileTest(t, mock)
 	defer cleanup()
 
-	profile, err := client.Get(context.Background(), "p1")
+	profile, err := client.Get(context.Background(), "default", "p1")
 
 	assert.Nil(t, profile)
 	require.Error(t, err)
@@ -336,7 +336,7 @@ func TestProfileImport(t *testing.T) {
 		},
 	}
 
-	result, err := client.Import(context.Background(), items)
+	result, err := client.Import(context.Background(), "default",items)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -361,7 +361,7 @@ func TestProfileImport_MultipleItems(t *testing.T) {
 		},
 	}
 
-	result, err := client.Import(context.Background(), items)
+	result, err := client.Import(context.Background(), "default",items)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -379,7 +379,7 @@ func TestProfileImport_Error(t *testing.T) {
 		{Profile: ProviderProfile{ID: "p1"}, Source: "test.yaml"},
 	}
 
-	result, err := client.Import(context.Background(), items)
+	result, err := client.Import(context.Background(), "default",items)
 
 	assert.Nil(t, result)
 	require.Error(t, err)
@@ -403,7 +403,7 @@ func TestProfileUpdate(t *testing.T) {
 		Source: "update.yaml",
 	}
 
-	result, err := client.Update(context.Background(), "p1", 1, item)
+	result, err := client.Update(context.Background(), "default", "p1", 1, item)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -422,7 +422,7 @@ func TestProfileUpdate_NotFound(t *testing.T) {
 		Source:  "test.yaml",
 	}
 
-	result, err := client.Update(context.Background(), "missing", 1, item)
+	result, err := client.Update(context.Background(), "default", "missing", 1, item)
 
 	assert.Nil(t, result)
 	require.Error(t, err)
@@ -441,7 +441,7 @@ func TestProfileUpdate_VersionMismatch(t *testing.T) {
 	}
 
 	// Use wrong version (99 instead of 1)
-	result, err := client.Update(context.Background(), "p1", 99, item)
+	result, err := client.Update(context.Background(), "default", "p1", 99, item)
 
 	assert.Nil(t, result)
 	require.Error(t, err)
@@ -458,7 +458,7 @@ func TestProfileUpdate_Error(t *testing.T) {
 		Source:  "test.yaml",
 	}
 
-	result, err := client.Update(context.Background(), "p1", 1, item)
+	result, err := client.Update(context.Background(), "default", "p1", 1, item)
 
 	assert.Nil(t, result)
 	require.Error(t, err)
@@ -478,7 +478,7 @@ func TestProfileLint_Valid(t *testing.T) {
 		},
 	}
 
-	result, err := client.Lint(context.Background(), items)
+	result, err := client.Lint(context.Background(), "default",items)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -498,7 +498,7 @@ func TestProfileLint_Invalid(t *testing.T) {
 		},
 	}
 
-	result, err := client.Lint(context.Background(), items)
+	result, err := client.Lint(context.Background(), "default",items)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -518,7 +518,7 @@ func TestProfileLint_Error(t *testing.T) {
 		{Profile: ProviderProfile{ID: "p1"}, Source: "test.yaml"},
 	}
 
-	result, err := client.Lint(context.Background(), items)
+	result, err := client.Lint(context.Background(), "default",items)
 
 	assert.Nil(t, result)
 	require.Error(t, err)
@@ -533,13 +533,13 @@ func TestProfileDelete(t *testing.T) {
 	client, cleanup := setupProfileTest(t, mock)
 	defer cleanup()
 
-	deleted, err := client.Delete(context.Background(), "p1")
+	deleted, err := client.Delete(context.Background(), "default", "p1")
 
 	require.NoError(t, err)
 	assert.True(t, deleted)
 
 	// Verify subsequent Get returns NotFound
-	profile, err := client.Get(context.Background(), "p1")
+	profile, err := client.Get(context.Background(), "default", "p1")
 	assert.Nil(t, profile)
 	require.Error(t, err)
 	assert.True(t, IsNotFound(err))
@@ -550,7 +550,7 @@ func TestProfileDelete_NotFound(t *testing.T) {
 	client, cleanup := setupProfileTest(t, mock)
 	defer cleanup()
 
-	deleted, err := client.Delete(context.Background(), "nonexistent")
+	deleted, err := client.Delete(context.Background(), "default", "nonexistent")
 
 	assert.False(t, deleted)
 	require.Error(t, err)
@@ -563,7 +563,7 @@ func TestProfileDelete_Error(t *testing.T) {
 	client, cleanup := setupProfileTest(t, mock)
 	defer cleanup()
 
-	deleted, err := client.Delete(context.Background(), "p1")
+	deleted, err := client.Delete(context.Background(), "default", "p1")
 
 	assert.False(t, deleted)
 	require.Error(t, err)

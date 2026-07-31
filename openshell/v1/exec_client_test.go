@@ -26,36 +26,38 @@ type stubSandboxResolver struct {
 	getErr error // if non-nil, Get returns this error
 }
 
-func (r *stubSandboxResolver) Get(_ context.Context, name string) (*Sandbox, error) {
+func (r *stubSandboxResolver) Get(_ context.Context, _, name string) (*Sandbox, error) {
 	if r.getErr != nil {
 		return nil, r.getErr
 	}
 	return &Sandbox{ID: "sb-" + name, Name: name}, nil
 }
 
-func (r *stubSandboxResolver) Create(context.Context, string, *SandboxSpec, map[string]string) (*Sandbox, error) {
+func (r *stubSandboxResolver) Create(context.Context, string, string, *SandboxSpec, map[string]string) (*Sandbox, error) {
 	panic("not implemented")
 }
-func (r *stubSandboxResolver) List(context.Context, ...ListOptions) ([]*Sandbox, error) {
+func (r *stubSandboxResolver) List(context.Context, string, ...ListOptions) ([]*Sandbox, error) {
 	panic("not implemented")
 }
-func (r *stubSandboxResolver) Delete(context.Context, string) error { panic("not implemented") }
-func (r *stubSandboxResolver) AttachProvider(context.Context, string, string, uint64) (*AttachProviderResult, error) {
+func (r *stubSandboxResolver) Delete(context.Context, string, string) error {
 	panic("not implemented")
 }
-func (r *stubSandboxResolver) DetachProvider(context.Context, string, string, uint64) (*DetachProviderResult, error) {
+func (r *stubSandboxResolver) AttachProvider(context.Context, string, string, string, uint64) (*AttachProviderResult, error) {
 	panic("not implemented")
 }
-func (r *stubSandboxResolver) ListProviders(context.Context, string) ([]*Provider, error) {
+func (r *stubSandboxResolver) DetachProvider(context.Context, string, string, string, uint64) (*DetachProviderResult, error) {
 	panic("not implemented")
 }
-func (r *stubSandboxResolver) WaitReady(context.Context, string, ...WaitOptions) (*Sandbox, error) {
+func (r *stubSandboxResolver) ListProviders(context.Context, string, string) ([]*Provider, error) {
 	panic("not implemented")
 }
-func (r *stubSandboxResolver) Watch(context.Context, string, ...WatchOptions) (WatchInterface[*Sandbox], error) {
+func (r *stubSandboxResolver) WaitReady(context.Context, string, string, ...WaitOptions) (*Sandbox, error) {
 	panic("not implemented")
 }
-func (r *stubSandboxResolver) GetLogs(context.Context, string, ...LogOption) (*LogResult, error) {
+func (r *stubSandboxResolver) Watch(context.Context, string, string, ...WatchOptions) (WatchInterface[*Sandbox], error) {
+	panic("not implemented")
+}
+func (r *stubSandboxResolver) GetLogs(context.Context, string, string, ...LogOption) (*LogResult, error) {
 	panic("not implemented")
 }
 
@@ -186,7 +188,7 @@ func TestExecRun(t *testing.T) {
 	client, cleanup := setupExecTest(t, mock)
 	defer cleanup()
 
-	result, err := client.Run(context.Background(), "test-sandbox", []string{"echo", "hello", "world"})
+	result, err := client.Run(context.Background(), "default", "test-sandbox", []string{"echo", "hello", "world"})
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -207,7 +209,7 @@ func TestExecRun_WithOptions(t *testing.T) {
 		Env:     map[string]string{"FOO": "bar"},
 		WorkDir: "/tmp",
 	}
-	result, err := client.Run(context.Background(), "test-sandbox", []string{"ls"}, opts)
+	result, err := client.Run(context.Background(), "default", "test-sandbox", []string{"ls"}, opts)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -230,7 +232,7 @@ func TestExecRun_NonZeroExit(t *testing.T) {
 	client, cleanup := setupExecTest(t, mock)
 	defer cleanup()
 
-	result, err := client.Run(context.Background(), "test-sandbox", []string{"false"})
+	result, err := client.Run(context.Background(), "default", "test-sandbox", []string{"false"})
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -245,7 +247,7 @@ func TestExecRun_ServerError(t *testing.T) {
 	client, cleanup := setupExecTest(t, mock)
 	defer cleanup()
 
-	_, err := client.Run(context.Background(), "missing-sandbox", []string{"ls"})
+	_, err := client.Run(context.Background(), "default", "missing-sandbox", []string{"ls"})
 
 	require.Error(t, err)
 	assert.True(t, IsNotFound(err))
@@ -262,7 +264,7 @@ func TestExecStream(t *testing.T) {
 	client, cleanup := setupExecTest(t, mock)
 	defer cleanup()
 
-	stream, err := client.Stream(context.Background(), "test-sandbox", []string{"cat"})
+	stream, err := client.Stream(context.Background(), "default", "test-sandbox", []string{"cat"})
 	require.NoError(t, err)
 	require.NotNil(t, stream)
 	defer func() { _ = stream.Close() }()
@@ -297,7 +299,7 @@ func TestExecStream_ServerError(t *testing.T) {
 	client, cleanup := setupExecTest(t, mock)
 	defer cleanup()
 
-	stream, err := client.Stream(context.Background(), "test-sandbox", []string{"ls"})
+	stream, err := client.Stream(context.Background(), "default", "test-sandbox", []string{"ls"})
 	if err != nil {
 		return
 	}
@@ -313,7 +315,7 @@ func TestExecStream_EmptyOutput(t *testing.T) {
 	client, cleanup := setupExecTest(t, mock)
 	defer cleanup()
 
-	stream, err := client.Stream(context.Background(), "test-sandbox", []string{"true"})
+	stream, err := client.Stream(context.Background(), "default", "test-sandbox", []string{"true"})
 	require.NoError(t, err)
 	defer func() { _ = stream.Close() }()
 
@@ -337,7 +339,7 @@ func TestExecInteractive(t *testing.T) {
 	client, cleanup := setupExecTest(t, mock)
 	defer cleanup()
 
-	session, err := client.Interactive(context.Background(), "test-sandbox", []string{"/bin/bash"}, 80, 24)
+	session, err := client.Interactive(context.Background(), "default", "test-sandbox", []string{"/bin/bash"}, 80, 24)
 	require.NoError(t, err)
 	require.NotNil(t, session)
 	defer func() { _ = session.Close() }()
@@ -373,7 +375,7 @@ func TestExecInteractive_Write(t *testing.T) {
 	client, cleanup := setupExecTest(t, mock)
 	defer cleanup()
 
-	session, err := client.Interactive(context.Background(), "test-sandbox", []string{"/bin/sh"}, 80, 24)
+	session, err := client.Interactive(context.Background(), "default", "test-sandbox", []string{"/bin/sh"}, 80, 24)
 	require.NoError(t, err)
 	defer func() { _ = session.Close() }()
 
@@ -392,7 +394,7 @@ func TestExecInteractive_Resize(t *testing.T) {
 	client, cleanup := setupExecTest(t, mock)
 	defer cleanup()
 
-	session, err := client.Interactive(context.Background(), "test-sandbox", []string{"/bin/sh"}, 80, 24)
+	session, err := client.Interactive(context.Background(), "default", "test-sandbox", []string{"/bin/sh"}, 80, 24)
 	require.NoError(t, err)
 	defer func() { _ = session.Close() }()
 
@@ -406,7 +408,7 @@ func TestExecInteractive_ServerError(t *testing.T) {
 	client, cleanup := setupExecTest(t, mock)
 	defer cleanup()
 
-	session, err := client.Interactive(context.Background(), "test-sandbox", []string{"/bin/sh"}, 80, 24)
+	session, err := client.Interactive(context.Background(), "default", "test-sandbox", []string{"/bin/sh"}, 80, 24)
 	if err != nil {
 		return
 	}
@@ -424,7 +426,7 @@ func TestExecInteractive_ExitCode(t *testing.T) {
 	client, cleanup := setupExecTest(t, mock)
 	defer cleanup()
 
-	session, err := client.Interactive(context.Background(), "test-sandbox", []string{"/bin/sh"}, 80, 24)
+	session, err := client.Interactive(context.Background(), "default", "test-sandbox", []string{"/bin/sh"}, 80, 24)
 	require.NoError(t, err)
 
 	// Drain output
@@ -455,7 +457,7 @@ func TestExecInteractive_ConcurrentReadAndExitCode(t *testing.T) {
 	client, cleanup := setupExecTest(t, mock)
 	defer cleanup()
 
-	session, err := client.Interactive(context.Background(), "test-sandbox", []string{"sh"}, 80, 24)
+	session, err := client.Interactive(context.Background(), "default", "test-sandbox", []string{"sh"}, 80, 24)
 	require.NoError(t, err)
 
 	var wg sync.WaitGroup
@@ -495,7 +497,7 @@ func TestExecRun_ResolvesNameToID(t *testing.T) {
 	client, cleanup := setupExecTest(t, mock)
 	defer cleanup()
 
-	_, err := client.Run(context.Background(), "my-sandbox", []string{"echo", "hi"})
+	_, err := client.Run(context.Background(), "default", "my-sandbox", []string{"echo", "hi"})
 	require.NoError(t, err)
 
 	mock.mu.Lock()
@@ -510,7 +512,7 @@ func TestExecRun_ResolutionError(t *testing.T) {
 	}
 	client := newExecClient(stubConn(t), resolver)
 
-	_, err := client.Run(context.Background(), "nonexistent", []string{"ls"})
+	_, err := client.Run(context.Background(), "default", "nonexistent", []string{"ls"})
 	require.Error(t, err)
 	assert.True(t, IsNotFound(err))
 }
@@ -523,7 +525,7 @@ func TestExecStream_ResolvesNameToID(t *testing.T) {
 	client, cleanup := setupExecTest(t, mock)
 	defer cleanup()
 
-	stream, err := client.Stream(context.Background(), "my-sandbox", []string{"echo"})
+	stream, err := client.Stream(context.Background(), "default", "my-sandbox", []string{"echo"})
 	require.NoError(t, err)
 
 	_, _ = stream.ExitCode()
@@ -540,7 +542,7 @@ func TestExecStream_ResolutionError(t *testing.T) {
 	}
 	client := newExecClient(stubConn(t), resolver)
 
-	_, err := client.Stream(context.Background(), "nonexistent", []string{"ls"})
+	_, err := client.Stream(context.Background(), "default", "nonexistent", []string{"ls"})
 	require.Error(t, err)
 	assert.True(t, IsNotFound(err))
 }
@@ -553,7 +555,7 @@ func TestExecInteractive_ResolvesNameToID(t *testing.T) {
 	client, cleanup := setupExecTest(t, mock)
 	defer cleanup()
 
-	session, err := client.Interactive(context.Background(), "my-sandbox", []string{"/bin/sh"}, 80, 24)
+	session, err := client.Interactive(context.Background(), "default", "my-sandbox", []string{"/bin/sh"}, 80, 24)
 	require.NoError(t, err)
 
 	_, _ = session.ExitCode()
@@ -573,28 +575,28 @@ func TestExecInteractive_ResolutionError(t *testing.T) {
 	}
 	client := newExecClient(stubConn(t), resolver)
 
-	_, err := client.Interactive(context.Background(), "nonexistent", []string{"/bin/sh"}, 80, 24)
+	_, err := client.Interactive(context.Background(), "default", "nonexistent", []string{"/bin/sh"}, 80, 24)
 	require.Error(t, err)
 	assert.True(t, IsNotFound(err))
 }
 
 func TestExecRun_EmptySandboxName(t *testing.T) {
 	client := newExecClient(stubConn(t), &stubSandboxResolver{})
-	_, err := client.Run(context.Background(), "", []string{"ls"})
+	_, err := client.Run(context.Background(), "default", "", []string{"ls"})
 	require.Error(t, err)
 	assert.True(t, IsInvalidArgument(err))
 }
 
 func TestExecStream_EmptySandboxName(t *testing.T) {
 	client := newExecClient(stubConn(t), &stubSandboxResolver{})
-	_, err := client.Stream(context.Background(), "", []string{"ls"})
+	_, err := client.Stream(context.Background(), "default", "", []string{"ls"})
 	require.Error(t, err)
 	assert.True(t, IsInvalidArgument(err))
 }
 
 func TestExecInteractive_EmptySandboxName(t *testing.T) {
 	client := newExecClient(stubConn(t), &stubSandboxResolver{})
-	_, err := client.Interactive(context.Background(), "", []string{"/bin/sh"}, 80, 24)
+	_, err := client.Interactive(context.Background(), "default", "", []string{"/bin/sh"}, 80, 24)
 	require.Error(t, err)
 	assert.True(t, IsInvalidArgument(err))
 }

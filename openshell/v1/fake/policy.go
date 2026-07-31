@@ -22,7 +22,7 @@ func newFakePolicyClient(closedFunc func() bool) *fakePolicyClient {
 }
 
 // GetDraft returns Unimplemented.
-func (c *fakePolicyClient) GetDraft(_ context.Context, _ string, _ ...v1.GetDraftOption) (*types.DraftPolicy, error) {
+func (c *fakePolicyClient) GetDraft(_ context.Context, _, _ string, _ ...v1.GetDraftOption) (*types.DraftPolicy, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
@@ -30,7 +30,7 @@ func (c *fakePolicyClient) GetDraft(_ context.Context, _ string, _ ...v1.GetDraf
 }
 
 // ApproveDraftChunk returns Unimplemented.
-func (c *fakePolicyClient) ApproveDraftChunk(_ context.Context, _, _ string) (*types.ApproveResult, error) {
+func (c *fakePolicyClient) ApproveDraftChunk(_ context.Context, _, _, _ string) (*types.ApproveResult, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
@@ -38,7 +38,7 @@ func (c *fakePolicyClient) ApproveDraftChunk(_ context.Context, _, _ string) (*t
 }
 
 // RejectDraftChunk returns Unimplemented.
-func (c *fakePolicyClient) RejectDraftChunk(_ context.Context, _, _, _ string) error {
+func (c *fakePolicyClient) RejectDraftChunk(_ context.Context, _, _, _, _ string) error {
 	if c.closedFunc() {
 		return &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
@@ -46,7 +46,7 @@ func (c *fakePolicyClient) RejectDraftChunk(_ context.Context, _, _, _ string) e
 }
 
 // ApproveAllDraftChunks returns Unimplemented.
-func (c *fakePolicyClient) ApproveAllDraftChunks(_ context.Context, _ string, _ ...v1.ApproveAllOption) (*types.ApproveAllResult, error) {
+func (c *fakePolicyClient) ApproveAllDraftChunks(_ context.Context, _, _ string, _ ...v1.ApproveAllOption) (*types.ApproveAllResult, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
@@ -54,7 +54,7 @@ func (c *fakePolicyClient) ApproveAllDraftChunks(_ context.Context, _ string, _ 
 }
 
 // ClearDraftChunks returns Unimplemented.
-func (c *fakePolicyClient) ClearDraftChunks(_ context.Context, _ string) (*types.ClearResult, error) {
+func (c *fakePolicyClient) ClearDraftChunks(_ context.Context, _, _ string) (*types.ClearResult, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
@@ -62,7 +62,7 @@ func (c *fakePolicyClient) ClearDraftChunks(_ context.Context, _ string) (*types
 }
 
 // GetDraftHistory returns Unimplemented.
-func (c *fakePolicyClient) GetDraftHistory(_ context.Context, _ string) ([]types.DraftHistoryEntry, error) {
+func (c *fakePolicyClient) GetDraftHistory(_ context.Context, _, _ string) ([]types.DraftHistoryEntry, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
@@ -70,7 +70,7 @@ func (c *fakePolicyClient) GetDraftHistory(_ context.Context, _ string) ([]types
 }
 
 // GetStatus returns Unimplemented.
-func (c *fakePolicyClient) GetStatus(_ context.Context, _ string, _ ...v1.GetStatusOption) (*types.PolicyStatusResult, error) {
+func (c *fakePolicyClient) GetStatus(_ context.Context, _, _ string, _ ...v1.GetStatusOption) (*types.PolicyStatusResult, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
@@ -86,7 +86,7 @@ func (c *fakePolicyClient) List(_ context.Context, _ string, _ ...v1.ListPolicyO
 }
 
 // EditDraftChunk returns Unimplemented.
-func (c *fakePolicyClient) EditDraftChunk(_ context.Context, _, _ string, _ *types.NetworkPolicyRule) error {
+func (c *fakePolicyClient) EditDraftChunk(_ context.Context, _, _, _ string, _ *types.NetworkPolicyRule) error {
 	if c.closedFunc() {
 		return &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
@@ -94,7 +94,7 @@ func (c *fakePolicyClient) EditDraftChunk(_ context.Context, _, _ string, _ *typ
 }
 
 // UndoDraftChunk returns Unimplemented.
-func (c *fakePolicyClient) UndoDraftChunk(_ context.Context, _, _ string) (*types.UndoResult, error) {
+func (c *fakePolicyClient) UndoDraftChunk(_ context.Context, _, _, _ string) (*types.UndoResult, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}

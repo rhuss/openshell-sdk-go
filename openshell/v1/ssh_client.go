@@ -26,7 +26,7 @@ func newSSHClient(conn grpc.ClientConnInterface, sandboxes SandboxInterface) *ss
 	}
 }
 
-func (s *sshClient) CreateSession(ctx context.Context, sandboxID string) (*SSHSession, error) {
+func (s *sshClient) CreateSession(ctx context.Context, _, sandboxID string) (*SSHSession, error) {
 	resp, err := s.client.CreateSshSession(ctx, &pb.CreateSshSessionRequest{
 		SandboxId: sandboxID,
 	})
@@ -36,7 +36,7 @@ func (s *sshClient) CreateSession(ctx context.Context, sandboxID string) (*SSHSe
 	return converter.SSHSessionFromProto(resp), nil
 }
 
-func (s *sshClient) RevokeSession(ctx context.Context, token string) (bool, error) {
+func (s *sshClient) RevokeSession(ctx context.Context, _, token string) (bool, error) {
 	resp, err := s.client.RevokeSshSession(ctx, &pb.RevokeSshSessionRequest{
 		Token: token,
 	})
@@ -46,7 +46,7 @@ func (s *sshClient) RevokeSession(ctx context.Context, token string) (bool, erro
 	return resp.GetRevoked(), nil
 }
 
-func (s *sshClient) Tunnel(ctx context.Context, sandboxName string, port uint32, opts ...TunnelOption) (io.ReadWriteCloser, error) {
+func (s *sshClient) Tunnel(ctx context.Context, workspace, sandboxName string, port uint32, opts ...TunnelOption) (io.ReadWriteCloser, error) {
 	if sandboxName == "" {
 		return nil, &StatusError{
 			Code:    ErrorInvalidArgument,
@@ -65,12 +65,12 @@ func (s *sshClient) Tunnel(ctx context.Context, sandboxName string, port uint32,
 		o(&cfg)
 	}
 
-	sandbox, err := s.sandboxes.Get(ctx, sandboxName)
+	sandbox, err := s.sandboxes.Get(ctx, workspace, sandboxName)
 	if err != nil {
 		return nil, err
 	}
 
-	session, err := s.CreateSession(ctx, sandbox.ID)
+	session, err := s.CreateSession(ctx, workspace, sandbox.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func (s *sshClient) Tunnel(ctx context.Context, sandboxName string, port uint32,
 	revokeSession := true
 	defer func() {
 		if revokeSession {
-			_, _ = s.RevokeSession(context.Background(), session.Token)
+			_, _ = s.RevokeSession(context.Background(), workspace, session.Token)
 		}
 	}()
 
@@ -121,7 +121,7 @@ func (s *sshClient) Tunnel(ctx context.Context, sandboxName string, port uint32,
 	t := &sshTunnel{
 		tcpForwardConn: conn,
 		revokeFunc: func() {
-			_, _ = s.RevokeSession(context.Background(), session.Token)
+			_, _ = s.RevokeSession(context.Background(), workspace, session.Token)
 		},
 	}
 

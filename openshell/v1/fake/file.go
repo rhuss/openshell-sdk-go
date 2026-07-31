@@ -24,7 +24,7 @@ func newFakeFileClient(closedFunc func() bool) *fakeFileClient {
 }
 
 // Upload returns Unimplemented.
-func (c *fakeFileClient) Upload(_ context.Context, _, _, _ string) error {
+func (c *fakeFileClient) Upload(_ context.Context, _, _, _, _ string) error {
 	if c.closedFunc() {
 		return &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
@@ -32,7 +32,7 @@ func (c *fakeFileClient) Upload(_ context.Context, _, _, _ string) error {
 }
 
 // Download returns Unimplemented.
-func (c *fakeFileClient) Download(_ context.Context, _, _, _ string) error {
+func (c *fakeFileClient) Download(_ context.Context, _, _, _, _ string) error {
 	if c.closedFunc() {
 		return &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}

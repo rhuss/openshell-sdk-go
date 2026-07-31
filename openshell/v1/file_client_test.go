@@ -93,7 +93,7 @@ func TestFileUpload(t *testing.T) {
 	localPath := filepath.Join(tmpDir, "upload.txt")
 	require.NoError(t, os.WriteFile(localPath, []byte("file content"), 0644))
 
-	err := client.Upload(context.Background(), "test-sandbox", localPath, "/remote/upload.txt")
+	err := client.Upload(context.Background(), "default", "test-sandbox", localPath, "/remote/upload.txt")
 
 	// Upload will fail because there's no real SSH server, but it should
 	// at least call CreateSshSession with the resolved sandbox ID
@@ -116,7 +116,7 @@ func TestFileUpload_CreateSessionError(t *testing.T) {
 	localPath := filepath.Join(tmpDir, "upload.txt")
 	require.NoError(t, os.WriteFile(localPath, []byte("content"), 0644))
 
-	err := client.Upload(context.Background(), "test-sandbox", localPath, "/remote/file.txt")
+	err := client.Upload(context.Background(), "default", "test-sandbox", localPath, "/remote/file.txt")
 
 	require.Error(t, err)
 	assert.True(t, IsNotFound(err))
@@ -137,7 +137,7 @@ func TestFileDownload(t *testing.T) {
 	tmpDir := t.TempDir()
 	localPath := filepath.Join(tmpDir, "download.txt")
 
-	err := client.Download(context.Background(), "test-sandbox", "/remote/file.txt", localPath)
+	err := client.Download(context.Background(), "default", "test-sandbox", "/remote/file.txt", localPath)
 
 	// Download will fail at SSH connection (no real server), but should
 	// call CreateSshSession with the resolved sandbox ID.
@@ -156,7 +156,7 @@ func TestFileDownload_CreateSessionError(t *testing.T) {
 	tmpDir := t.TempDir()
 	localPath := filepath.Join(tmpDir, "download.txt")
 
-	err := client.Download(context.Background(), "test-sandbox", "/remote/file.txt", localPath)
+	err := client.Download(context.Background(), "default", "test-sandbox", "/remote/file.txt", localPath)
 
 	require.Error(t, err)
 	assert.True(t, IsPermissionDenied(err))
@@ -169,7 +169,7 @@ func TestFileUpload_NonExistentLocalFile(t *testing.T) {
 	client, cleanup := setupFileTest(t, mock)
 	defer cleanup()
 
-	err := client.Upload(context.Background(), "test-sandbox", "/nonexistent/file.txt", "/remote/file.txt")
+	err := client.Upload(context.Background(), "default", "test-sandbox", "/nonexistent/file.txt", "/remote/file.txt")
 
 	require.Error(t, err)
 	// Should fail before contacting gateway
@@ -183,7 +183,7 @@ func TestFileUpload_LocalPathIsDirectory(t *testing.T) {
 
 	tmpDir := t.TempDir()
 
-	err := client.Upload(context.Background(), "test-sandbox", tmpDir, "/remote/file.txt")
+	err := client.Upload(context.Background(), "default", "test-sandbox", tmpDir, "/remote/file.txt")
 
 	require.Error(t, err)
 	// Should fail before contacting gateway
@@ -199,7 +199,7 @@ func TestFileUpload_EmptySandboxName(t *testing.T) {
 	localPath := filepath.Join(tmpDir, "file.txt")
 	require.NoError(t, os.WriteFile(localPath, []byte("content"), 0644))
 
-	err := client.Upload(context.Background(), "", localPath, "/remote/file.txt")
+	err := client.Upload(context.Background(), "default", "", localPath, "/remote/file.txt")
 
 	require.Error(t, err)
 	assert.Equal(t, 0, mock.createCallCount)
@@ -213,7 +213,7 @@ func TestFileDownload_EmptyRemotePath(t *testing.T) {
 	tmpDir := t.TempDir()
 	localPath := filepath.Join(tmpDir, "download.txt")
 
-	err := client.Download(context.Background(), "test-sandbox", "", localPath)
+	err := client.Download(context.Background(), "default", "test-sandbox", "", localPath)
 
 	require.Error(t, err)
 	assert.Equal(t, 0, mock.createCallCount)
@@ -237,7 +237,7 @@ func TestFileUpload_ResolvesNameToID(t *testing.T) {
 	localPath := filepath.Join(tmpDir, "upload.txt")
 	require.NoError(t, os.WriteFile(localPath, []byte("content"), 0644))
 
-	_ = client.Upload(context.Background(), "my-sandbox", localPath, "/remote/file.txt")
+	_ = client.Upload(context.Background(), "default", "my-sandbox", localPath, "/remote/file.txt")
 
 	// Verify the proto request contains the resolved ID, not the name
 	assert.Equal(t, "sb-my-sandbox", mock.lastCreateReq.GetSandboxId())
@@ -271,7 +271,7 @@ func TestFileUpload_ResolutionError(t *testing.T) {
 	localPath := filepath.Join(tmpDir, "upload.txt")
 	require.NoError(t, os.WriteFile(localPath, []byte("content"), 0644))
 
-	err = client.Upload(context.Background(), "nonexistent", localPath, "/remote/file.txt")
+	err = client.Upload(context.Background(), "default", "nonexistent", localPath, "/remote/file.txt")
 	require.Error(t, err)
 	assert.True(t, IsNotFound(err))
 	assert.Equal(t, 0, mock.createCallCount)
@@ -283,7 +283,7 @@ func TestFileDownload_ResolvesNameToID(t *testing.T) {
 	defer cleanup()
 
 	localPath := filepath.Join(t.TempDir(), "downloaded.txt")
-	_ = client.Download(context.Background(), "my-sandbox", "/remote/file.txt", localPath)
+	_ = client.Download(context.Background(), "default", "my-sandbox", "/remote/file.txt", localPath)
 
 	assert.Equal(t, "sb-my-sandbox", mock.lastCreateReq.GetSandboxId())
 }
@@ -313,7 +313,7 @@ func TestFileDownload_ResolutionError(t *testing.T) {
 	client := newFileClient(conn, resolver)
 
 	localPath := filepath.Join(t.TempDir(), "downloaded.txt")
-	err = client.Download(context.Background(), "nonexistent", "/remote/file.txt", localPath)
+	err = client.Download(context.Background(), "default", "nonexistent", "/remote/file.txt", localPath)
 	require.Error(t, err)
 	assert.True(t, IsNotFound(err))
 	assert.Equal(t, 0, mock.createCallCount)

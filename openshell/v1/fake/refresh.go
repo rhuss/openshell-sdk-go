@@ -22,7 +22,7 @@ func newFakeRefreshClient(closedFunc func() bool) *fakeRefreshClient {
 }
 
 // GetStatus returns Unimplemented.
-func (c *fakeRefreshClient) GetStatus(_ context.Context, _, _ string) ([]*types.RefreshStatus, error) {
+func (c *fakeRefreshClient) GetStatus(_ context.Context, _, _, _ string) ([]*types.RefreshStatus, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
@@ -30,7 +30,7 @@ func (c *fakeRefreshClient) GetStatus(_ context.Context, _, _ string) ([]*types.
 }
 
 // Configure returns Unimplemented.
-func (c *fakeRefreshClient) Configure(_ context.Context, _ *types.RefreshConfig) (*types.RefreshStatus, error) {
+func (c *fakeRefreshClient) Configure(_ context.Context, _ string, _ *types.RefreshConfig) (*types.RefreshStatus, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
@@ -38,7 +38,7 @@ func (c *fakeRefreshClient) Configure(_ context.Context, _ *types.RefreshConfig)
 }
 
 // Rotate returns Unimplemented.
-func (c *fakeRefreshClient) Rotate(_ context.Context, _, _ string) (*types.RefreshStatus, error) {
+func (c *fakeRefreshClient) Rotate(_ context.Context, _, _, _ string) (*types.RefreshStatus, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
@@ -46,7 +46,7 @@ func (c *fakeRefreshClient) Rotate(_ context.Context, _, _ string) (*types.Refre
 }
 
 // Delete returns Unimplemented.
-func (c *fakeRefreshClient) Delete(_ context.Context, _, _ string) (bool, error) {
+func (c *fakeRefreshClient) Delete(_ context.Context, _, _, _ string) (bool, error) {
 	if c.closedFunc() {
 		return false, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}

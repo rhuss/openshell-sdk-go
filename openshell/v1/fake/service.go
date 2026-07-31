@@ -22,7 +22,7 @@ func newFakeServiceClient(closedFunc func() bool) *fakeServiceClient {
 }
 
 // Expose returns Unimplemented.
-func (c *fakeServiceClient) Expose(_ context.Context, _, _ string, _ uint32, _ bool) (*types.ServiceEndpoint, error) {
+func (c *fakeServiceClient) Expose(_ context.Context, _, _, _ string, _ uint32, _ bool) (*types.ServiceEndpoint, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
@@ -30,7 +30,7 @@ func (c *fakeServiceClient) Expose(_ context.Context, _, _ string, _ uint32, _ b
 }
 
 // Get returns Unimplemented.
-func (c *fakeServiceClient) Get(_ context.Context, _, _ string) (*types.ServiceEndpoint, error) {
+func (c *fakeServiceClient) Get(_ context.Context, _, _, _ string) (*types.ServiceEndpoint, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
@@ -38,7 +38,7 @@ func (c *fakeServiceClient) Get(_ context.Context, _, _ string) (*types.ServiceE
 }
 
 // List returns Unimplemented.
-func (c *fakeServiceClient) List(_ context.Context, _ string, _ ...v1.ListOptions) ([]*types.ServiceEndpoint, error) {
+func (c *fakeServiceClient) List(_ context.Context, _, _ string, _ ...v1.ListOptions) ([]*types.ServiceEndpoint, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
@@ -46,7 +46,7 @@ func (c *fakeServiceClient) List(_ context.Context, _ string, _ ...v1.ListOption
 }
 
 // Delete returns Unimplemented.
-func (c *fakeServiceClient) Delete(_ context.Context, _, _ string) error {
+func (c *fakeServiceClient) Delete(_ context.Context, _, _, _ string) error {
 	if c.closedFunc() {
 		return &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}

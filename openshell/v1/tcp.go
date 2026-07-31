@@ -63,35 +63,6 @@ func WithListenServiceID(id string) ListenOption {
 // TCPInterface defines operations for TCP port forwarding to sandboxes.
 // Methods accept a sandbox name and resolve it to an ID internally.
 type TCPInterface interface {
-	// Forward opens a bidirectional TCP connection to the given port inside a
-	// sandbox. The sandbox is identified by name; the SDK resolves it to an
-	// ID internally. The returned io.ReadWriteCloser wraps the underlying
-	// gRPC stream; closing it terminates the stream. Port must be in the
-	// range 1-65535; out-of-range values are rejected client-side with an
-	// InvalidArgument error before opening the gRPC stream.
-	//
-	// The connection respects context cancellation: if ctx is cancelled,
-	// the stream is closed and pending Read/Write calls return a context error.
-	Forward(ctx context.Context, sandboxName string, port uint32, opts ...ForwardOption) (io.ReadWriteCloser, error)
-
-	// Listen binds a local TCP port and tunnels every accepted connection to
-	// the given port inside a sandbox, returning a standard [net.Listener].
-	// Each call to Accept on the returned listener establishes a new tunnel
-	// to the sandbox port, bridging data bidirectionally.
-	//
-	// The sandbox is identified by name; the SDK resolves it to an ID
-	// internally. remotePort must be in the range 1-65535; localPort must be
-	// in the range 0-65535, where 0 lets the OS assign an ephemeral port
-	// (discoverable via Addr).
-	//
-	// Closing the listener stops accepting new connections, tears down all
-	// active tunnels, and blocks until all bridge goroutines finish.
-	// Cancelling ctx triggers the same shutdown behavior.
-	//
-	// Errors:
-	//   - InvalidArgument: sandboxName is empty, remotePort is 0 or > 65535,
-	//     or localPort is > 65535
-	//   - Unimplemented: returned by the fake client
-	//   - Unavailable: client is closed
-	Listen(ctx context.Context, sandboxName string, remotePort uint32, localPort uint32, opts ...ListenOption) (net.Listener, error)
+	Forward(ctx context.Context, workspace, sandboxName string, port uint32, opts ...ForwardOption) (io.ReadWriteCloser, error)
+	Listen(ctx context.Context, workspace, sandboxName string, remotePort uint32, localPort uint32, opts ...ListenOption) (net.Listener, error)
 }

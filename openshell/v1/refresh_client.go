@@ -19,10 +19,11 @@ func newRefreshClient(conn grpc.ClientConnInterface) *refreshClient {
 	return &refreshClient{client: pb.NewOpenShellClient(conn)}
 }
 
-func (r *refreshClient) GetStatus(ctx context.Context, provider, credentialKey string) ([]*RefreshStatus, error) {
+func (r *refreshClient) GetStatus(ctx context.Context, workspace, provider, credentialKey string) ([]*RefreshStatus, error) {
 	resp, err := r.client.GetProviderRefreshStatus(ctx, &pb.GetProviderRefreshStatusRequest{
 		Provider:      provider,
 		CredentialKey: credentialKey,
+		Workspace:     workspace,
 	})
 	if err != nil {
 		return nil, converter.FromGRPCError(err)
@@ -35,8 +36,9 @@ func (r *refreshClient) GetStatus(ctx context.Context, provider, credentialKey s
 	return statuses, nil
 }
 
-func (r *refreshClient) Configure(ctx context.Context, config *RefreshConfig) (*RefreshStatus, error) {
+func (r *refreshClient) Configure(ctx context.Context, workspace string, config *RefreshConfig) (*RefreshStatus, error) {
 	req := converter.RefreshConfigToProto(config)
+	req.Workspace = workspace
 	resp, err := r.client.ConfigureProviderRefresh(ctx, req)
 	if err != nil {
 		return nil, converter.FromGRPCError(err)
@@ -44,10 +46,11 @@ func (r *refreshClient) Configure(ctx context.Context, config *RefreshConfig) (*
 	return converter.RefreshStatusFromProto(resp.GetStatus()), nil
 }
 
-func (r *refreshClient) Rotate(ctx context.Context, provider, credentialKey string) (*RefreshStatus, error) {
+func (r *refreshClient) Rotate(ctx context.Context, workspace, provider, credentialKey string) (*RefreshStatus, error) {
 	resp, err := r.client.RotateProviderCredential(ctx, &pb.RotateProviderCredentialRequest{
 		Provider:      provider,
 		CredentialKey: credentialKey,
+		Workspace:     workspace,
 	})
 	if err != nil {
 		return nil, converter.FromGRPCError(err)
@@ -55,10 +58,11 @@ func (r *refreshClient) Rotate(ctx context.Context, provider, credentialKey stri
 	return converter.RefreshStatusFromProto(resp.GetStatus()), nil
 }
 
-func (r *refreshClient) Delete(ctx context.Context, provider, credentialKey string) (bool, error) {
+func (r *refreshClient) Delete(ctx context.Context, workspace, provider, credentialKey string) (bool, error) {
 	resp, err := r.client.DeleteProviderRefresh(ctx, &pb.DeleteProviderRefreshRequest{
 		Provider:      provider,
 		CredentialKey: credentialKey,
+		Workspace:     workspace,
 	})
 	if err != nil {
 		return false, converter.FromGRPCError(err)

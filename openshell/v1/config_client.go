@@ -21,12 +21,11 @@ func newConfigClient(conn grpc.ClientConnInterface, sandboxes SandboxInterface) 
 	return &configClient{client: pb.NewOpenShellClient(conn), sandboxes: sandboxes}
 }
 
-func (c *configClient) GetSandbox(ctx context.Context, sandboxName string) (*SandboxConfig, error) {
+func (c *configClient) GetSandbox(ctx context.Context, workspace, sandboxName string) (*SandboxConfig, error) {
 	if sandboxName == "" {
 		return nil, &StatusError{Code: ErrorInvalidArgument, Message: "sandbox name must not be empty"}
 	}
-	// Resolve sandbox name to ID — the proto RPC takes SandboxId, not name.
-	sb, err := c.sandboxes.Get(ctx, sandboxName)
+	sb, err := c.sandboxes.Get(ctx, workspace, sandboxName)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +47,7 @@ func (c *configClient) GetGateway(ctx context.Context) (*GatewayConfig, error) {
 	return converter.GatewayConfigFromProto(resp), nil
 }
 
-func (c *configClient) Update(ctx context.Context, update *ConfigUpdate) (*ConfigUpdateResult, error) {
+func (c *configClient) Update(ctx context.Context, workspace string, update *ConfigUpdate) (*ConfigUpdateResult, error) {
 	if update == nil {
 		return nil, &StatusError{
 			Code:    ErrorInvalidArgument,
@@ -59,6 +58,7 @@ func (c *configClient) Update(ctx context.Context, update *ConfigUpdate) (*Confi
 	if convErr != nil {
 		return nil, &StatusError{Code: ErrorInvalidArgument, Message: convErr.Error()}
 	}
+	req.Workspace = workspace
 	resp, err := c.client.UpdateConfig(ctx, req)
 	if err != nil {
 		return nil, converter.FromGRPCError(err)

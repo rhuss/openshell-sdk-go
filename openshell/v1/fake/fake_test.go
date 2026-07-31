@@ -38,7 +38,7 @@ func TestFakeClient_Sandboxes_AfterClose(t *testing.T) {
 
 	_ = fc.Close()
 
-	_, err := fc.Sandboxes().Create(ctx, "test", &types.SandboxSpec{}, nil)
+	_, err := fc.Sandboxes().Create(ctx, "default", "test", &types.SandboxSpec{}, nil)
 	require.Error(t, err)
 	assert.True(t, types.IsUnavailable(err))
 }
@@ -49,7 +49,7 @@ func TestFakeClient_Providers_AfterClose(t *testing.T) {
 
 	_ = fc.Close()
 
-	_, err := fc.Providers().Create(ctx, &types.Provider{Name: "test"})
+	_, err := fc.Providers().Create(ctx, "default", &types.Provider{Name: "test"})
 	require.Error(t, err)
 	assert.True(t, types.IsUnavailable(err))
 }
@@ -71,7 +71,7 @@ func TestFakeClient_Exec_AfterClose(t *testing.T) {
 
 	_ = fc.Close()
 
-	_, err := fc.Exec().Run(ctx, "sandbox", []string{"echo"})
+	_, err := fc.Exec().Run(ctx, "default", "sandbox", []string{"echo"})
 	require.Error(t, err)
 	assert.True(t, types.IsUnavailable(err))
 }
@@ -82,7 +82,7 @@ func TestFakeClient_Files_AfterClose(t *testing.T) {
 
 	_ = fc.Close()
 
-	err := fc.Files().Upload(ctx, "sandbox", "/local", "/remote")
+	err := fc.Files().Upload(ctx, "default", "sandbox", "/local", "/remote")
 	require.Error(t, err)
 	assert.True(t, types.IsUnavailable(err))
 }
@@ -91,7 +91,7 @@ func TestFakeClient_Watch_StoppedOnClose(t *testing.T) {
 	fc := NewClient()
 	ctx := context.Background()
 
-	w, err := fc.Sandboxes().Watch(ctx, "")
+	w, err := fc.Sandboxes().Watch(ctx, "default", "")
 	require.NoError(t, err)
 
 	_ = fc.Close()
@@ -136,9 +136,9 @@ func TestFakeClient_AddSandbox(t *testing.T) {
 		},
 	}
 
-	fc.AddSandbox(sb)
+	fc.AddSandbox("default", sb)
 
-	got, err := fc.Sandboxes().Get(ctx, "pre-seeded")
+	got, err := fc.Sandboxes().Get(ctx, "default", "pre-seeded")
 	require.NoError(t, err)
 	assert.Equal(t, "pre-seeded", got.Name)
 	assert.Equal(t, "debug", got.Spec.LogLevel)
@@ -149,10 +149,10 @@ func TestFakeClient_AddSandbox_InList(t *testing.T) {
 	fc := NewClient()
 	ctx := context.Background()
 
-	fc.AddSandbox(&types.Sandbox{Name: "sb-1"})
-	fc.AddSandbox(&types.Sandbox{Name: "sb-2"})
+	fc.AddSandbox("default", &types.Sandbox{Name: "sb-1"})
+	fc.AddSandbox("default", &types.Sandbox{Name: "sb-2"})
 
-	list, err := fc.Sandboxes().List(ctx)
+	list, err := fc.Sandboxes().List(ctx, "default")
 	require.NoError(t, err)
 	assert.Len(t, list, 2)
 }
@@ -161,11 +161,11 @@ func TestFakeClient_AddSandbox_NoWatchEvents(t *testing.T) {
 	fc := NewClient()
 	ctx := context.Background()
 
-	w, err := fc.Sandboxes().Watch(ctx, "")
+	w, err := fc.Sandboxes().Watch(ctx, "default", "")
 	require.NoError(t, err)
 	defer w.Stop()
 
-	fc.AddSandbox(&types.Sandbox{Name: "pre-seeded"})
+	fc.AddSandbox("default", &types.Sandbox{Name: "pre-seeded"})
 
 	// No event should be received — AddSandbox bypasses the broadcaster
 	select {
@@ -184,12 +184,12 @@ func TestFakeClient_AddSandbox_DeepCopy(t *testing.T) {
 		Name:   "pre-seeded",
 		Labels: map[string]string{"env": "test"},
 	}
-	fc.AddSandbox(sb)
+	fc.AddSandbox("default", sb)
 
 	// Mutate the input
 	sb.Labels["env"] = "mutated"
 
-	got, err := fc.Sandboxes().Get(ctx, "pre-seeded")
+	got, err := fc.Sandboxes().Get(ctx, "default", "pre-seeded")
 	require.NoError(t, err)
 	assert.Equal(t, "test", got.Labels["env"])
 }
@@ -204,9 +204,9 @@ func TestFakeClient_AddProvider(t *testing.T) {
 		Spec: types.ProviderSpec{Config: map[string]string{"model": "gpt-4"}},
 	}
 
-	fc.AddProvider(p)
+	fc.AddProvider("default", p)
 
-	got, err := fc.Providers().Get(ctx, "openai")
+	got, err := fc.Providers().Get(ctx, "default", "openai")
 	require.NoError(t, err)
 	assert.Equal(t, "openai", got.Name)
 	assert.Equal(t, "gpt-4", got.Spec.Config["model"])
@@ -220,12 +220,12 @@ func TestFakeClient_AddProvider_DeepCopy(t *testing.T) {
 		Name: "openai",
 		Spec: types.ProviderSpec{Config: map[string]string{"model": "gpt-4"}},
 	}
-	fc.AddProvider(p)
+	fc.AddProvider("default", p)
 
 	// Mutate input
 	p.Spec.Config["model"] = "mutated"
 
-	got, err := fc.Providers().Get(ctx, "openai")
+	got, err := fc.Providers().Get(ctx, "default", "openai")
 	require.NoError(t, err)
 	assert.Equal(t, "gpt-4", got.Spec.Config["model"])
 }

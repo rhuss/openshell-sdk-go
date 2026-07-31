@@ -156,11 +156,11 @@ func TestRefreshGetStatus(t *testing.T) {
 		Strategy:      RefreshStrategyOAuth2RefreshToken,
 		Material:      map[string]string{"refresh_token": "tok-123"},
 	}
-	_, err := client.Configure(context.Background(), cfg)
+	_, err := client.Configure(context.Background(), "default", cfg)
 	require.NoError(t, err)
 
 	// Get status for specific credential
-	statuses, err := client.GetStatus(context.Background(), "openai", "api-key")
+	statuses, err := client.GetStatus(context.Background(), "default", "openai", "api-key")
 
 	require.NoError(t, err)
 	require.Len(t, statuses, 1)
@@ -176,13 +176,13 @@ func TestRefreshGetStatus_AllCredentials(t *testing.T) {
 	defer cleanup()
 
 	// Configure two credentials
-	_, err := client.Configure(context.Background(), &RefreshConfig{
+	_, err := client.Configure(context.Background(), "default", &RefreshConfig{
 		Provider:      "openai",
 		CredentialKey: "key-1",
 		Strategy:      RefreshStrategyStatic,
 	})
 	require.NoError(t, err)
-	_, err = client.Configure(context.Background(), &RefreshConfig{
+	_, err = client.Configure(context.Background(), "default", &RefreshConfig{
 		Provider:      "openai",
 		CredentialKey: "key-2",
 		Strategy:      RefreshStrategyExternal,
@@ -190,7 +190,7 @@ func TestRefreshGetStatus_AllCredentials(t *testing.T) {
 	require.NoError(t, err)
 
 	// Get all statuses (empty credentialKey)
-	statuses, err := client.GetStatus(context.Background(), "openai", "")
+	statuses, err := client.GetStatus(context.Background(), "default", "openai", "")
 
 	require.NoError(t, err)
 	assert.Len(t, statuses, 2)
@@ -201,7 +201,7 @@ func TestRefreshGetStatus_Empty(t *testing.T) {
 	client, cleanup := setupRefreshTest(t, mock)
 	defer cleanup()
 
-	statuses, err := client.GetStatus(context.Background(), "openai", "nonexistent")
+	statuses, err := client.GetStatus(context.Background(), "default", "openai", "nonexistent")
 
 	require.NoError(t, err)
 	assert.Empty(t, statuses)
@@ -213,7 +213,7 @@ func TestRefreshGetStatus_Error(t *testing.T) {
 	client, cleanup := setupRefreshTest(t, mock)
 	defer cleanup()
 
-	statuses, err := client.GetStatus(context.Background(), "openai", "key")
+	statuses, err := client.GetStatus(context.Background(), "default", "openai", "key")
 
 	assert.Nil(t, statuses)
 	require.Error(t, err)
@@ -236,7 +236,7 @@ func TestRefreshConfigure(t *testing.T) {
 		ExpiresAt:          &expires,
 	}
 
-	result, err := client.Configure(context.Background(), cfg)
+	result, err := client.Configure(context.Background(), "default", cfg)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -258,7 +258,7 @@ func TestRefreshConfigure_MinimalConfig(t *testing.T) {
 		Strategy:      RefreshStrategyStatic,
 	}
 
-	result, err := client.Configure(context.Background(), cfg)
+	result, err := client.Configure(context.Background(), "default", cfg)
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -278,7 +278,7 @@ func TestRefreshConfigure_Error(t *testing.T) {
 		Strategy:      RefreshStrategyStatic,
 	}
 
-	result, err := client.Configure(context.Background(), cfg)
+	result, err := client.Configure(context.Background(), "default", cfg)
 
 	assert.Nil(t, result)
 	require.Error(t, err)
@@ -293,7 +293,7 @@ func TestRefreshRotate(t *testing.T) {
 	defer cleanup()
 
 	// Configure first
-	_, err := client.Configure(context.Background(), &RefreshConfig{
+	_, err := client.Configure(context.Background(), "default", &RefreshConfig{
 		Provider:      "openai",
 		CredentialKey: "api-key",
 		Strategy:      RefreshStrategyOAuth2RefreshToken,
@@ -301,7 +301,7 @@ func TestRefreshRotate(t *testing.T) {
 	require.NoError(t, err)
 
 	// Rotate
-	result, err := client.Rotate(context.Background(), "openai", "api-key")
+	result, err := client.Rotate(context.Background(), "default", "openai", "api-key")
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -314,7 +314,7 @@ func TestRefreshRotate_NotFound(t *testing.T) {
 	client, cleanup := setupRefreshTest(t, mock)
 	defer cleanup()
 
-	result, err := client.Rotate(context.Background(), "openai", "nonexistent")
+	result, err := client.Rotate(context.Background(), "default", "openai", "nonexistent")
 
 	assert.Nil(t, result)
 	require.Error(t, err)
@@ -327,7 +327,7 @@ func TestRefreshRotate_Error(t *testing.T) {
 	client, cleanup := setupRefreshTest(t, mock)
 	defer cleanup()
 
-	result, err := client.Rotate(context.Background(), "openai", "key")
+	result, err := client.Rotate(context.Background(), "default", "openai", "key")
 
 	assert.Nil(t, result)
 	require.Error(t, err)
@@ -342,7 +342,7 @@ func TestRefreshDelete(t *testing.T) {
 	defer cleanup()
 
 	// Configure first
-	_, err := client.Configure(context.Background(), &RefreshConfig{
+	_, err := client.Configure(context.Background(), "default", &RefreshConfig{
 		Provider:      "openai",
 		CredentialKey: "api-key",
 		Strategy:      RefreshStrategyStatic,
@@ -350,13 +350,13 @@ func TestRefreshDelete(t *testing.T) {
 	require.NoError(t, err)
 
 	// Delete
-	deleted, err := client.Delete(context.Background(), "openai", "api-key")
+	deleted, err := client.Delete(context.Background(), "default", "openai", "api-key")
 
 	require.NoError(t, err)
 	assert.True(t, deleted)
 
 	// Verify it's gone
-	statuses, err := client.GetStatus(context.Background(), "openai", "api-key")
+	statuses, err := client.GetStatus(context.Background(), "default", "openai", "api-key")
 	require.NoError(t, err)
 	assert.Empty(t, statuses)
 }
@@ -366,7 +366,7 @@ func TestRefreshDelete_NotConfigured(t *testing.T) {
 	client, cleanup := setupRefreshTest(t, mock)
 	defer cleanup()
 
-	deleted, err := client.Delete(context.Background(), "openai", "nonexistent")
+	deleted, err := client.Delete(context.Background(), "default", "openai", "nonexistent")
 
 	require.NoError(t, err)
 	assert.False(t, deleted)
@@ -378,7 +378,7 @@ func TestRefreshDelete_Error(t *testing.T) {
 	client, cleanup := setupRefreshTest(t, mock)
 	defer cleanup()
 
-	deleted, err := client.Delete(context.Background(), "openai", "key")
+	deleted, err := client.Delete(context.Background(), "default", "openai", "key")
 
 	assert.False(t, deleted)
 	require.Error(t, err)
@@ -400,27 +400,27 @@ func TestRefreshLifecycle(t *testing.T) {
 		Strategy:      RefreshStrategyOAuth2RefreshToken,
 		Material:      map[string]string{"refresh_token": "tok-123"},
 	}
-	st, err := client.Configure(ctx, cfg)
+	st, err := client.Configure(ctx, "default", cfg)
 	require.NoError(t, err)
 	assert.Equal(t, "active", st.Status)
 
 	// 2. GetStatus
-	statuses, err := client.GetStatus(ctx, "openai", "api-key")
+	statuses, err := client.GetStatus(ctx, "default", "openai", "api-key")
 	require.NoError(t, err)
 	require.Len(t, statuses, 1)
 
 	// 3. Rotate
-	rotated, err := client.Rotate(ctx, "openai", "api-key")
+	rotated, err := client.Rotate(ctx, "default", "openai", "api-key")
 	require.NoError(t, err)
 	assert.Equal(t, "rotated", rotated.Status)
 
 	// 4. Delete
-	deleted, err := client.Delete(ctx, "openai", "api-key")
+	deleted, err := client.Delete(ctx, "default", "openai", "api-key")
 	require.NoError(t, err)
 	assert.True(t, deleted)
 
 	// 5. Verify removed
-	statuses, err = client.GetStatus(ctx, "openai", "api-key")
+	statuses, err = client.GetStatus(ctx, "default", "openai", "api-key")
 	require.NoError(t, err)
 	assert.Empty(t, statuses)
 }

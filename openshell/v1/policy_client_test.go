@@ -228,7 +228,7 @@ func TestPolicyGetDraft(t *testing.T) {
 	client, cleanup := setupPolicyTest(t, mock)
 	defer cleanup()
 
-	draft, err := client.GetDraft(context.Background(), "my-sandbox")
+	draft, err := client.GetDraft(context.Background(), "default", "my-sandbox")
 
 	require.NoError(t, err)
 	require.NotNil(t, draft)
@@ -276,7 +276,7 @@ func TestPolicyGetDraft_WithStatusFilter(t *testing.T) {
 	client, cleanup := setupPolicyTest(t, mock)
 	defer cleanup()
 
-	draft, err := client.GetDraft(context.Background(), "sb1", types.WithStatusFilter("pending"))
+	draft, err := client.GetDraft(context.Background(), "default", "sb1", types.WithStatusFilter("pending"))
 
 	require.NoError(t, err)
 	require.NotNil(t, draft)
@@ -297,7 +297,7 @@ func TestPolicyGetDraft_Error(t *testing.T) {
 	client, cleanup := setupPolicyTest(t, mock)
 	defer cleanup()
 
-	draft, err := client.GetDraft(context.Background(), "missing")
+	draft, err := client.GetDraft(context.Background(), "default", "missing")
 
 	assert.Nil(t, draft)
 	require.Error(t, err)
@@ -314,7 +314,7 @@ func TestPolicyApproveDraftChunk(t *testing.T) {
 	client, cleanup := setupPolicyTest(t, mock)
 	defer cleanup()
 
-	result, err := client.ApproveDraftChunk(context.Background(), "my-sandbox", "chunk-1")
+	result, err := client.ApproveDraftChunk(context.Background(), "default", "my-sandbox", "chunk-1")
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -337,7 +337,7 @@ func TestPolicyApproveDraftChunk_Error(t *testing.T) {
 	client, cleanup := setupPolicyTest(t, mock)
 	defer cleanup()
 
-	result, err := client.ApproveDraftChunk(context.Background(), "sb1", "bad-chunk")
+	result, err := client.ApproveDraftChunk(context.Background(), "default", "sb1", "bad-chunk")
 
 	assert.Nil(t, result)
 	require.Error(t, err)
@@ -351,7 +351,7 @@ func TestPolicyRejectDraftChunk(t *testing.T) {
 	client, cleanup := setupPolicyTest(t, mock)
 	defer cleanup()
 
-	err := client.RejectDraftChunk(context.Background(), "my-sandbox", "chunk-2", "too broad")
+	err := client.RejectDraftChunk(context.Background(), "default", "my-sandbox", "chunk-2", "too broad")
 
 	require.NoError(t, err)
 
@@ -370,7 +370,7 @@ func TestPolicyRejectDraftChunk_Error(t *testing.T) {
 	client, cleanup := setupPolicyTest(t, mock)
 	defer cleanup()
 
-	err := client.RejectDraftChunk(context.Background(), "sb1", "bad", "reason")
+	err := client.RejectDraftChunk(context.Background(), "default", "sb1", "bad", "reason")
 
 	require.Error(t, err)
 	assert.True(t, IsInvalidArgument(err))
@@ -392,7 +392,7 @@ func TestPolicyApproveAllDraftChunks(t *testing.T) {
 	client, cleanup := setupPolicyTest(t, mock)
 	defer cleanup()
 
-	result, err := client.ApproveAllDraftChunks(context.Background(), "my-sandbox")
+	result, err := client.ApproveAllDraftChunks(context.Background(), "default", "my-sandbox")
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -421,7 +421,7 @@ func TestPolicyApproveAllDraftChunks_WithSecurityFlagged(t *testing.T) {
 	client, cleanup := setupPolicyTest(t, mock)
 	defer cleanup()
 
-	result, err := client.ApproveAllDraftChunks(context.Background(), "sb1", types.WithIncludeSecurityFlagged())
+	result, err := client.ApproveAllDraftChunks(context.Background(), "default", "sb1", types.WithIncludeSecurityFlagged())
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -442,7 +442,7 @@ func TestPolicyApproveAllDraftChunks_Error(t *testing.T) {
 	client, cleanup := setupPolicyTest(t, mock)
 	defer cleanup()
 
-	result, err := client.ApproveAllDraftChunks(context.Background(), "missing")
+	result, err := client.ApproveAllDraftChunks(context.Background(), "default", "missing")
 
 	assert.Nil(t, result)
 	require.Error(t, err)
@@ -458,7 +458,7 @@ func TestPolicyClearDraftChunks(t *testing.T) {
 	client, cleanup := setupPolicyTest(t, mock)
 	defer cleanup()
 
-	result, err := client.ClearDraftChunks(context.Background(), "my-sandbox")
+	result, err := client.ClearDraftChunks(context.Background(), "default", "my-sandbox")
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -478,7 +478,7 @@ func TestPolicyClearDraftChunks_Error(t *testing.T) {
 	client, cleanup := setupPolicyTest(t, mock)
 	defer cleanup()
 
-	result, err := client.ClearDraftChunks(context.Background(), "sb1")
+	result, err := client.ClearDraftChunks(context.Background(), "default", "sb1")
 
 	assert.Nil(t, result)
 	require.Error(t, err)
@@ -509,7 +509,7 @@ func TestPolicyGetDraftHistory(t *testing.T) {
 	client, cleanup := setupPolicyTest(t, mock)
 	defer cleanup()
 
-	entries, err := client.GetDraftHistory(context.Background(), "my-sandbox")
+	entries, err := client.GetDraftHistory(context.Background(), "default", "my-sandbox")
 
 	require.NoError(t, err)
 	require.Len(t, entries, 2)
@@ -535,7 +535,7 @@ func TestPolicyGetDraftHistory_Empty(t *testing.T) {
 	client, cleanup := setupPolicyTest(t, mock)
 	defer cleanup()
 
-	entries, err := client.GetDraftHistory(context.Background(), "sb1")
+	entries, err := client.GetDraftHistory(context.Background(), "default", "sb1")
 
 	require.NoError(t, err)
 	assert.Nil(t, entries)
@@ -548,7 +548,7 @@ func TestPolicyGetDraftHistory_Error(t *testing.T) {
 	client, cleanup := setupPolicyTest(t, mock)
 	defer cleanup()
 
-	entries, err := client.GetDraftHistory(context.Background(), "missing")
+	entries, err := client.GetDraftHistory(context.Background(), "default", "missing")
 
 	assert.Nil(t, entries)
 	require.Error(t, err)
@@ -575,7 +575,7 @@ func TestPolicyGetStatus(t *testing.T) {
 	client, cleanup := setupPolicyTest(t, mock)
 	defer cleanup()
 
-	result, err := client.GetStatus(context.Background(), "my-sandbox")
+	result, err := client.GetStatus(context.Background(), "default", "my-sandbox")
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -608,7 +608,7 @@ func TestPolicyGetStatus_WithVersion(t *testing.T) {
 	client, cleanup := setupPolicyTest(t, mock)
 	defer cleanup()
 
-	result, err := client.GetStatus(context.Background(), "sb1", types.WithVersion(2))
+	result, err := client.GetStatus(context.Background(), "default", "sb1", types.WithVersion(2))
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -630,7 +630,7 @@ func TestPolicyGetStatus_Error(t *testing.T) {
 	client, cleanup := setupPolicyTest(t, mock)
 	defer cleanup()
 
-	result, err := client.GetStatus(context.Background(), "missing")
+	result, err := client.GetStatus(context.Background(), "default", "missing")
 
 	assert.Nil(t, result)
 	require.Error(t, err)
@@ -660,14 +660,14 @@ func TestPolicyList(t *testing.T) {
 	client, cleanup := setupPolicyTest(t, mock)
 	defer cleanup()
 
-	revisions, err := client.List(context.Background(), "my-sandbox")
+	revisions, err := client.List(context.Background(), "default")
 
 	require.NoError(t, err)
 	require.Len(t, revisions, 2)
 
 	// Verify request was forwarded (no pagination options).
 	mock.mu.Lock()
-	assert.Equal(t, "my-sandbox", mock.lastListReq.GetName())
+	assert.Equal(t, "default", mock.lastListReq.GetWorkspace())
 	assert.Equal(t, uint32(0), mock.lastListReq.GetLimit())
 	assert.Equal(t, uint32(0), mock.lastListReq.GetOffset())
 	mock.mu.Unlock()
@@ -692,7 +692,7 @@ func TestPolicyList_WithPagination(t *testing.T) {
 	client, cleanup := setupPolicyTest(t, mock)
 	defer cleanup()
 
-	revisions, err := client.List(context.Background(), "sb1",
+	revisions, err := client.List(context.Background(), "default",
 		types.WithLimit(10),
 		types.WithOffset(20),
 	)
@@ -714,7 +714,7 @@ func TestPolicyList_Empty(t *testing.T) {
 	client, cleanup := setupPolicyTest(t, mock)
 	defer cleanup()
 
-	revisions, err := client.List(context.Background(), "sb1")
+	revisions, err := client.List(context.Background(), "default")
 
 	require.NoError(t, err)
 	assert.Nil(t, revisions)
@@ -727,7 +727,7 @@ func TestPolicyList_Error(t *testing.T) {
 	client, cleanup := setupPolicyTest(t, mock)
 	defer cleanup()
 
-	revisions, err := client.List(context.Background(), "missing")
+	revisions, err := client.List(context.Background(), "default")
 
 	assert.Nil(t, revisions)
 	require.Error(t, err)
@@ -748,7 +748,7 @@ func TestPolicyEditDraftChunk(t *testing.T) {
 		},
 	}
 
-	err := client.EditDraftChunk(context.Background(), "my-sandbox", "chunk-1", rule)
+	err := client.EditDraftChunk(context.Background(), "default", "my-sandbox", "chunk-1", rule)
 
 	require.NoError(t, err)
 
@@ -770,7 +770,7 @@ func TestPolicyEditDraftChunk_Error(t *testing.T) {
 	client, cleanup := setupPolicyTest(t, mock)
 	defer cleanup()
 
-	err := client.EditDraftChunk(context.Background(), "sb1", "chunk-1", &NetworkPolicyRule{})
+	err := client.EditDraftChunk(context.Background(), "default", "sb1", "chunk-1", &NetworkPolicyRule{})
 
 	require.Error(t, err)
 	assert.True(t, IsInvalidArgument(err))
@@ -786,7 +786,7 @@ func TestPolicyUndoDraftChunk(t *testing.T) {
 	client, cleanup := setupPolicyTest(t, mock)
 	defer cleanup()
 
-	result, err := client.UndoDraftChunk(context.Background(), "my-sandbox", "chunk-3")
+	result, err := client.UndoDraftChunk(context.Background(), "default", "my-sandbox", "chunk-3")
 
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -808,7 +808,7 @@ func TestPolicyUndoDraftChunk_Error(t *testing.T) {
 	client, cleanup := setupPolicyTest(t, mock)
 	defer cleanup()
 
-	result, err := client.UndoDraftChunk(context.Background(), "sb1", "bad-chunk")
+	result, err := client.UndoDraftChunk(context.Background(), "default", "sb1", "bad-chunk")
 
 	assert.Nil(t, result)
 	require.Error(t, err)
