@@ -1,6 +1,6 @@
 # Brainstorm Overview
 
-Last updated: 2026-07-11 (024 brainstormed)
+Last updated: 2026-07-31 (025-028 brainstormed)
 
 ## Active Sessions
 
@@ -15,6 +15,10 @@ Last updated: 2026-07-11 (024 brainstormed)
 | 022 | 2026-07-03 | auth-guide | active | - | [#28](https://github.com/rhuss/openshell-sdk-go/issues/28) |
 | 023 | 2026-07-03 | schema-docs | active | - | [#29](https://github.com/rhuss/openshell-sdk-go/issues/29) |
 | 024 | 2026-07-11 | upstream-pr | active | - | [NVIDIA/OpenShell#2044](https://github.com/NVIDIA/OpenShell/issues/2044) |
+| 025 | 2026-07-31 | proto-sync-pr2445 | active | - | - |
+| 026 | 2026-07-31 | workspace-scoping | active | - | [#33](https://github.com/rhuss/openshell-sdk-go/issues/33) |
+| 027 | 2026-07-31 | workspace-crud-gatewayinfo | active | - | [#32](https://github.com/rhuss/openshell-sdk-go/issues/32), [#34](https://github.com/rhuss/openshell-sdk-go/issues/34) |
+| 028 | 2026-07-31 | inference-client | active | - | - |
 
 ## Attic (implemented)
 
@@ -49,6 +53,12 @@ Last updated: 2026-07-11 (024 brainstormed)
                       ├─ 008-ssh-tcp-config (Phase 2b-1: SSH, TCP, config)
                       │    └─ 010-ssh-tunnel-forward-opts (Phase 2b-3: SSH tunnel, forward opts)
                       └─ 009-policy-logs (Phase 2b-2: policy, draft policy, logs)
+
+Dashboard integration chain (025-028):
+  025-proto-sync-pr2445 (prerequisite)
+    ├─ 026-workspace-scoping (all sub-clients)
+    │    └─ 027-workspace-crud-gatewayinfo (new sub-clients)
+    └─ 028-inference-client (new sub-client, parallel with 026)
 ```
 
 ## Open Threads
