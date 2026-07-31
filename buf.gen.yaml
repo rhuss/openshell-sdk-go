@@ -4,7 +4,7 @@
 # Code generation for the Go SDK. buf compiles the proto module with its own
 # compiler and runs protoc-gen-go / protoc-gen-go-grpc from mise-managed
 # binaries. Limited to the client-surface closure (openshell, datamodel,
-# sandbox, options).
+# sandbox, options, inference).
 version: v2
 
 inputs:
@@ -14,6 +14,7 @@ inputs:
       - proto/datamodel.proto
       - proto/sandbox.proto
       - proto/options.proto
+      - proto/inference.proto
 
 plugins:
   - local: protoc-gen-go
@@ -24,6 +25,7 @@ plugins:
       - Mdatamodel.proto=github.com/rhuss/openshell-sdk-go/proto/datamodelv1
       - Msandbox.proto=github.com/rhuss/openshell-sdk-go/proto/sandboxv1
       - Moptions.proto=github.com/rhuss/openshell-sdk-go/proto/optionsv1
+      - Minference.proto=github.com/rhuss/openshell-sdk-go/proto/inferencev1
   - local: protoc-gen-go-grpc
     out: .
     opt:
@@ -32,3 +34,4 @@ plugins:
       - Mdatamodel.proto=github.com/rhuss/openshell-sdk-go/proto/datamodelv1
       - Msandbox.proto=github.com/rhuss/openshell-sdk-go/proto/sandboxv1
       - Moptions.proto=github.com/rhuss/openshell-sdk-go/proto/optionsv1
+      - Minference.proto=github.com/rhuss/openshell-sdk-go/proto/inferencev1
