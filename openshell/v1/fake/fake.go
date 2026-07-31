@@ -16,18 +16,21 @@ import (
 type Client struct {
 	sandboxStore       *objectStore[*types.Sandbox]
 	providerStore      *objectStore[*types.Provider]
+	workspaceStore     *objectStore[*types.Workspace]
+	memberStore        *objectStore[*types.WorkspaceMember]
 	sandboxBroadcaster *watchBroadcaster[*types.Sandbox]
 
-	sandboxes v1.SandboxInterface
-	providers v1.ProviderInterface
-	services  v1.ServiceInterface
-	exec      v1.ExecInterface
-	files     v1.FileInterface
-	health    v1.HealthInterface
-	ssh       v1.SSHInterface
-	tcp       v1.TCPInterface
-	cfg       v1.ConfigInterface
-	policy    v1.PolicyInterface
+	sandboxes  v1.SandboxInterface
+	providers  v1.ProviderInterface
+	services   v1.ServiceInterface
+	exec       v1.ExecInterface
+	files      v1.FileInterface
+	health     v1.HealthInterface
+	ssh        v1.SSHInterface
+	tcp        v1.TCPInterface
+	cfg        v1.ConfigInterface
+	policy     v1.PolicyInterface
+	workspaces v1.WorkspaceInterface
 
 	closeOnce sync.Once
 	closed    bool
@@ -41,7 +44,23 @@ type ClientOption func(*Client)
 // to return the given result instead of the default healthy response.
 func WithHealthResult(r *types.HealthResult) ClientOption {
 	return func(fc *Client) {
-		fc.health = newFakeHealthClient(r, fc.isClosed)
+		fc.health.(*fakeHealthClient).result = r
+	}
+}
+
+// WithGatewayInfo returns an option that configures the health sub-client
+// to return the given gateway info instead of the default response.
+func WithGatewayInfo(info *types.GatewayInfo) ClientOption {
+	return func(fc *Client) {
+		fc.health.(*fakeHealthClient).gatewayInfo = copyGatewayInfo(info)
+	}
+}
+
+// WithCurrentUser returns an option that configures the health sub-client
+// to return the given current user instead of the default response.
+func WithCurrentUser(user *types.CurrentUser) ClientOption {
+	return func(fc *Client) {
+		fc.health.(*fakeHealthClient).currentUser = copyCurrentUser(user)
 	}
 }
 
@@ -51,6 +70,8 @@ func NewClient(opts ...ClientOption) *Client {
 	fc := &Client{
 		sandboxStore:       newobjectStore(sandboxName, copySandbox),
 		providerStore:      newobjectStore(providerName, copyProvider),
+		workspaceStore:     newobjectStore(workspaceName, copyWorkspace),
+		memberStore:        newobjectStore(memberName, copyMember),
 		sandboxBroadcaster: newWatchBroadcaster[*types.Sandbox](),
 	}
 
@@ -64,6 +85,7 @@ func NewClient(opts ...ClientOption) *Client {
 	fc.tcp = newFakeTCPClient(fc.isClosed)
 	fc.cfg = newFakeConfigClient(fc.isClosed)
 	fc.policy = newFakePolicyClient(fc.isClosed)
+	fc.workspaces = newFakeWorkspaceClient(fc.workspaceStore, fc.memberStore, fc.isClosed)
 
 	for _, opt := range opts {
 		opt(fc)
@@ -110,6 +132,9 @@ func (fc *Client) Config() v1.ConfigInterface { return fc.cfg }
 // Policy returns the policy management sub-client.
 func (fc *Client) Policy() v1.PolicyInterface { return fc.policy }
 
+// Workspaces returns the workspace management sub-client.
+func (fc *Client) Workspaces() v1.WorkspaceInterface { return fc.workspaces }
+
 // Close marks the client as closed, stops all active watchers, and causes
 // subsequent sub-client calls to return Unavailable. Safe to call multiple
 // times.
@@ -136,6 +161,20 @@ func (fc *Client) AddSandbox(workspace string, sb *types.Sandbox) {
 // the test begins. The provider is deep-copied on insert.
 func (fc *Client) AddProvider(workspace string, p *types.Provider) {
 	fc.providerStore.Insert(workspace, p)
+}
+
+// AddWorkspace inserts a workspace directly into the store without triggering
+// any side effects. This is intended for pre-seeding test fixtures before
+// the test begins. The workspace is deep-copied on insert.
+func (fc *Client) AddWorkspace(ws *types.Workspace) {
+	fc.workspaceStore.Insert("", ws)
+}
+
+// AddMember inserts a workspace member directly into the store without
+// triggering any side effects. This is intended for pre-seeding test fixtures
+// before the test begins. The member is deep-copied on insert.
+func (fc *Client) AddMember(workspace string, m *types.WorkspaceMember) {
+	fc.memberStore.Insert(workspace, m)
 }
 
 // Compile-time interface check.

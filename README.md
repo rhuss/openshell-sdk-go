@@ -202,11 +202,12 @@ Client
   ├── Sandboxes()   → SandboxInterface    (create, get, list, delete, watch, wait, logs)
   ├── Exec()        → ExecInterface       (run, stream, interactive)
   ├── Files()       → FileInterface       (upload, download)
-  ├── Health()      → HealthInterface     (gateway health check)
+  ├── Health()      → HealthInterface     (health check, gateway info, current user)
   ├── Services()    → ServiceInterface    (expose, get, list, delete)
   ├── Providers()   → ProviderInterface   (CRUD + ensure)
   │     ├── Profiles() → ProfileInterface (list, get, import, update, lint, delete)
   │     └── Refresh()  → RefreshInterface (configure, status, rotate, delete)
+  ├── Workspaces()  → WorkspaceInterface  (create, get, list, delete, members)
   └── Policy()      → PolicyInterface     (draft review, approve, reject, merge, status)
 ```
 
@@ -227,6 +228,8 @@ consumers import a single package. See the [Architecture](https://ro14nd.de/open
 | File transfer (upload, download) | `FileInterface` | [Files](https://ro14nd.de/openshell-sdk-go/api/files.html) |
 | Policy management (draft review, approve, reject, merge) | `PolicyInterface` | [Policy](https://ro14nd.de/openshell-sdk-go/api/policy.html) |
 | Sandbox logs (streaming retrieval) | `SandboxInterface` | [Sandboxes](https://ro14nd.de/openshell-sdk-go/api/sandboxes.html) |
+| Workspace management (create, get, list, delete, members) | `WorkspaceInterface` | [Workspaces](https://ro14nd.de/openshell-sdk-go/api/workspaces.html) |
+| Gateway info and current user identity | `HealthInterface` | [Health](https://ro14nd.de/openshell-sdk-go/api/health.html) |
 | Health checking | `HealthInterface` | [Health](https://ro14nd.de/openshell-sdk-go/api/health.html) |
 | SSH tunneling and TCP forwarding | `SSHInterface`, `TCPInterface` | [SSH](https://ro14nd.de/openshell-sdk-go/api/ssh.html), [TCP](https://ro14nd.de/openshell-sdk-go/api/tcp.html) |
 | Auth: static token, refreshable token (oauth2.TokenSource) | `AuthProvider` | [Auth](https://ro14nd.de/openshell-sdk-go/api/auth.html) |
