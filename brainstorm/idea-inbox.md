@@ -56,3 +56,12 @@ Ideas captured from code reviews for future brainstorming.
 
 > Deferred because policy editing requires a structured form UI for nested objects (filesystem rules, network endpoints) which is complex to build well in a TUI.
 
+### workspace-role-unknown-variant
+
+- **Source**: deep-review
+- **Date**: 2026-07-31
+- **Reference**: 022-workspace-crud-gatewayinfo
+- **Summary**: `WorkspaceRoleFromProto` defaults unrecognized proto values to `WorkspaceRoleUser`, unlike other enum converters that default to an "Unknown" variant. Consider adding `WorkspaceRoleUnknown` for forward compatibility.
+
+> Every other enum converter in the codebase (WorkspacePhaseFromProto, ServiceStatusFromProto) defaults to an "Unknown" variant for unrecognized values. WorkspaceRole lacks an Unknown variant, forcing the default to User (least privilege). If the gateway adds new roles in the future, they will silently map to User rather than surfacing as unrecognized.
+

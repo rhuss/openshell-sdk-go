@@ -5,7 +5,7 @@
 //
 // The SDK follows the Kubernetes client-go sub-client pattern: a single Client
 // provides typed accessors for each resource domain (Sandboxes, Providers, Exec,
-// Files, Health, Services, SSH, TCP, Config). All operations accept a context.Context and return idiomatic
+// Files, Health, Services, SSH, TCP, Config, Policy, Workspaces). All operations accept a context.Context and return idiomatic
 // Go types. Proto-generated types never appear in the public API.
 //
 // # Quick Start
@@ -323,6 +323,70 @@
 //	        fmt.Printf("v%d: %d network rules\n", rev.Version, len(rev.Policy.NetworkPolicies))
 //	    }
 //	}
+//
+// # Workspace Management
+//
+// Create and manage workspaces for multi-tenant resource isolation:
+//
+//	ws, err := client.Workspaces().Create(ctx, "team-alpha", map[string]string{
+//	    "team": "alpha",
+//	    "env":  "production",
+//	})
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	fmt.Printf("Workspace %s created (phase: %s)\n", ws.Name, ws.Phase)
+//
+//	workspaces, err := client.Workspaces().List(ctx)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	for _, w := range workspaces {
+//	    fmt.Printf("  %s (phase: %s)\n", w.Name, w.Phase)
+//	}
+//
+// # Workspace Members
+//
+// Manage workspace membership with role-based access:
+//
+//	member, err := client.Workspaces().AddMember(ctx, "team-alpha",
+//	    "alice@example.com", v1.WorkspaceRoleAdmin)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	fmt.Printf("Added %s as %s\n", member.PrincipalSubject, member.Role)
+//
+//	members, err := client.Workspaces().ListMembers(ctx, "team-alpha")
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	for _, m := range members {
+//	    fmt.Printf("  %s (%s)\n", m.PrincipalSubject, m.Role)
+//	}
+//
+// # Gateway Info
+//
+// Query gateway metadata and compute driver capabilities:
+//
+//	info, err := client.Health().GetGatewayInfo(ctx)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	fmt.Printf("Gateway %s (status: %s)\n", info.Version, info.Status)
+//	for _, d := range info.ComputeDrivers {
+//	    fmt.Printf("  Driver: %s %s\n", d.DriverName, d.DriverVersion)
+//	}
+//
+// # Current User
+//
+// Determine the identity of the authenticated caller:
+//
+//	user, err := client.Health().GetCurrentUser(ctx)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	fmt.Printf("Logged in as %s (%s)\n", user.DisplayName, user.Subject)
+//	fmt.Printf("Roles: %v, Scopes: %v\n", user.Roles, user.Scopes)
 //
 // # Configuration Management
 //

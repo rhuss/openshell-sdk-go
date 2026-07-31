@@ -23,6 +23,7 @@ const (
 	ErrorInternal
 	ErrorUnimplemented
 	ErrorConflict
+	ErrorUnauthenticated
 )
 
 // String returns the human-readable name of the error code.
@@ -48,6 +49,8 @@ func (c ErrorCode) String() string {
 		return "Unimplemented"
 	case ErrorConflict:
 		return "Conflict"
+	case ErrorUnauthenticated:
+		return "Unauthenticated"
 	default:
 		return fmt.Sprintf("Unknown(%d)", int(c))
 	}
@@ -108,6 +111,11 @@ func IsUnimplemented(err error) bool {
 // optimistic concurrency or an invalid state transition.
 func IsConflict(err error) bool {
 	return hasCode(err, ErrorConflict)
+}
+
+// IsUnauthenticated returns true if the error indicates invalid or missing credentials.
+func IsUnauthenticated(err error) bool {
+	return hasCode(err, ErrorUnauthenticated)
 }
 
 func hasCode(err error, code ErrorCode) bool {

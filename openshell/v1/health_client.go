@@ -30,3 +30,19 @@ func (h *healthClient) Check(ctx context.Context) (*HealthResult, error) {
 		Version: resp.GetVersion(),
 	}, nil
 }
+
+func (h *healthClient) GetGatewayInfo(ctx context.Context) (*GatewayInfo, error) {
+	resp, err := h.client.GetGatewayInfo(ctx, &pb.GetGatewayInfoRequest{})
+	if err != nil {
+		return nil, converter.FromGRPCError(err)
+	}
+	return converter.GatewayInfoFromProto(resp), nil
+}
+
+func (h *healthClient) GetCurrentUser(ctx context.Context) (*CurrentUser, error) {
+	resp, err := h.client.GetCurrentUser(ctx, &pb.GetCurrentUserRequest{})
+	if err != nil {
+		return nil, converter.FromGRPCError(err)
+	}
+	return converter.CurrentUserFromProto(resp), nil
+}

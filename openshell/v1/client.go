@@ -27,6 +27,7 @@ type ClientInterface interface {
 	TCP() TCPInterface
 	Config() ConfigInterface
 	Policy() PolicyInterface
+	Workspaces() WorkspaceInterface
 	Close() error
 }
 
@@ -48,16 +49,17 @@ type Client struct {
 	closeOnce sync.Once
 	closeErr  error
 
-	sandboxes SandboxInterface
-	providers ProviderInterface
-	services  ServiceInterface
-	exec      ExecInterface
-	files     FileInterface
-	health    HealthInterface
-	ssh       SSHInterface
-	tcp       TCPInterface
-	cfg       ConfigInterface
-	policy    PolicyInterface
+	sandboxes  SandboxInterface
+	providers  ProviderInterface
+	services   ServiceInterface
+	exec       ExecInterface
+	files      FileInterface
+	health     HealthInterface
+	ssh        SSHInterface
+	tcp        TCPInterface
+	cfg        ConfigInterface
+	policy     PolicyInterface
+	workspaces WorkspaceInterface
 }
 
 // NewClient creates a new SDK client connected to the given gateway.
@@ -100,6 +102,7 @@ func NewClient(cfg Config) (*Client, error) {
 	c.tcp = newTCPClient(conn, c.sandboxes, c.ssh)
 	c.cfg = newConfigClient(conn, c.sandboxes)
 	c.policy = newPolicyClient(conn)
+	c.workspaces = newWorkspaceClient(conn)
 
 	return c, nil
 }
@@ -133,6 +136,9 @@ func (c *Client) Config() ConfigInterface { return c.cfg }
 
 // Policy returns the policy management sub-client.
 func (c *Client) Policy() PolicyInterface { return c.policy }
+
+// Workspaces returns the workspace management sub-client.
+func (c *Client) Workspaces() WorkspaceInterface { return c.workspaces }
 
 // Close closes the underlying gRPC connection. Safe to call multiple times.
 func (c *Client) Close() error {
