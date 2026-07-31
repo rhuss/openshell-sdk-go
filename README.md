@@ -195,6 +195,36 @@ See the [oidc package docs](https://pkg.go.dev/github.com/rhuss/openshell-sdk-go
 
 See the [Getting Started](https://ro14nd.de/openshell-sdk-go/getting-started.html) guide for the full walkthrough.
 
+### Inference Route Management
+
+Configure how inference requests are routed for a workspace:
+
+```go
+// Set an inference route
+route, err := client.Inference().SetRoute(ctx, "my-workspace", &v1.InferenceRouteConfig{
+    ProviderName: "openai",
+    ModelID:      "gpt-4",
+    RouteName:    "",        // empty string = default route
+    TimeoutSecs:  120,
+})
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("Route v%d: %s/%s\n", route.Version, route.ProviderName, route.ModelID)
+
+// Retrieve the route
+route, err = client.Inference().GetRoute(ctx, "my-workspace", "")
+if err != nil {
+    log.Fatal(err)
+}
+
+// Delete the route
+err = client.Inference().DeleteRoute(ctx, "my-workspace", "")
+if err != nil {
+    log.Fatal(err)
+}
+```
+
 ## Architecture
 
 ```
@@ -208,6 +238,7 @@ Client
   │     ├── Profiles() → ProfileInterface (list, get, import, update, lint, delete)
   │     └── Refresh()  → RefreshInterface (configure, status, rotate, delete)
   ├── Workspaces()  → WorkspaceInterface  (create, get, list, delete, members)
+  ├── Inference()   → InferenceInterface  (set, get, delete inference routes)
   └── Policy()      → PolicyInterface     (draft review, approve, reject, merge, status)
 ```
 
@@ -229,6 +260,7 @@ consumers import a single package. See the [Architecture](https://ro14nd.de/open
 | Policy management (draft review, approve, reject, merge) | `PolicyInterface` | [Policy](https://ro14nd.de/openshell-sdk-go/api/policy.html) |
 | Sandbox logs (streaming retrieval) | `SandboxInterface` | [Sandboxes](https://ro14nd.de/openshell-sdk-go/api/sandboxes.html) |
 | Workspace management (create, get, list, delete, members) | `WorkspaceInterface` | [Workspaces](https://ro14nd.de/openshell-sdk-go/api/workspaces.html) |
+| Inference route management (set, get, delete) | `InferenceInterface` | [Inference](https://ro14nd.de/openshell-sdk-go/api/inference.html) |
 | Gateway info and current user identity | `HealthInterface` | [Health](https://ro14nd.de/openshell-sdk-go/api/health.html) |
 | Health checking | `HealthInterface` | [Health](https://ro14nd.de/openshell-sdk-go/api/health.html) |
 | SSH tunneling and TCP forwarding | `SSHInterface`, `TCPInterface` | [SSH](https://ro14nd.de/openshell-sdk-go/api/ssh.html), [TCP](https://ro14nd.de/openshell-sdk-go/api/tcp.html) |
