@@ -87,6 +87,14 @@ var WithLimit = types.WithLimit
 // WithOffset sets the pagination offset.
 var WithOffset = types.WithOffset
 
+// WithListGlobal enables global policy mode on List. When true, the query
+// retrieves gateway-global policy revisions instead of sandbox-scoped ones.
+var WithListGlobal = types.WithListGlobal
+
+// WithStatusGlobal enables global policy mode on GetStatus. When true, the
+// query retrieves gateway-global policy status instead of sandbox-scoped status.
+var WithStatusGlobal = types.WithStatusGlobal
+
 // PolicyInterface defines operations for managing sandbox policy drafts,
 // approvals, and revision history.
 type PolicyInterface interface {

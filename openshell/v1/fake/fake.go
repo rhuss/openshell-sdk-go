@@ -182,5 +182,19 @@ func (fc *Client) AddMember(workspace string, m *types.WorkspaceMember) {
 	fc.memberStore.Insert(workspace, m)
 }
 
+// AddGlobalRevision adds a gateway-global policy revision for test seeding.
+// Global revisions are returned by Policy().List() and Policy().GetStatus()
+// when the global option is enabled.
+func (fc *Client) AddGlobalRevision(rev types.SandboxPolicyRevision) {
+	fc.policy.(*fakePolicyClient).AddGlobalRevision(rev)
+}
+
+// AddRevision adds a sandbox-scoped policy revision for test seeding.
+// Sandbox revisions are returned by Policy().List() and Policy().GetStatus()
+// when the global option is not set.
+func (fc *Client) AddRevision(workspace, name string, rev types.SandboxPolicyRevision) {
+	fc.policy.(*fakePolicyClient).AddRevision(workspace, name, rev)
+}
+
 // Compile-time interface check.
 var _ v1.ClientInterface = (*Client)(nil)

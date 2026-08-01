@@ -257,7 +257,7 @@ consumers import a single package. See the [Architecture](https://ro14nd.de/open
 | Credential refresh (configure, rotate, status) | `RefreshInterface` | [Refresh](https://ro14nd.de/openshell-sdk-go/api/refresh.html) |
 | Service exposure (expose, list, delete) | `ServiceInterface` | [Services](https://ro14nd.de/openshell-sdk-go/api/services.html) |
 | File transfer (upload, download) | `FileInterface` | [Files](https://ro14nd.de/openshell-sdk-go/api/files.html) |
-| Policy management (draft review, approve, reject, merge) | `PolicyInterface` | [Policy](https://ro14nd.de/openshell-sdk-go/api/policy.html) |
+| Policy management (draft review, approve, reject, merge, global policy) | `PolicyInterface` | [Policy](https://ro14nd.de/openshell-sdk-go/api/policy.html) |
 | Sandbox logs (streaming retrieval) | `SandboxInterface` | [Sandboxes](https://ro14nd.de/openshell-sdk-go/api/sandboxes.html) |
 | Workspace management (create, get, list, delete, members) | `WorkspaceInterface` | [Workspaces](https://ro14nd.de/openshell-sdk-go/api/workspaces.html) |
 | Inference route management (set, get, delete) | `InferenceInterface` | [Inference](https://ro14nd.de/openshell-sdk-go/api/inference.html) |

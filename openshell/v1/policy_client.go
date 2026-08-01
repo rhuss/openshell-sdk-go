@@ -109,6 +109,7 @@ func (p *policyClient) GetStatus(ctx context.Context, workspace, sandboxName str
 		Name:      sandboxName,
 		Version:   cfg.Version(),
 		Workspace: workspace,
+		Global:    cfg.Global(),
 	})
 	if err != nil {
 		return nil, converter.FromGRPCError(err)
@@ -122,6 +123,7 @@ func (p *policyClient) List(ctx context.Context, workspace string, opts ...ListP
 		Workspace: workspace,
 		Limit:     cfg.Limit(),
 		Offset:    cfg.Offset(),
+		Global:    cfg.Global(),
 	})
 	if err != nil {
 		return nil, converter.FromGRPCError(err)
