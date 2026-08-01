@@ -623,6 +623,118 @@ func TestPolicyGetStatus_WithVersion(t *testing.T) {
 	assert.Equal(t, uint32(3), result.ActiveVersion)
 }
 
+func TestPolicyGetStatus_WithGlobal(t *testing.T) {
+	mock := newMockPolicyServer()
+	mock.statusResp = &pb.GetSandboxPolicyStatusResponse{
+		Revision: &pb.SandboxPolicyRevision{
+			Version:    1,
+			PolicyHash: "sha256:global-rev1",
+			Status:     pb.PolicyStatus_POLICY_STATUS_LOADED,
+		},
+		ActiveVersion: 1,
+	}
+
+	client, cleanup := setupPolicyTest(t, mock)
+	defer cleanup()
+
+	// GetStatus with global flag and empty name/workspace.
+	result, err := client.GetStatus(context.Background(), "", "", types.WithStatusGlobal(true))
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, uint32(1), result.Revision.Version)
+	assert.Equal(t, "sha256:global-rev1", result.Revision.PolicyHash)
+
+	// Verify global flag was forwarded in the proto request.
+	mock.mu.Lock()
+	assert.True(t, mock.lastStatusReq.GetGlobal())
+	assert.Empty(t, mock.lastStatusReq.GetName())
+	assert.Empty(t, mock.lastStatusReq.GetWorkspace())
+	mock.mu.Unlock()
+}
+
+func TestPolicyGetStatus_WithGlobalIgnoresNonEmptyName(t *testing.T) {
+	mock := newMockPolicyServer()
+	mock.statusResp = &pb.GetSandboxPolicyStatusResponse{
+		Revision: &pb.SandboxPolicyRevision{
+			Version:    1,
+			PolicyHash: "sha256:global-rev1",
+			Status:     pb.PolicyStatus_POLICY_STATUS_LOADED,
+		},
+		ActiveVersion: 1,
+	}
+
+	client, cleanup := setupPolicyTest(t, mock)
+	defer cleanup()
+
+	result, err := client.GetStatus(context.Background(), "some-workspace", "some-sandbox", types.WithStatusGlobal(true))
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	mock.mu.Lock()
+	assert.True(t, mock.lastStatusReq.GetGlobal())
+	assert.Equal(t, "some-sandbox", mock.lastStatusReq.GetName())
+	assert.Equal(t, "some-workspace", mock.lastStatusReq.GetWorkspace())
+	mock.mu.Unlock()
+}
+
+func TestPolicyGetStatus_WithGlobalAndVersion(t *testing.T) {
+	mock := newMockPolicyServer()
+	mock.statusResp = &pb.GetSandboxPolicyStatusResponse{
+		Revision: &pb.SandboxPolicyRevision{
+			Version:    3,
+			PolicyHash: "sha256:global-rev3",
+			Status:     pb.PolicyStatus_POLICY_STATUS_SUPERSEDED,
+		},
+		ActiveVersion: 5,
+	}
+
+	client, cleanup := setupPolicyTest(t, mock)
+	defer cleanup()
+
+	// Global flag composes with WithVersion.
+	result, err := client.GetStatus(context.Background(), "", "",
+		types.WithStatusGlobal(true),
+		types.WithVersion(3),
+	)
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, uint32(3), result.Revision.Version)
+	assert.Equal(t, uint32(5), result.ActiveVersion)
+
+	mock.mu.Lock()
+	assert.True(t, mock.lastStatusReq.GetGlobal())
+	assert.Equal(t, uint32(3), mock.lastStatusReq.GetVersion())
+	mock.mu.Unlock()
+}
+
+func TestPolicyGetStatus_WithoutGlobal_PreservesExistingBehavior(t *testing.T) {
+	mock := newMockPolicyServer()
+	mock.statusResp = &pb.GetSandboxPolicyStatusResponse{
+		Revision: &pb.SandboxPolicyRevision{
+			Version: 1,
+			Status:  pb.PolicyStatus_POLICY_STATUS_LOADED,
+		},
+		ActiveVersion: 1,
+	}
+
+	client, cleanup := setupPolicyTest(t, mock)
+	defer cleanup()
+
+	_, err := client.GetStatus(context.Background(), "default", "my-sandbox")
+
+	require.NoError(t, err)
+
+	// Verify global flag is false by default.
+	mock.mu.Lock()
+	assert.False(t, mock.lastStatusReq.GetGlobal())
+	assert.Equal(t, "default", mock.lastStatusReq.GetWorkspace())
+	assert.Equal(t, "my-sandbox", mock.lastStatusReq.GetName())
+	mock.mu.Unlock()
+}
+
 func TestPolicyGetStatus_Error(t *testing.T) {
 	mock := newMockPolicyServer()
 	mock.statusErr = status.Errorf(codes.NotFound, "sandbox not found")
@@ -718,6 +830,105 @@ func TestPolicyList_Empty(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Nil(t, revisions)
+}
+
+func TestPolicyList_WithGlobal(t *testing.T) {
+	mock := newMockPolicyServer()
+	mock.listResp = &pb.ListSandboxPoliciesResponse{
+		Revisions: []*pb.SandboxPolicyRevision{
+			{Version: 1, PolicyHash: "sha256:global-v1"},
+		},
+	}
+
+	client, cleanup := setupPolicyTest(t, mock)
+	defer cleanup()
+
+	// List with global flag and empty workspace.
+	revisions, err := client.List(context.Background(), "", types.WithListGlobal(true))
+
+	require.NoError(t, err)
+	require.Len(t, revisions, 1)
+	assert.Equal(t, uint32(1), revisions[0].Version)
+	assert.Equal(t, "sha256:global-v1", revisions[0].PolicyHash)
+
+	// Verify global flag was forwarded in the proto request.
+	mock.mu.Lock()
+	assert.True(t, mock.lastListReq.GetGlobal())
+	assert.Empty(t, mock.lastListReq.GetWorkspace())
+	mock.mu.Unlock()
+}
+
+func TestPolicyList_WithGlobalIgnoresWorkspace(t *testing.T) {
+	mock := newMockPolicyServer()
+	mock.listResp = &pb.ListSandboxPoliciesResponse{
+		Revisions: []*pb.SandboxPolicyRevision{
+			{Version: 1, PolicyHash: "sha256:global-v1"},
+		},
+	}
+
+	client, cleanup := setupPolicyTest(t, mock)
+	defer cleanup()
+
+	revisions, err := client.List(context.Background(), "some-workspace", types.WithListGlobal(true))
+
+	require.NoError(t, err)
+	require.Len(t, revisions, 1)
+
+	mock.mu.Lock()
+	assert.True(t, mock.lastListReq.GetGlobal())
+	assert.Equal(t, "some-workspace", mock.lastListReq.GetWorkspace())
+	mock.mu.Unlock()
+}
+
+func TestPolicyList_WithGlobalAndPagination(t *testing.T) {
+	mock := newMockPolicyServer()
+	mock.listResp = &pb.ListSandboxPoliciesResponse{
+		Revisions: []*pb.SandboxPolicyRevision{
+			{Version: 5, PolicyHash: "sha256:global-v5"},
+		},
+	}
+
+	client, cleanup := setupPolicyTest(t, mock)
+	defer cleanup()
+
+	// Global flag composes with pagination options.
+	revisions, err := client.List(context.Background(), "",
+		types.WithListGlobal(true),
+		types.WithLimit(10),
+		types.WithOffset(20),
+	)
+
+	require.NoError(t, err)
+	require.Len(t, revisions, 1)
+
+	mock.mu.Lock()
+	assert.True(t, mock.lastListReq.GetGlobal())
+	assert.Equal(t, uint32(10), mock.lastListReq.GetLimit())
+	assert.Equal(t, uint32(20), mock.lastListReq.GetOffset())
+	mock.mu.Unlock()
+}
+
+func TestPolicyList_WithoutGlobal_PreservesExistingBehavior(t *testing.T) {
+	mock := newMockPolicyServer()
+	mock.listResp = &pb.ListSandboxPoliciesResponse{
+		Revisions: []*pb.SandboxPolicyRevision{
+			{Version: 1, PolicyHash: "sha256:v1"},
+		},
+	}
+
+	client, cleanup := setupPolicyTest(t, mock)
+	defer cleanup()
+
+	revisions, err := client.List(context.Background(), "default")
+
+	require.NoError(t, err)
+	require.Len(t, revisions, 1)
+
+	// Verify global flag is false by default.
+	mock.mu.Lock()
+	assert.False(t, mock.lastListReq.GetGlobal())
+	assert.Equal(t, "default", mock.lastListReq.GetWorkspace())
+	mock.mu.Unlock()
 }
 
 func TestPolicyList_Error(t *testing.T) {

@@ -272,6 +272,7 @@ func (c *approveAllConfig) IncludeSecurityFlagged() bool {
 // getStatusConfig holds configuration for GetStatus calls.
 type getStatusConfig struct {
 	version uint32
+	global  bool
 }
 
 // GetStatusOption configures a GetStatus call.
@@ -281,6 +282,15 @@ type GetStatusOption func(*getStatusConfig)
 func WithVersion(version uint32) GetStatusOption {
 	return func(c *getStatusConfig) {
 		c.version = version
+	}
+}
+
+// WithStatusGlobal enables global policy mode on GetStatus. When true,
+// the query retrieves gateway-global policy status instead of sandbox-scoped
+// status, and the sandbox name and workspace parameters are ignored.
+func WithStatusGlobal(global bool) GetStatusOption {
+	return func(c *getStatusConfig) {
+		c.global = global
 	}
 }
 
@@ -298,10 +308,16 @@ func (c *getStatusConfig) Version() uint32 {
 	return c.version
 }
 
+// Global returns whether global policy mode is enabled.
+func (c *getStatusConfig) Global() bool {
+	return c.global
+}
+
 // listPolicyConfig holds configuration for List calls.
 type listPolicyConfig struct {
 	limit  uint32
 	offset uint32
+	global bool
 }
 
 // ListPolicyOption configures a List call.
@@ -318,6 +334,15 @@ func WithLimit(limit uint32) ListPolicyOption {
 func WithOffset(offset uint32) ListPolicyOption {
 	return func(c *listPolicyConfig) {
 		c.offset = offset
+	}
+}
+
+// WithListGlobal enables global policy mode on List. When true, the query
+// retrieves gateway-global policy revisions instead of sandbox-scoped ones,
+// and the workspace parameter is ignored.
+func WithListGlobal(global bool) ListPolicyOption {
+	return func(c *listPolicyConfig) {
+		c.global = global
 	}
 }
 
@@ -338,4 +363,9 @@ func (c *listPolicyConfig) Limit() uint32 {
 // Offset returns the configured offset.
 func (c *listPolicyConfig) Offset() uint32 {
 	return c.offset
+}
+
+// Global returns whether global policy mode is enabled.
+func (c *listPolicyConfig) Global() bool {
+	return c.global
 }
