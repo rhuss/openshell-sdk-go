@@ -266,10 +266,11 @@ func TestSandboxConfigFromProto(t *testing.T) {
 				Scope: sbv1.SettingScope_SETTING_SCOPE_GLOBAL,
 			},
 		},
-		ConfigRevision:      100,
-		PolicySource:        sbv1.PolicySource_POLICY_SOURCE_SANDBOX,
-		GlobalPolicyVersion: 5,
-		ProviderEnvRevision: 200,
+		ConfigRevision:              100,
+		PolicySource:                sbv1.PolicySource_POLICY_SOURCE_SANDBOX,
+		GlobalPolicyVersion:         5,
+		ProviderEnvRevision:         200,
+		PolicyValidationFailureMode: "fail_closed",
 	}
 
 	sc := SandboxConfigFromProto(resp)
@@ -285,6 +286,7 @@ func TestSandboxConfigFromProto(t *testing.T) {
 	assert.Equal(t, v1.PolicySourceSandbox, sc.PolicySource)
 	assert.Equal(t, uint32(5), sc.GlobalPolicyVersion)
 	assert.Equal(t, uint64(200), sc.ProviderEnvRevision)
+	assert.Equal(t, "fail_closed", sc.PolicyValidationFailureMode)
 
 	require.Len(t, sc.Settings, 2)
 

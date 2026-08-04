@@ -30,8 +30,11 @@ Thumbs.db
 .env
 .env.*
 
-# spex: generated/local files (only constitution is committed)
-**/.claude/
+# spex: generated/local files (only constitution and project skills are committed)
+.claude/*
+!.claude/skills/
+.claude/skills/speckit-*
+.claude/skills/cc-review*
 **/.specify/**
 !**/.specify/memory/
 !**/.specify/memory/constitution.md
