@@ -180,18 +180,18 @@ This runs lint, build, test, proto-check, and docs-check. All must pass.
 
 ### Phase 7: Commit and Push
 
+Before committing, inspect `git status` and `git diff --stat` to confirm
+only sync-related files are staged. Stage specific files (proto sources,
+generated bindings, types, converters, tests), never `git add -A`.
+
 Ask the user how to land the changes:
 
-- **Direct to main**: For small, mechanical syncs (field additions, regen only).
-  ```bash
-  git add -A && git commit -m "feat(proto): sync proto and add <summary>"
-  git push origin main
-  ```
-- **Pull request**: For changes that add new functionality or touch multiple
-  SDK layers.
+- **Pull request** (default): For any change that adds functionality or
+  touches SDK layers beyond proto regeneration.
   ```bash
   git checkout -b proto-sync-<short-slug>
-  git add -A && git commit -m "feat(proto): sync proto and add <summary>"
+  git add proto/ openshell/ .claude/skills/  # stage only sync-related files
+  git commit -m "feat(proto): sync proto and add <summary>"
   git push -u origin proto-sync-<short-slug>
   gh pr create --title "feat(proto): <summary>" --body "$(cat <<'EOF'
   ## Summary
@@ -205,6 +205,13 @@ Ask the user how to land the changes:
   - `make ci` passes (lint, build, tests, proto-check)
   EOF
   )"
+  ```
+- **Direct to main**: Only for purely mechanical syncs (regen only, no
+  SDK code changes).
+  ```bash
+  git add proto/ openshell/  # stage only sync-related files
+  git commit -m "feat(proto): sync proto and add <summary>"
+  git push origin main
   ```
 
 Report the commit SHA or PR URL back to the user.
