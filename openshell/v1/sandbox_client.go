@@ -152,6 +152,9 @@ func (s *sandboxClient) WaitReady(ctx context.Context, workspace, name string, o
 	if sb.Status.Phase == SandboxError {
 		return nil, &StatusError{Code: ErrorInternal, Message: fmt.Sprintf("sandbox %q is in error state", name)}
 	}
+	if sb.Status.Phase == SandboxDeleting {
+		return nil, &StatusError{Code: ErrorInternal, Message: fmt.Sprintf("sandbox %q is being deleted", name)}
+	}
 
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
@@ -159,7 +162,7 @@ func (s *sandboxClient) WaitReady(ctx context.Context, workspace, name string, o
 	for {
 		select {
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			return nil, contextError(ctx.Err())
 		case <-ticker.C:
 			sb, err = s.Get(ctx, workspace, name)
 			if err != nil {
@@ -170,6 +173,9 @@ func (s *sandboxClient) WaitReady(ctx context.Context, workspace, name string, o
 			}
 			if sb.Status.Phase == SandboxError {
 				return nil, &StatusError{Code: ErrorInternal, Message: fmt.Sprintf("sandbox %q is in error state", name)}
+			}
+			if sb.Status.Phase == SandboxDeleting {
+				return nil, &StatusError{Code: ErrorInternal, Message: fmt.Sprintf("sandbox %q is being deleted", name)}
 			}
 		}
 	}
@@ -212,12 +218,17 @@ func (s *sandboxClient) Watch(ctx context.Context, workspace, name string, opts 
 
 	go func() {
 		defer close(ch)
+		defer streamCancel()
 		ev := first
+		isFirst := true
 		for {
 			if sbPayload, ok := ev.Payload.(*pb.SandboxStreamEvent_Sandbox); ok && sbPayload.Sandbox != nil {
 				sandbox := converter.SandboxFromProto(sbPayload.Sandbox)
 				eventType := EventModified
-				if sandbox.Status.Phase == SandboxDeleting {
+				if isFirst {
+					eventType = EventAdded
+					isFirst = false
+				} else if sandbox.Status.Phase == SandboxDeleting {
 					eventType = EventDeleted
 				}
 				select {
@@ -225,6 +236,7 @@ func (s *sandboxClient) Watch(ctx context.Context, workspace, name string, opts 
 				case <-w.done:
 					return
 				}
+				// StopOnTerminal: close watcher after delivering a terminal phase event
 				if watchOpts.StopOnTerminal && (sandbox.Status.Phase == SandboxReady || sandbox.Status.Phase == SandboxError) {
 					w.Stop()
 					return
@@ -233,14 +245,10 @@ func (s *sandboxClient) Watch(ctx context.Context, workspace, name string, opts 
 			var recvErr error
 			ev, recvErr = stream.Recv()
 			if recvErr != nil {
-				select {
-				case <-w.done:
-				default:
-					if recvErr != io.EOF {
-						select {
-						case ch <- Event[*Sandbox]{Type: EventError, Object: nil}:
-						default:
-						}
+				if recvErr != io.EOF {
+					select {
+					case ch <- Event[*Sandbox]{Type: EventError, Err: converter.FromGRPCError(recvErr)}:
+					case <-w.done:
 					}
 				}
 				return

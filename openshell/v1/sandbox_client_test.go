@@ -34,10 +34,11 @@ type mockSandboxServer struct {
 	attachErr  error
 	detachErr  error
 	listProvErr error
-	watchEvents    []*pb.SandboxStreamEvent
-	watchErr       error
-	watchKeepOpen  chan struct{} // if non-nil, WatchSandbox blocks after sending events until closed
-	watchRequest   *pb.WatchSandboxRequest // recorded request
+	watchEvents        []*pb.SandboxStreamEvent
+	watchErr           error
+	watchPostEventsErr error
+	watchKeepOpen      chan struct{}           // if non-nil, WatchSandbox blocks after sending events until closed
+	watchRequest       *pb.WatchSandboxRequest // recorded request
 
 	// GetLogs fields
 	getLogsResp    *pb.GetSandboxLogsResponse
@@ -53,6 +54,8 @@ func newMockSandboxServer() *mockSandboxServer {
 }
 
 func (s *mockSandboxServer) CreateSandbox(_ context.Context, req *pb.CreateSandboxRequest) (*pb.SandboxResponse, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.createErr != nil {
 		return nil, s.createErr
 	}
@@ -163,6 +166,9 @@ func (s *mockSandboxServer) WatchSandbox(req *pb.WatchSandboxRequest, stream grp
 		if err := stream.Send(ev); err != nil {
 			return err
 		}
+	}
+	if s.watchPostEventsErr != nil {
+		return s.watchPostEventsErr
 	}
 	// If watchKeepOpen is set, block until it is closed (simulates long-running stream)
 	if keepOpen != nil {
@@ -512,6 +518,28 @@ func TestSandboxWaitReady_ContextTimeout(t *testing.T) {
 	_, err := client.WaitReady(ctx, "default", "stuck-sb", WaitOptions{PollInterval: 20 * time.Millisecond})
 
 	require.Error(t, err)
+	assert.True(t, IsDeadlineExceeded(err), "WaitReady must wrap context.DeadlineExceeded in StatusError")
+}
+
+func TestSandboxWaitReady_ContextCancelled(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.sandboxes["cancel-sb"] = &pb.Sandbox{
+		Metadata: &dm.ObjectMeta{Name: "cancel-sb"},
+		Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_PROVISIONING},
+	}
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		cancel()
+	}()
+
+	_, err := client.WaitReady(ctx, "default", "cancel-sb", WaitOptions{PollInterval: 20 * time.Millisecond})
+
+	require.Error(t, err)
+	assert.True(t, IsCancelled(err), "WaitReady must wrap context.Canceled in StatusError")
 }
 
 func TestSandboxWaitReady_SandboxFailed(t *testing.T) {
@@ -565,7 +593,7 @@ func TestSandboxWatch_ReceivesEvents(t *testing.T) {
 	defer w.Stop()
 
 	ev1 := <-w.ResultChan()
-	assert.Equal(t, EventModified, ev1.Type)
+	assert.Equal(t, EventAdded, ev1.Type)
 	require.NotNil(t, ev1.Object)
 	assert.Equal(t, "sb-1", ev1.Object.Name)
 	assert.Equal(t, SandboxProvisioning, ev1.Object.Status.Phase)
@@ -597,7 +625,7 @@ func TestSandboxWatch_FiltersSandboxEventsOnly(t *testing.T) {
 	defer w.Stop()
 
 	ev := <-w.ResultChan()
-	assert.Equal(t, EventModified, ev.Type)
+	assert.Equal(t, EventAdded, ev.Type)
 	assert.Equal(t, "sb-1", ev.Object.Name)
 
 	// Stream ends after server sends all events; channel should close
@@ -652,6 +680,35 @@ func TestSandboxWatch_RPCError(t *testing.T) {
 
 	require.Error(t, err)
 	assert.True(t, IsUnavailable(err))
+}
+
+func TestSandboxWatch_MidStreamErrorDeliveredAsStatusError(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.sandboxes["sb-1"] = &pb.Sandbox{
+		Metadata: &dm.ObjectMeta{Id: "id-1", Name: "sb-1"},
+		Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_PROVISIONING},
+	}
+	mock.watchEvents = []*pb.SandboxStreamEvent{
+		{Payload: &pb.SandboxStreamEvent_Sandbox{Sandbox: &pb.Sandbox{
+			Metadata: &dm.ObjectMeta{Name: "sb-1", Id: "id-1"},
+			Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_PROVISIONING},
+		}}},
+	}
+	mock.watchPostEventsErr = status.Error(codes.Unavailable, "connection lost")
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	w, err := client.Watch(context.Background(), "default", "sb-1")
+	require.NoError(t, err)
+	defer w.Stop()
+
+	ev1 := <-w.ResultChan()
+	assert.Equal(t, EventAdded, ev1.Type)
+
+	ev2 := <-w.ResultChan()
+	assert.Equal(t, EventError, ev2.Type)
+	require.Error(t, ev2.Err)
+	assert.True(t, IsUnavailable(ev2.Err), "mid-stream error should be converted to StatusError")
 }
 
 // --- T016: Watch name-to-ID resolution verification tests ---
@@ -736,7 +793,7 @@ func TestSandboxWatch_StopOnTerminal_Ready(t *testing.T) {
 
 	// Should receive the Provisioning event
 	ev1 := <-w.ResultChan()
-	assert.Equal(t, EventModified, ev1.Type)
+	assert.Equal(t, EventAdded, ev1.Type)
 	assert.Equal(t, SandboxProvisioning, ev1.Object.Status.Phase)
 
 	// Should receive the Ready event (terminal)
@@ -780,7 +837,7 @@ func TestSandboxWatch_StopOnTerminal_Error(t *testing.T) {
 
 	// Should receive the Provisioning event
 	ev1 := <-w.ResultChan()
-	assert.Equal(t, EventModified, ev1.Type)
+	assert.Equal(t, EventAdded, ev1.Type)
 	assert.Equal(t, SandboxProvisioning, ev1.Object.Status.Phase)
 
 	// Should receive the Error event (terminal)
@@ -803,6 +860,8 @@ func TestSandboxWatch_StopOnTerminal_False_DoesNotClose(t *testing.T) {
 		Metadata: &dm.ObjectMeta{Id: "id-1", Name: "sb-1"},
 		Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_READY},
 	}
+	mock.watchKeepOpen = make(chan struct{})
+	defer close(mock.watchKeepOpen)
 	mock.watchEvents = []*pb.SandboxStreamEvent{
 		{Payload: &pb.SandboxStreamEvent_Sandbox{Sandbox: &pb.Sandbox{
 			Metadata: &dm.ObjectMeta{Name: "sb-1", Id: "id-1"},
@@ -812,23 +871,51 @@ func TestSandboxWatch_StopOnTerminal_False_DoesNotClose(t *testing.T) {
 	client, cleanup := setupSandboxTest(t, mock)
 	defer cleanup()
 
-	// Default: StopOnTerminal=false — watcher should NOT auto-close on Ready
 	w, err := client.Watch(context.Background(), "default", "sb-1")
 	require.NoError(t, err)
 	defer w.Stop()
 
 	ev := <-w.ResultChan()
-	assert.Equal(t, EventModified, ev.Type)
+	assert.Equal(t, EventAdded, ev.Type)
 	assert.Equal(t, SandboxReady, ev.Object.Status.Phase)
 
-	// Channel closes because mock stream ends (not because of StopOnTerminal)
-	// This test verifies the existing behavior is preserved
+	// Channel must NOT close: stream is still open and StopOnTerminal=false
 	select {
-	case _, ok := <-w.ResultChan():
-		assert.False(t, ok, "channel should close after stream ends")
-	case <-time.After(time.Second):
-		t.Fatal("timed out waiting for channel close")
+	case <-w.ResultChan():
+		t.Fatal("channel should stay open when StopOnTerminal is false")
+	case <-time.After(100 * time.Millisecond):
 	}
+}
+
+func TestSandboxWatch_DeletedEvent(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.sandboxes["sb-1"] = &pb.Sandbox{
+		Metadata: &dm.ObjectMeta{Id: "id-1", Name: "sb-1"},
+		Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_PROVISIONING},
+	}
+	mock.watchEvents = []*pb.SandboxStreamEvent{
+		{Payload: &pb.SandboxStreamEvent_Sandbox{Sandbox: &pb.Sandbox{
+			Metadata: &dm.ObjectMeta{Name: "sb-1", Id: "id-1"},
+			Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_PROVISIONING},
+		}}},
+		{Payload: &pb.SandboxStreamEvent_Sandbox{Sandbox: &pb.Sandbox{
+			Metadata: &dm.ObjectMeta{Name: "sb-1", Id: "id-1"},
+			Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_DELETING},
+		}}},
+	}
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	w, err := client.Watch(context.Background(), "default", "sb-1")
+	require.NoError(t, err)
+	defer w.Stop()
+
+	ev1 := <-w.ResultChan()
+	assert.Equal(t, EventAdded, ev1.Type)
+
+	ev2 := <-w.ResultChan()
+	assert.Equal(t, EventDeleted, ev2.Type)
+	assert.Equal(t, SandboxDeleting, ev2.Object.Status.Phase)
 }
 
 // --- T027: GetLogs tests ---
