@@ -219,6 +219,21 @@ func TestSandbox_WaitReady_ContextCancellation(t *testing.T) {
 	assert.ErrorIs(t, err, context.Canceled)
 }
 
+func TestSandbox_WaitReady_ContextDeadlineExceeded(t *testing.T) {
+	sc := newTestSandboxClient()
+
+	_, err := sc.Create(context.Background(), "default", "test-sb", &types.SandboxSpec{}, nil)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Nanosecond)
+	defer cancel()
+	time.Sleep(time.Millisecond)
+
+	_, err = sc.WaitReady(ctx, "default", "test-sb")
+	require.Error(t, err)
+	assert.True(t, types.IsDeadlineExceeded(err), "WaitReady must wrap context.DeadlineExceeded in StatusError")
+}
+
 func TestSandbox_WaitReady_AlreadyReady(t *testing.T) {
 	sc := newTestSandboxClient()
 	ctx := context.Background()

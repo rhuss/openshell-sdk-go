@@ -556,6 +556,44 @@ func TestSandboxWaitReady_SandboxFailed(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestSandboxWaitReady_SandboxDeleting(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.sandboxes["deleting-sb"] = &pb.Sandbox{
+		Metadata: &dm.ObjectMeta{Name: "deleting-sb"},
+		Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_DELETING},
+	}
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	_, err := client.WaitReady(context.Background(), "default", "deleting-sb")
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "being deleted")
+}
+
+func TestSandboxWaitReady_BecomesDeleting(t *testing.T) {
+	mock := newMockSandboxServer()
+	mock.sandboxes["del-sb"] = &pb.Sandbox{
+		Metadata: &dm.ObjectMeta{Name: "del-sb"},
+		Status:   &pb.SandboxStatus{Phase: pb.SandboxPhase_SANDBOX_PHASE_PROVISIONING},
+	}
+	client, cleanup := setupSandboxTest(t, mock)
+	defer cleanup()
+
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		mock.setPhase("del-sb", pb.SandboxPhase_SANDBOX_PHASE_DELETING)
+	}()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	_, err := client.WaitReady(ctx, "default", "del-sb", WaitOptions{PollInterval: 20 * time.Millisecond})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "being deleted")
+}
+
 func TestSandboxWaitReady_NotFound(t *testing.T) {
 	mock := newMockSandboxServer()
 	client, cleanup := setupSandboxTest(t, mock)
