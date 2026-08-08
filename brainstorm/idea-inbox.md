@@ -56,6 +56,33 @@ Ideas captured from code reviews for future brainstorming.
 
 > Deferred because policy editing requires a structured form UI for nested objects (filesystem rules, network endpoints) which is complex to build well in a TUI.
 
+### credential-handles-write-behavior
+
+- **Source**: triage
+- **Date**: 2026-08-08
+- **Reference**: PR #53 (sync upstream PR #2271)
+- **Summary**: CredentialHandles is documented as "not accepted as user-authored input" in the proto, but sits on the mutable Provider message used for both reads and writes. Any SDK doing read-modify-write round-trips the field back to the gateway. Needs upstream clarification (OUTPUT_ONLY annotation, separate response message, or documented reject/ignore behavior) and SDK-side stripping in Create/Update methods.
+
+> Deferred from PR #53: Copilot flagged ProviderToProto serializing CredentialHandles; cc-review flagged the duplicated context-error wrapping in fake/sandbox.go (related circular dependency). Both point to the same upstream API design gap. See brainstorm/030-upstream-review-findings.md for full details.
+
+### context-error-extraction
+
+- **Source**: triage
+- **Date**: 2026-08-08
+- **Reference**: PR #53 (sync upstream PR #2271)
+- **Summary**: The context-error wrapping logic (context.DeadlineExceeded/Canceled to StatusError) is duplicated between v1/context_errors.go and fake/sandbox.go due to a circular import constraint. Extract a shared ContextStatusError helper into the types package, which both v1 and fake already import.
+
+> Deferred from PR #53: cc-review architecture agent flagged the duplication. The fake package can't import v1 (circular dependency), so both maintain independent switch statements. A types-level helper would eliminate the drift risk flagged by the "fake-real parity" invariant.
+
+### pr-description-undeclared-changes
+
+- **Source**: triage
+- **Date**: 2026-08-08
+- **Reference**: PR #53 (sync upstream PR #2271)
+- **Summary**: Three behavioral changes in PR #53 were not declared in the PR description: (1) StatusError.Details replaced with Cause/Unwrap (breaking API change), (2) WaitReady now wraps context errors in StatusError instead of returning raw context.Err(), (3) CertFile/KeyFile mutual-dependency validation added in conn.go. Future PRs should document behavioral contract changes.
+
+> Deferred from PR #53: cc-review goal-alignment agent flagged all three. Not code fixes, but a process improvement for PR hygiene. The changes themselves are correct.
+
 ### workspace-role-unknown-variant
 
 - **Source**: deep-review
