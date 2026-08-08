@@ -60,9 +60,35 @@ func WithListenServiceID(id string) ListenOption {
 	}
 }
 
+// remoteListenConfig accumulates options for the RemoteListen method.
+type remoteListenConfig struct {
+	bindAddress string
+	serviceID   string
+}
+
+// RemoteListenOption configures a reverse listener opened via [TCPInterface.RemoteListen].
+type RemoteListenOption func(*remoteListenConfig)
+
+// WithRemoteBindAddress overrides the default sandbox-side bind address ("127.0.0.1").
+// Pass "0.0.0.0" to accept connections from any interface within the sandbox.
+func WithRemoteBindAddress(addr string) RemoteListenOption {
+	return func(c *remoteListenConfig) {
+		c.bindAddress = addr
+	}
+}
+
+// WithRemoteListenServiceID sets an optional service identifier on the reverse
+// listener for audit and correlation purposes.
+func WithRemoteListenServiceID(id string) RemoteListenOption {
+	return func(c *remoteListenConfig) {
+		c.serviceID = id
+	}
+}
+
 // TCPInterface defines operations for TCP port forwarding to sandboxes.
 // Methods accept a sandbox name and resolve it to an ID internally.
 type TCPInterface interface {
 	Forward(ctx context.Context, workspace, sandboxName string, port uint32, opts ...ForwardOption) (io.ReadWriteCloser, error)
 	Listen(ctx context.Context, workspace, sandboxName string, remotePort uint32, localPort uint32, opts ...ListenOption) (net.Listener, error)
+	RemoteListen(ctx context.Context, workspace, sandboxName string, remotePort uint32, localTarget string, opts ...RemoteListenOption) error
 }
