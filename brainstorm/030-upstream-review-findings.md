@@ -125,6 +125,34 @@ if-condition are self-documenting.
 
 **Applied in:** `c2fa08db` (downstream)
 
+## YAGNI Removal (for upstream PR)
+
+### Remove unused option types and Config fields
+
+**GitHub:** [#51](https://github.com/rhuss/openshell-sdk-go/issues/51)
+**Severity:** API hygiene
+
+Four empty option structs (`CreateOptions`, `GetOptions`, `DeleteOptions`,
+`UpdateOptions`) are never accepted by any method signature. Three Config
+fields (`Timeout`, `RetryPolicy`, `Logger`) are marked "reserved for future
+use" but silently ignored by the gRPC layer. Users setting
+`Config{Timeout: 5*time.Second}` get no timeout behavior.
+
+The gateway package sets these fields via `WithTimeout`, `WithRetryPolicy`,
+`WithLogger` options, but nothing downstream consumes them.
+
+**Action:** Remove in the next upstream contribution PR:
+- Delete `CreateOptions`, `GetOptions`, `DeleteOptions`, `UpdateOptions`
+  from `types/options.go` and re-exports from `v1/options.go`
+- Delete `WatchOptions.TimeoutSeconds` and `WatchOptions.LabelSelector`
+  (keep only `StopOnTerminal`)
+- Delete `Config.Timeout`, `Config.RetryPolicy`, `Config.Logger`
+- Delete `RetryPolicy` struct from `types/types.go` and re-export from
+  `v1/types.go`
+- Delete `gateway.WithTimeout`, `gateway.WithRetryPolicy`,
+  `gateway.WithLogger` options and related test code
+- Add back when actually implemented
+
 ## Proto Design Feedback (for upstream discussion)
 
 ### CredentialHandles field placement
