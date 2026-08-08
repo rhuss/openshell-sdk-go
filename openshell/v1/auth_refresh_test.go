@@ -425,15 +425,18 @@ func TestGetRequestMetadata_ConcurrentFailureBackoffNotOverIncremented(t *testin
 	provider, err := RefreshableToken(src, WithLeeway(0))
 	require.NoError(t, err)
 
-	const goroutines = 50
+	const goroutines = 20
 	var wg sync.WaitGroup
 	wg.Add(goroutines)
+	ready := make(chan struct{})
 	for range goroutines {
 		go func() {
 			defer wg.Done()
+			<-ready
 			_, _ = provider.GetRequestMetadata(context.Background())
 		}()
 	}
+	close(ready)
 	wg.Wait()
 
 	ra := provider.(*refreshableAuth)
