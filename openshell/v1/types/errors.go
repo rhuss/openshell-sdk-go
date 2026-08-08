@@ -60,11 +60,15 @@ func (c ErrorCode) String() string {
 type StatusError struct {
 	Code    ErrorCode
 	Message string
-	Details map[string]string
+	Cause   error
 }
 
 func (e *StatusError) Error() string {
 	return fmt.Sprintf("%s: %s", e.Code, e.Message)
+}
+
+func (e *StatusError) Unwrap() error {
+	return e.Cause
 }
 
 // IsNotFound returns true if the error indicates a resource was not found.

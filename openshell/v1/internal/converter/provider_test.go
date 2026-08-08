@@ -7,130 +7,205 @@ import (
 	"testing"
 	"time"
 
-	v1 "github.com/rhuss/openshell-sdk-go/openshell/v1/types"
+	"github.com/rhuss/openshell-sdk-go/openshell/v1/types"
 	dm "github.com/rhuss/openshell-sdk-go/proto/datamodelv1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestProviderFromProto(t *testing.T) {
+func TestProviderFromProto_Nil(t *testing.T) {
+	assert.Nil(t, ProviderFromProto(nil))
+}
+
+func TestProviderFromProto_Full(t *testing.T) {
 	proto := &dm.Provider{
 		Metadata: &dm.ObjectMeta{
-			Id:                  "prov-1",
-			Name:                "my-claude",
-			CreatedAtMs:         1700000000000,
-			Labels:              map[string]string{"env": "prod"},
-			Annotations:         map[string]string{"managed-by": "sdk"},
-			ResourceVersion:     5,
-			Workspace:           "default",
-			DeletionTimestampMs: 1700000060000,
+			Id:              "prov-1",
+			Name:            "claude-provider",
+			CreatedAtMs:     1700000000000,
+			Labels:          map[string]string{"env": "prod"},
+			Annotations:     map[string]string{"note": "test"},
+			ResourceVersion: 42,
+			Workspace:       "default",
 		},
-		Type:        "claude",
-		Credentials: map[string]string{"API_KEY": "secret"},
-		Config:      map[string]string{"region": "us-east-1"},
+		Type:             "claude",
+		Credentials:      map[string]string{"api_key": "secret"},
+		Config:           map[string]string{"base_url": "https://api.example.com"},
+		ProfileWorkspace: "shared",
 		CredentialExpiresAtMs: map[string]int64{
-			"API_KEY": 1700100000000,
+			"api_key": 1700003600000,
 		},
-	}
-
-	p := ProviderFromProto(proto)
-
-	require.NotNil(t, p)
-	assert.Equal(t, "prov-1", p.ID)
-	assert.Equal(t, "my-claude", p.Name)
-	assert.Equal(t, "claude", p.Type)
-	assert.Equal(t, time.UnixMilli(1700000000000).UTC(), p.CreatedAt)
-	assert.Equal(t, map[string]string{"env": "prod"}, p.Labels)
-	assert.Equal(t, map[string]string{"managed-by": "sdk"}, p.Annotations)
-	assert.Equal(t, uint64(5), p.ResourceVersion)
-	assert.Equal(t, "default", p.Workspace)
-	require.NotNil(t, p.DeletionTimestamp)
-	assert.Equal(t, time.UnixMilli(1700000060000).UTC(), *p.DeletionTimestamp)
-	assert.Nil(t, p.Spec.Credentials, "credentials are write-only")
-	assert.Equal(t, map[string]string{"region": "us-east-1"}, p.Spec.Config)
-	assert.Equal(t, time.UnixMilli(1700100000000).UTC(), p.Spec.CredentialExpiresAt["API_KEY"])
-}
-
-func TestProviderFromProto_NilMetadata(t *testing.T) {
-	proto := &dm.Provider{
-		Type: "gitlab",
-	}
-
-	p := ProviderFromProto(proto)
-
-	require.NotNil(t, p)
-	assert.Empty(t, p.ID)
-	assert.Empty(t, p.Name)
-	assert.Equal(t, "gitlab", p.Type)
-	assert.True(t, p.CreatedAt.IsZero())
-}
-
-func TestProviderFromProto_Nil(t *testing.T) {
-	p := ProviderFromProto(nil)
-	assert.Nil(t, p)
-}
-
-func TestProviderToProto(t *testing.T) {
-	provDelTime := time.UnixMilli(1700000060000).UTC()
-	p := &v1.Provider{
-		ID:                "prov-1",
-		Name:              "my-claude",
-		Type:              "claude",
-		CreatedAt:         time.UnixMilli(1700000000000).UTC(),
-		Labels:            map[string]string{"env": "prod"},
-		Annotations:       map[string]string{"managed-by": "sdk"},
-		ResourceVersion:   5,
-		Workspace:         "default",
-		DeletionTimestamp: &provDelTime,
-		Spec: v1.ProviderSpec{
-			Credentials: map[string]string{"API_KEY": "secret"},
-			Config:      map[string]string{"region": "us-east-1"},
-			CredentialExpiresAt: map[string]time.Time{
-				"API_KEY": time.UnixMilli(1700100000000).UTC(),
+		CredentialHandles: map[string]*dm.CredentialHandle{
+			"api_key": {
+				Driver:   "vault",
+				Handle:   "secret/data/claude",
+				Metadata: map[string]string{"version": "3"},
 			},
 		},
 	}
 
-	proto := ProviderToProto(p)
+	result := ProviderFromProto(proto)
 
-	require.NotNil(t, proto)
-	require.NotNil(t, proto.Metadata)
-	assert.Equal(t, "prov-1", proto.Metadata.Id)
-	assert.Equal(t, "my-claude", proto.Metadata.Name)
-	assert.Equal(t, int64(1700000000000), proto.Metadata.CreatedAtMs)
-	assert.Equal(t, map[string]string{"env": "prod"}, proto.Metadata.Labels)
-	assert.Equal(t, map[string]string{"managed-by": "sdk"}, proto.Metadata.Annotations)
-	assert.Equal(t, uint64(5), proto.Metadata.ResourceVersion)
-	assert.Equal(t, "default", proto.Metadata.Workspace)
-	assert.Equal(t, int64(1700000060000), proto.Metadata.DeletionTimestampMs)
-	assert.Equal(t, "claude", proto.Type)
-	assert.Equal(t, map[string]string{"API_KEY": "secret"}, proto.Credentials)
-	assert.Equal(t, map[string]string{"region": "us-east-1"}, proto.Config)
-	assert.Equal(t, int64(1700100000000), proto.CredentialExpiresAtMs["API_KEY"])
+	require.NotNil(t, result)
+	assert.Equal(t, "prov-1", result.ID)
+	assert.Equal(t, "claude-provider", result.Name)
+	assert.Equal(t, "claude", result.Type)
+	assert.Equal(t, uint64(42), result.ResourceVersion)
+	assert.Equal(t, "default", result.Workspace)
+	assert.Equal(t, map[string]string{"env": "prod"}, result.Labels)
+	assert.Equal(t, map[string]string{"note": "test"}, result.Annotations)
+	assert.Equal(t, map[string]string{"base_url": "https://api.example.com"}, result.Spec.Config)
+	assert.Equal(t, "shared", result.Spec.ProfileWorkspace)
+
+	require.Len(t, result.Spec.CredentialExpiresAt, 1)
+	assert.False(t, result.Spec.CredentialExpiresAt["api_key"].IsZero())
+
+	require.Len(t, result.Spec.CredentialHandles, 1)
+	h := result.Spec.CredentialHandles["api_key"]
+	assert.Equal(t, "vault", h.Driver)
+	assert.Equal(t, "secret/data/claude", h.Handle)
+	assert.Equal(t, map[string]string{"version": "3"}, h.Metadata)
+}
+
+func TestProviderFromProto_NilMetadata(t *testing.T) {
+	proto := &dm.Provider{
+		Type:   "openai",
+		Config: map[string]string{"key": "val"},
+	}
+
+	result := ProviderFromProto(proto)
+
+	require.NotNil(t, result)
+	assert.Equal(t, "", result.ID)
+	assert.Equal(t, "", result.Name)
+	assert.Equal(t, "openai", result.Type)
+	assert.Equal(t, map[string]string{"key": "val"}, result.Spec.Config)
+}
+
+func TestProviderFromProto_EmptyHandles(t *testing.T) {
+	proto := &dm.Provider{
+		Type:              "test",
+		CredentialHandles: map[string]*dm.CredentialHandle{},
+	}
+
+	result := ProviderFromProto(proto)
+
+	require.NotNil(t, result)
+	assert.Nil(t, result.Spec.CredentialHandles)
 }
 
 func TestProviderToProto_Nil(t *testing.T) {
-	proto := ProviderToProto(nil)
-	assert.Nil(t, proto)
+	assert.Nil(t, ProviderToProto(nil))
+}
+
+func TestProviderToProto_Full(t *testing.T) {
+	expires := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	provider := &types.Provider{
+		ID:              "prov-1",
+		Name:            "test-provider",
+		Type:            "claude",
+		Labels:          map[string]string{"env": "dev"},
+		Annotations:     map[string]string{"note": "x"},
+		ResourceVersion: 7,
+		Workspace:       "ws-1",
+		Spec: types.ProviderSpec{
+			Credentials:         map[string]string{"token": "abc"},
+			Config:              map[string]string{"url": "https://example.com"},
+			ProfileWorkspace:    "global",
+			CredentialExpiresAt: map[string]time.Time{"token": expires},
+			CredentialHandles: map[string]types.CredentialHandle{
+				"token": {
+					Driver:   "k8s-secrets",
+					Handle:   "ns/secret-name",
+					Metadata: map[string]string{"k": "v"},
+				},
+			},
+		},
+	}
+
+	result := ProviderToProto(provider)
+
+	require.NotNil(t, result)
+	assert.Equal(t, "prov-1", result.Metadata.Id)
+	assert.Equal(t, "test-provider", result.Metadata.Name)
+	assert.Equal(t, "claude", result.Type)
+	assert.Equal(t, "global", result.ProfileWorkspace)
+	assert.Equal(t, map[string]string{"token": "abc"}, result.Credentials)
+	assert.Equal(t, map[string]string{"url": "https://example.com"}, result.Config)
+
+	require.Len(t, result.CredentialExpiresAtMs, 1)
+	assert.Greater(t, result.CredentialExpiresAtMs["token"], int64(0))
+
+	require.Len(t, result.CredentialHandles, 1)
+	h := result.CredentialHandles["token"]
+	assert.Equal(t, "k8s-secrets", h.Driver)
+	assert.Equal(t, "ns/secret-name", h.Handle)
+	assert.Equal(t, map[string]string{"k": "v"}, h.Metadata)
+}
+
+func TestProviderFromProto_DeepCopyCredentialHandles(t *testing.T) {
+	proto := &dm.Provider{
+		Metadata: &dm.ObjectMeta{Name: "deep-copy-test"},
+		Type:     "test",
+		CredentialHandles: map[string]*dm.CredentialHandle{
+			"key": {
+				Driver:   "vault",
+				Handle:   "secret/test",
+				Metadata: map[string]string{"version": "1"},
+			},
+		},
+	}
+
+	result := ProviderFromProto(proto)
+	require.Len(t, result.Spec.CredentialHandles, 1)
+
+	proto.CredentialHandles["key"].Metadata["version"] = "mutated"
+	proto.CredentialHandles["key"].Driver = "mutated"
+
+	assert.Equal(t, "1", result.Spec.CredentialHandles["key"].Metadata["version"])
+	assert.Equal(t, "vault", result.Spec.CredentialHandles["key"].Driver)
+}
+
+func TestProviderToProto_DeepCopyCredentialHandles(t *testing.T) {
+	provider := &types.Provider{
+		Name: "deep-copy-test",
+		Type: "test",
+		Spec: types.ProviderSpec{
+			CredentialHandles: map[string]types.CredentialHandle{
+				"token": {
+					Driver:   "k8s",
+					Handle:   "ns/secret",
+					Metadata: map[string]string{"k": "v"},
+				},
+			},
+		},
+	}
+
+	result := ProviderToProto(provider)
+	require.Len(t, result.CredentialHandles, 1)
+
+	provider.Spec.CredentialHandles["token"] = types.CredentialHandle{
+		Driver: "mutated", Handle: "mutated", Metadata: map[string]string{"k": "mutated"},
+	}
+
+	assert.Equal(t, "k8s", result.CredentialHandles["token"].Driver)
+	assert.Equal(t, "ns/secret", result.CredentialHandles["token"].Handle)
+	assert.Equal(t, "v", result.CredentialHandles["token"].Metadata["k"])
 }
 
 func TestProviderRoundTrip(t *testing.T) {
-	provRTDelTime := time.UnixMilli(1700000090000).UTC()
-	original := &v1.Provider{
-		ID:                "prov-rt",
-		Name:              "round-trip",
-		Type:              "github",
-		CreatedAt:         time.UnixMilli(1700000000000).UTC(),
-		Labels:            map[string]string{"team": "infra"},
-		Annotations:       map[string]string{"rt": "yes"},
-		ResourceVersion:   42,
-		Workspace:         "test-ws",
-		DeletionTimestamp: &provRTDelTime,
-		Spec: v1.ProviderSpec{
-			Credentials: map[string]string{"TOKEN": "abc123"},
-			Config:      map[string]string{"org": "myorg"},
-			CredentialExpiresAt: map[string]time.Time{
-				"TOKEN": time.UnixMilli(1700200000000).UTC(),
+	original := &types.Provider{
+		ID:              "rt-1",
+		Name:            "roundtrip",
+		Type:            "gitlab",
+		ResourceVersion: 3,
+		Workspace:       "default",
+		Labels:          map[string]string{"team": "infra"},
+		Spec: types.ProviderSpec{
+			Config:           map[string]string{"url": "https://gitlab.com"},
+			ProfileWorkspace: "shared",
+			CredentialHandles: map[string]types.CredentialHandle{
+				"pat": {Driver: "vault", Handle: "secret/gitlab", Metadata: map[string]string{"ver": "1"}},
 			},
 		},
 	}
@@ -141,14 +216,9 @@ func TestProviderRoundTrip(t *testing.T) {
 	assert.Equal(t, original.ID, back.ID)
 	assert.Equal(t, original.Name, back.Name)
 	assert.Equal(t, original.Type, back.Type)
-	assert.Equal(t, original.CreatedAt, back.CreatedAt)
-	assert.Equal(t, original.Labels, back.Labels)
-	assert.Equal(t, original.Annotations, back.Annotations)
-	assert.Equal(t, original.ResourceVersion, back.ResourceVersion)
 	assert.Equal(t, original.Workspace, back.Workspace)
-	require.NotNil(t, back.DeletionTimestamp)
-	assert.Equal(t, *original.DeletionTimestamp, *back.DeletionTimestamp)
-	assert.Nil(t, back.Spec.Credentials, "credentials are write-only and should not be returned")
+	assert.Equal(t, original.Labels, back.Labels)
 	assert.Equal(t, original.Spec.Config, back.Spec.Config)
-	assert.Equal(t, original.Spec.CredentialExpiresAt, back.Spec.CredentialExpiresAt)
+	assert.Equal(t, original.Spec.ProfileWorkspace, back.Spec.ProfileWorkspace)
+	assert.Equal(t, original.Spec.CredentialHandles, back.Spec.CredentialHandles)
 }

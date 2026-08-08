@@ -146,11 +146,8 @@ func (s *sandboxClient) WaitReady(ctx context.Context, workspace, name string, o
 		return nil, err
 	}
 
-	if sb.Status.Phase == SandboxReady {
-		return sb, nil
-	}
-	if sb.Status.Phase == SandboxError {
-		return nil, &StatusError{Code: ErrorInternal, Message: fmt.Sprintf("sandbox %q is in error state", name)}
+	if result, termErr := checkTerminalPhase(sb, name); result != nil || termErr != nil {
+		return result, termErr
 	}
 
 	ticker := time.NewTicker(interval)
@@ -159,19 +156,29 @@ func (s *sandboxClient) WaitReady(ctx context.Context, workspace, name string, o
 	for {
 		select {
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			return nil, contextError(ctx.Err())
 		case <-ticker.C:
 			sb, err = s.Get(ctx, workspace, name)
 			if err != nil {
 				return nil, err
 			}
-			if sb.Status.Phase == SandboxReady {
-				return sb, nil
-			}
-			if sb.Status.Phase == SandboxError {
-				return nil, &StatusError{Code: ErrorInternal, Message: fmt.Sprintf("sandbox %q is in error state", name)}
+			if result, termErr := checkTerminalPhase(sb, name); result != nil || termErr != nil {
+				return result, termErr
 			}
 		}
+	}
+}
+
+func checkTerminalPhase(sb *Sandbox, name string) (*Sandbox, error) {
+	switch sb.Status.Phase {
+	case SandboxReady:
+		return sb, nil
+	case SandboxError:
+		return nil, &StatusError{Code: ErrorInternal, Message: fmt.Sprintf("sandbox %q is in error state", name)}
+	case SandboxDeleting:
+		return nil, &StatusError{Code: ErrorInternal, Message: fmt.Sprintf("sandbox %q is being deleted", name)}
+	default:
+		return nil, nil
 	}
 }
 
@@ -212,12 +219,17 @@ func (s *sandboxClient) Watch(ctx context.Context, workspace, name string, opts 
 
 	go func() {
 		defer close(ch)
+		defer streamCancel()
 		ev := first
+		isFirst := true
 		for {
 			if sbPayload, ok := ev.Payload.(*pb.SandboxStreamEvent_Sandbox); ok && sbPayload.Sandbox != nil {
 				sandbox := converter.SandboxFromProto(sbPayload.Sandbox)
 				eventType := EventModified
-				if sandbox.Status.Phase == SandboxDeleting {
+				if isFirst {
+					eventType = EventAdded
+					isFirst = false
+				} else if sandbox.Status.Phase == SandboxDeleting {
 					eventType = EventDeleted
 				}
 				select {
@@ -233,14 +245,15 @@ func (s *sandboxClient) Watch(ctx context.Context, workspace, name string, opts 
 			var recvErr error
 			ev, recvErr = stream.Recv()
 			if recvErr != nil {
-				select {
-				case <-w.done:
-				default:
-					if recvErr != io.EOF {
-						select {
-						case ch <- Event[*Sandbox]{Type: EventError, Object: nil}:
-						default:
-						}
+				if recvErr != io.EOF {
+					select {
+					case <-w.done:
+						return
+					default:
+					}
+					select {
+					case ch <- Event[*Sandbox]{Type: EventError, Err: converter.FromGRPCError(recvErr)}:
+					case <-w.done:
 					}
 				}
 				return

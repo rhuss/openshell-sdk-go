@@ -296,7 +296,15 @@ func (c *fakeSandboxClient) WaitReady(ctx context.Context, workspace, name strin
 
 	select {
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		err := ctx.Err()
+		switch err {
+		case context.DeadlineExceeded:
+			return nil, &types.StatusError{Code: types.ErrorDeadlineExceeded, Message: err.Error(), Cause: err}
+		case context.Canceled:
+			return nil, &types.StatusError{Code: types.ErrorCancelled, Message: err.Error(), Cause: err}
+		default:
+			return nil, &types.StatusError{Code: types.ErrorInternal, Message: err.Error(), Cause: err}
+		}
 	default:
 	}
 
