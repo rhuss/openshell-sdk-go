@@ -105,7 +105,6 @@ func policyNetworkEndpointFromProto(ep *sbv1.NetworkEndpoint) types.PolicyNetwor
 			}
 		}
 	}
-	result.Mcp = mcpOptionsFromProto(ep.GetMcp())
 	if gql := ep.GetGraphqlPersistedQueries(); len(gql) > 0 {
 		result.GraphqlPersistedQueries = make(map[string]types.GraphqlOperation, len(gql))
 		for k, v := range gql {
@@ -114,6 +113,7 @@ func policyNetworkEndpointFromProto(ep *sbv1.NetworkEndpoint) types.PolicyNetwor
 			}
 		}
 	}
+	result.Mcp = mcpOptionsFromProto(ep.GetMcp())
 	return result
 }
 

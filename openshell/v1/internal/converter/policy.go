@@ -183,6 +183,8 @@ func middlewareConfigToProto(m *types.NetworkMiddlewareConfig) *sbv1.NetworkMidd
 		Order:      m.Order,
 	}
 	if m.Config != nil {
+		// Non-JSON-compatible values (e.g., chan, func) are silently dropped.
+		// Round-trip data from structpb.AsMap is always re-serializable.
 		s, err := structpb.NewStruct(m.Config)
 		if err == nil {
 			result.Config = s
