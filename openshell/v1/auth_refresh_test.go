@@ -121,22 +121,24 @@ func TestGetRequestMetadata_ConcurrentSingleFlight(t *testing.T) {
 	src := &mockTokenSource{
 		tokenFunc: func() (*oauth2.Token, error) {
 			fetchCount.Add(1)
-			time.Sleep(10 * time.Millisecond) // simulate slow token fetch
+			time.Sleep(100 * time.Millisecond)
 			return &oauth2.Token{AccessToken: "shared-token", Expiry: time.Now().Add(time.Hour)}, nil
 		},
 	}
 	provider, err := RefreshableToken(src)
 	require.NoError(t, err)
 
-	const goroutines = 1000
+	const goroutines = 20
 	var wg sync.WaitGroup
 	wg.Add(goroutines)
+	ready := make(chan struct{})
 	results := make([]string, goroutines)
 	errs := make([]error, goroutines)
 
 	for i := range goroutines {
 		go func(idx int) {
 			defer wg.Done()
+			<-ready
 			md, e := provider.GetRequestMetadata(context.Background())
 			errs[idx] = e
 			if md != nil {
@@ -144,6 +146,7 @@ func TestGetRequestMetadata_ConcurrentSingleFlight(t *testing.T) {
 			}
 		}(i)
 	}
+	close(ready)
 	wg.Wait()
 
 	for i := range goroutines {
