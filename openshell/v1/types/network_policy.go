@@ -35,6 +35,10 @@ type PolicyNetworkEndpoint struct {
 	WebsocketCredentialRewrite  bool
 	RequestBodyCredentialRewrite bool
 	AdvisorProposed             bool
+	CredentialSigning           string
+	SigningService              string
+	SigningRegion               string
+	JsonRpcMaxBodyBytes         uint32
 }
 
 // PolicyNetworkBinary identifies a binary subject to network policy enforcement.

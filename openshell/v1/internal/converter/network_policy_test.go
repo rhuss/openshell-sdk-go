@@ -34,6 +34,10 @@ func TestNetworkPolicyRuleFromProto(t *testing.T) {
 				WebsocketCredentialRewrite:  true,
 				RequestBodyCredentialRewrite: false,
 				AdvisorProposed:             true,
+				CredentialSigning:           "sigv4",
+				SigningService:              "bedrock",
+				SigningRegion:               "us-west-2",
+				JsonRpcMaxBodyBytes:         65536,
 				Rules: []*sbv1.L7Rule{
 					{
 						Allow: &sbv1.L7Allow{
@@ -97,6 +101,10 @@ func TestNetworkPolicyRuleFromProto(t *testing.T) {
 	assert.True(t, ep.WebsocketCredentialRewrite)
 	assert.False(t, ep.RequestBodyCredentialRewrite)
 	assert.True(t, ep.AdvisorProposed)
+	assert.Equal(t, "sigv4", ep.CredentialSigning)
+	assert.Equal(t, "bedrock", ep.SigningService)
+	assert.Equal(t, "us-west-2", ep.SigningRegion)
+	assert.Equal(t, uint32(65536), ep.JsonRpcMaxBodyBytes)
 
 	// L7 rules
 	require.Len(t, ep.Rules, 1)
@@ -160,6 +168,10 @@ func TestNetworkPolicyRuleRoundTrip(t *testing.T) {
 				WebsocketCredentialRewrite:  false,
 				RequestBodyCredentialRewrite: true,
 				AdvisorProposed:             false,
+				CredentialSigning:           "sigv4",
+				SigningService:              "bedrock",
+				SigningRegion:               "us-east-1",
+				JsonRpcMaxBodyBytes:         32768,
 				Rules: []v1.L7Rule{
 					{
 						Allow: &v1.L7Allow{
@@ -215,6 +227,10 @@ func TestNetworkPolicyRuleRoundTrip(t *testing.T) {
 	assert.Equal(t, original.Endpoints[0].AllowEncodedSlash, roundTrip.Endpoints[0].AllowEncodedSlash)
 	assert.Equal(t, original.Endpoints[0].GraphqlMaxBodyBytes, roundTrip.Endpoints[0].GraphqlMaxBodyBytes)
 	assert.Equal(t, original.Endpoints[0].AdvisorProposed, roundTrip.Endpoints[0].AdvisorProposed)
+	assert.Equal(t, original.Endpoints[0].CredentialSigning, roundTrip.Endpoints[0].CredentialSigning)
+	assert.Equal(t, original.Endpoints[0].SigningService, roundTrip.Endpoints[0].SigningService)
+	assert.Equal(t, original.Endpoints[0].SigningRegion, roundTrip.Endpoints[0].SigningRegion)
+	assert.Equal(t, original.Endpoints[0].JsonRpcMaxBodyBytes, roundTrip.Endpoints[0].JsonRpcMaxBodyBytes)
 
 	// L7 rules round-trip
 	require.Len(t, roundTrip.Endpoints[0].Rules, 1)
