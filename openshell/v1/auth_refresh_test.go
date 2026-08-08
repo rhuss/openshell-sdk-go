@@ -404,6 +404,35 @@ func TestGetRequestMetadata_BackoffCapsAt30s(t *testing.T) {
 	ra.mu.Unlock()
 }
 
+func TestGetRequestMetadata_ConcurrentFailureBackoffNotOverIncremented(t *testing.T) {
+	src := &mockTokenSource{
+		tokenFunc: func() (*oauth2.Token, error) {
+			time.Sleep(10 * time.Millisecond)
+			return nil, fmt.Errorf("idp down")
+		},
+	}
+	provider, err := RefreshableToken(src, WithLeeway(0))
+	require.NoError(t, err)
+
+	const goroutines = 50
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+	for range goroutines {
+		go func() {
+			defer wg.Done()
+			_, _ = provider.GetRequestMetadata(context.Background())
+		}()
+	}
+	wg.Wait()
+
+	ra := provider.(*refreshableAuth)
+	ra.mu.Lock()
+	assert.Equal(t, initialBackoff, ra.backoff,
+		"a single coalesced failure should set backoff to initialBackoff, not escalate")
+	ra.mu.Unlock()
+	assert.Equal(t, 1, src.calls(), "singleflight should coalesce to 1 call")
+}
+
 // --- benchmarks ---
 
 func BenchmarkGetRequestMetadata_CachedToken(b *testing.B) {

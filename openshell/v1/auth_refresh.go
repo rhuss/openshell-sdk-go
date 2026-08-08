@@ -104,17 +104,19 @@ func (r *refreshableAuth) GetRequestMetadata(_ context.Context, _ ...string) (ma
 	defer r.mu.Unlock()
 
 	if err != nil {
-		bo := r.backoff
-		if bo == 0 {
-			bo = initialBackoff
-		} else {
-			bo *= 2
-			if bo > maxBackoff {
-				bo = maxBackoff
+		if r.nextRetry.IsZero() || !time.Now().Before(r.nextRetry) {
+			bo := r.backoff
+			if bo == 0 {
+				bo = initialBackoff
+			} else {
+				bo *= 2
+				if bo > maxBackoff {
+					bo = maxBackoff
+				}
 			}
+			r.backoff = bo
+			r.nextRetry = time.Now().Add(bo)
 		}
-		r.backoff = bo
-		r.nextRetry = time.Now().Add(bo)
 
 		if r.tok != nil {
 			if r.logger != nil {
