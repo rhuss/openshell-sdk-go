@@ -85,6 +85,26 @@ func (t *tcpClient) Forward(ctx context.Context, workspace, sandboxName string, 
 	return conn, nil
 }
 
+func (t *tcpClient) RemoteListen(ctx context.Context, _, sandboxName string, remotePort uint32, localTarget string, _ ...RemoteListenOption) error {
+	_ = ctx
+	if sandboxName == "" {
+		return &StatusError{Code: ErrorInvalidArgument, Message: "sandbox name must not be empty"}
+	}
+	if remotePort == 0 || remotePort > 65535 {
+		return &StatusError{
+			Code:    ErrorInvalidArgument,
+			Message: fmt.Sprintf("port must be in range 1-65535, got %d", remotePort),
+		}
+	}
+	if _, _, err := net.SplitHostPort(localTarget); err != nil {
+		return &StatusError{
+			Code:    ErrorInvalidArgument,
+			Message: fmt.Sprintf("invalid localTarget %q: %v", localTarget, err),
+		}
+	}
+	return &StatusError{Code: ErrorUnimplemented, Message: "RemoteListen requires upstream proto extension (not yet available)"}
+}
+
 func (t *tcpClient) Listen(ctx context.Context, workspace, sandboxName string, remotePort uint32, localPort uint32, opts ...ListenOption) (net.Listener, error) {
 	if sandboxName == "" {
 		return nil, &StatusError{Code: ErrorInvalidArgument, Message: "sandbox name must not be empty"}

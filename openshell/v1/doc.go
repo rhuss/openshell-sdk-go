@@ -242,6 +242,26 @@
 //	    v1.WithForwardServiceID("billing-db"),
 //	)
 //
+// # Reverse Port Forwarding
+//
+// Expose a local service to a sandbox (ssh -R equivalent). RemoteListen
+// blocks until context cancellation or a permanent error. Each connection
+// made to the remote port inside the sandbox is tunneled back to the local
+// target:
+//
+//	err := client.TCP().RemoteListen(ctx, "default", "my-sandbox", 8080, "localhost:8080")
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//
+// Use options to customize the sandbox-side bind address or attach a
+// service identifier for audit logging:
+//
+//	err := client.TCP().RemoteListen(ctx, "default", "my-sandbox", 8080, "localhost:8080",
+//	    v1.WithRemoteBindAddress("0.0.0.0"),
+//	    v1.WithRemoteListenServiceID("mcp-proxy"),
+//	)
+//
 // # SSH Tunneling
 //
 // Create an SSH tunnel to a sandbox port in a single call. Tunnel combines
