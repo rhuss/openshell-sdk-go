@@ -7,6 +7,7 @@ import (
 	"github.com/rhuss/openshell-sdk-go/openshell/v1/types"
 	pb "github.com/rhuss/openshell-sdk-go/proto/openshellv1"
 	sbv1 "github.com/rhuss/openshell-sdk-go/proto/sandboxv1"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // --- PolicyLoadStatus enum mapping ---
@@ -117,6 +118,14 @@ func SandboxPolicyFromProto(p *sbv1.SandboxPolicy) *types.SandboxPolicy {
 			}
 		}
 	}
+	if mw := p.GetNetworkMiddlewares(); mw != nil {
+		result.NetworkMiddlewares = make(map[string]types.NetworkMiddlewareConfig, len(mw))
+		for k, v := range mw {
+			if v != nil {
+				result.NetworkMiddlewares[k] = middlewareConfigFromProto(v)
+			}
+		}
+	}
 	return result
 }
 
@@ -136,6 +145,53 @@ func SandboxPolicyToProto(p *types.SandboxPolicy) *sbv1.SandboxPolicy {
 		result.NetworkPolicies = make(map[string]*sbv1.NetworkPolicyRule, len(p.NetworkPolicies))
 		for k, v := range p.NetworkPolicies {
 			result.NetworkPolicies[k] = NetworkPolicyRuleToProto(&v)
+		}
+	}
+	if p.NetworkMiddlewares != nil {
+		result.NetworkMiddlewares = make(map[string]*sbv1.NetworkMiddlewareConfig, len(p.NetworkMiddlewares))
+		for k, v := range p.NetworkMiddlewares {
+			result.NetworkMiddlewares[k] = middlewareConfigToProto(&v)
+		}
+	}
+	return result
+}
+
+func middlewareConfigFromProto(m *sbv1.NetworkMiddlewareConfig) types.NetworkMiddlewareConfig {
+	result := types.NetworkMiddlewareConfig{
+		Name:       m.GetName(),
+		Middleware: m.GetMiddleware(),
+		OnError:    m.GetOnError(),
+		Order:      m.GetOrder(),
+	}
+	if c := m.GetConfig(); c != nil {
+		result.Config = c.AsMap()
+	}
+	if ep := m.GetEndpoints(); ep != nil {
+		result.Endpoints = &types.MiddlewareEndpointSelector{
+			Include: CopyStringSlice(ep.GetInclude()),
+			Exclude: CopyStringSlice(ep.GetExclude()),
+		}
+	}
+	return result
+}
+
+func middlewareConfigToProto(m *types.NetworkMiddlewareConfig) *sbv1.NetworkMiddlewareConfig {
+	result := &sbv1.NetworkMiddlewareConfig{
+		Name:       m.Name,
+		Middleware: m.Middleware,
+		OnError:    m.OnError,
+		Order:      m.Order,
+	}
+	if m.Config != nil {
+		s, err := structpb.NewStruct(m.Config)
+		if err == nil {
+			result.Config = s
+		}
+	}
+	if m.Endpoints != nil {
+		result.Endpoints = &sbv1.MiddlewareEndpointSelector{
+			Include: CopyStringSlice(m.Endpoints.Include),
+			Exclude: CopyStringSlice(m.Endpoints.Exclude),
 		}
 	}
 	return result

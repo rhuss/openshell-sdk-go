@@ -78,20 +78,37 @@ func TestConverterCoversAllProtoFields_SandboxCondition(t *testing.T) {
 
 func TestConverterCoversAllProtoFields_SandboxPolicy(t *testing.T) {
 	handled := fieldSet{
-		"version":          true,
-		"filesystem":       true,
-		"network_policies": true,
-		"process":          true,
-		"landlock":         true,
-	}
-
-	skipped := fieldSet{
-		// Middleware support is not yet exposed in the SDK domain model.
-		// Tracked in GitHub issue #36 for Drop D.
+		"version":             true,
+		"filesystem":          true,
+		"network_policies":    true,
+		"process":             true,
+		"landlock":            true,
 		"network_middlewares": true,
 	}
 
-	assertAllFieldsCovered(t, (&sandboxpb.SandboxPolicy{}).ProtoReflect().Descriptor(), handled, skipped)
+	assertAllFieldsCovered(t, (&sandboxpb.SandboxPolicy{}).ProtoReflect().Descriptor(), handled, nil)
+}
+
+func TestConverterCoversAllProtoFields_NetworkMiddlewareConfig(t *testing.T) {
+	handled := fieldSet{
+		"name":       true,
+		"middleware": true,
+		"config":     true,
+		"on_error":   true,
+		"endpoints":  true,
+		"order":      true,
+	}
+
+	assertAllFieldsCovered(t, (&sandboxpb.NetworkMiddlewareConfig{}).ProtoReflect().Descriptor(), handled, nil)
+}
+
+func TestConverterCoversAllProtoFields_MiddlewareEndpointSelector(t *testing.T) {
+	handled := fieldSet{
+		"include": true,
+		"exclude": true,
+	}
+
+	assertAllFieldsCovered(t, (&sandboxpb.MiddlewareEndpointSelector{}).ProtoReflect().Descriptor(), handled, nil)
 }
 
 func TestConverterCoversAllProtoFields_NetworkEndpoint(t *testing.T) {

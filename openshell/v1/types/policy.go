@@ -110,6 +110,27 @@ type SandboxPolicy struct {
 	// NetworkPolicies contains named network access rules.
 	// Nil means no network policies are specified; an empty map is distinct from nil.
 	NetworkPolicies map[string]NetworkPolicyRule
+	// NetworkMiddlewares contains named middleware pipeline configurations for
+	// network egress. Nil means no middleware is specified; an empty map is distinct from nil.
+	NetworkMiddlewares map[string]NetworkMiddlewareConfig
+}
+
+// NetworkMiddlewareConfig configures a supervisor middleware pipeline for
+// network egress. Middleware configs are referenced by name in the policy.
+type NetworkMiddlewareConfig struct {
+	Name       string
+	Middleware string
+	Config     map[string]any
+	OnError    string
+	Endpoints  *MiddlewareEndpointSelector
+	Order      int32
+}
+
+// MiddlewareEndpointSelector controls which admitted destinations use a
+// middleware config, using host glob patterns.
+type MiddlewareEndpointSelector struct {
+	Include []string
+	Exclude []string
 }
 
 // FilesystemPolicy controls which directories the sandbox can access
