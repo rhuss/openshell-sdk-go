@@ -318,6 +318,92 @@ func TestGetRequestMetadata_ZeroExpiryNeverRefreshes(t *testing.T) {
 	assert.Equal(t, 1, src.calls(), "zero-expiry token should never be refreshed")
 }
 
+// --- Backoff tests ---
+
+func TestGetRequestMetadata_BackoffSkipsRefreshDuringWindow(t *testing.T) {
+	var callNum atomic.Int32
+	src := &mockTokenSource{
+		tokenFunc: func() (*oauth2.Token, error) {
+			n := callNum.Add(1)
+			if n == 1 {
+				return &oauth2.Token{AccessToken: "stale", Expiry: time.Now().Add(-time.Minute)}, nil
+			}
+			return nil, fmt.Errorf("idp down")
+		},
+	}
+	provider, err := RefreshableToken(src, WithLeeway(0))
+	require.NoError(t, err)
+
+	_, _ = provider.GetRequestMetadata(context.Background())
+	_, _ = provider.GetRequestMetadata(context.Background())
+	beforeCount := src.calls()
+
+	md, err := provider.GetRequestMetadata(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, "Bearer stale", md["authorization"])
+	assert.Equal(t, beforeCount, src.calls(), "should not call Token() during backoff window")
+}
+
+func TestGetRequestMetadata_BackoffResetsOnSuccess(t *testing.T) {
+	var callNum atomic.Int32
+	src := &mockTokenSource{
+		tokenFunc: func() (*oauth2.Token, error) {
+			n := callNum.Add(1)
+			switch n {
+			case 1:
+				return &oauth2.Token{AccessToken: "initial", Expiry: time.Now().Add(-time.Second)}, nil
+			case 2:
+				return nil, fmt.Errorf("fail once")
+			default:
+				return &oauth2.Token{AccessToken: "recovered", Expiry: time.Now().Add(time.Hour)}, nil
+			}
+		},
+	}
+	provider, err := RefreshableToken(src, WithLeeway(0))
+	require.NoError(t, err)
+
+	_, _ = provider.GetRequestMetadata(context.Background())
+	_, _ = provider.GetRequestMetadata(context.Background())
+
+	ra := provider.(*refreshableAuth)
+	ra.mu.Lock()
+	ra.nextRetry = time.Time{}
+	ra.mu.Unlock()
+
+	md, err := provider.GetRequestMetadata(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, "Bearer recovered", md["authorization"])
+
+	ra.mu.Lock()
+	assert.Equal(t, time.Duration(0), ra.backoff, "backoff should reset after success")
+	assert.True(t, ra.nextRetry.IsZero(), "nextRetry should be zero after success")
+	ra.mu.Unlock()
+}
+
+func TestGetRequestMetadata_BackoffCapsAt30s(t *testing.T) {
+	src := &mockTokenSource{
+		tokenFunc: func() (*oauth2.Token, error) {
+			return nil, fmt.Errorf("always fail")
+		},
+	}
+	provider, err := RefreshableToken(src, WithLeeway(0))
+	require.NoError(t, err)
+
+	ra := provider.(*refreshableAuth)
+
+	for range 10 {
+		ra.mu.Lock()
+		ra.nextRetry = time.Time{}
+		ra.mu.Unlock()
+
+		_, _ = provider.GetRequestMetadata(context.Background())
+	}
+
+	ra.mu.Lock()
+	assert.Equal(t, maxBackoff, ra.backoff, "backoff should cap at maxBackoff")
+	ra.mu.Unlock()
+}
+
 // --- benchmarks ---
 
 func BenchmarkGetRequestMetadata_CachedToken(b *testing.B) {
