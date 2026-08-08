@@ -105,6 +105,7 @@ func policyNetworkEndpointFromProto(ep *sbv1.NetworkEndpoint) types.PolicyNetwor
 			}
 		}
 	}
+	result.Mcp = mcpOptionsFromProto(ep.GetMcp())
 	if gql := ep.GetGraphqlPersistedQueries(); len(gql) > 0 {
 		result.GraphqlPersistedQueries = make(map[string]types.GraphqlOperation, len(gql))
 		for k, v := range gql {
@@ -161,7 +162,30 @@ func policyNetworkEndpointToProto(ep *types.PolicyNetworkEndpoint) *sbv1.Network
 			result.GraphqlPersistedQueries[k] = graphqlOperationToProto(&v)
 		}
 	}
+	result.Mcp = mcpOptionsToProto(ep.Mcp)
 	return result
+}
+
+// --- McpOptions ---
+
+func mcpOptionsFromProto(m *sbv1.McpOptions) *types.McpOptions {
+	if m == nil {
+		return nil
+	}
+	return &types.McpOptions{
+		StrictToolNames:         CopyBoolPtr(m.StrictToolNames),
+		AllowAllKnownMcpMethods: CopyBoolPtr(m.AllowAllKnownMcpMethods),
+	}
+}
+
+func mcpOptionsToProto(m *types.McpOptions) *sbv1.McpOptions {
+	if m == nil {
+		return nil
+	}
+	return &sbv1.McpOptions{
+		StrictToolNames:         CopyBoolPtr(m.StrictToolNames),
+		AllowAllKnownMcpMethods: CopyBoolPtr(m.AllowAllKnownMcpMethods),
+	}
 }
 
 // --- L7Rule ---
@@ -179,6 +203,9 @@ func l7RuleFromProto(r *sbv1.L7Rule) types.L7Rule {
 		}
 		if q := a.GetQuery(); len(q) > 0 {
 			result.Allow.Query = l7QueryMapFromProto(q)
+		}
+		if p := a.GetParams(); len(p) > 0 {
+			result.Allow.Params = l7QueryMapFromProto(p)
 		}
 	}
 	return result
@@ -198,6 +225,9 @@ func l7RuleToProto(r *types.L7Rule) *sbv1.L7Rule {
 		if len(r.Allow.Query) > 0 {
 			result.Allow.Query = l7QueryMapToProto(r.Allow.Query)
 		}
+		if len(r.Allow.Params) > 0 {
+			result.Allow.Params = l7QueryMapToProto(r.Allow.Params)
+		}
 	}
 	return result
 }
@@ -213,6 +243,7 @@ func l7DenyRuleFromProto(r *sbv1.L7DenyRule) types.L7DenyRule {
 		OperationName: r.GetOperationName(),
 		Fields:        CopyStringSlice(r.GetFields()),
 		Query:         l7QueryMapFromProtoDeny(r.GetQuery()),
+		Params:        l7QueryMapFromProtoDeny(r.GetParams()),
 	}
 }
 
@@ -227,6 +258,9 @@ func l7DenyRuleToProto(r *types.L7DenyRule) *sbv1.L7DenyRule {
 	}
 	if len(r.Query) > 0 {
 		result.Query = l7QueryMapToProtoDeny(r.Query)
+	}
+	if len(r.Params) > 0 {
+		result.Params = l7QueryMapToProtoDeny(r.Params)
 	}
 	return result
 }

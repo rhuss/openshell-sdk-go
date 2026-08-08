@@ -38,6 +38,10 @@ func TestNetworkPolicyRuleFromProto(t *testing.T) {
 				SigningService:              "bedrock",
 				SigningRegion:               "us-west-2",
 				JsonRpcMaxBodyBytes:         65536,
+				Mcp: &sbv1.McpOptions{
+					StrictToolNames:         boolPtr(true),
+					AllowAllKnownMcpMethods: boolPtr(false),
+				},
 				Rules: []*sbv1.L7Rule{
 					{
 						Allow: &sbv1.L7Allow{
@@ -50,6 +54,9 @@ func TestNetworkPolicyRuleFromProto(t *testing.T) {
 							OperationType: "query",
 							OperationName: "GetUsers",
 							Fields:        []string{"id", "name"},
+							Params: map[string]*sbv1.L7QueryMatcher{
+								"name": {Glob: "my-tool-*"},
+							},
 						},
 					},
 				},
@@ -63,6 +70,9 @@ func TestNetworkPolicyRuleFromProto(t *testing.T) {
 						Fields:        []string{"*"},
 						Query: map[string]*sbv1.L7QueryMatcher{
 							"force": {Glob: "true"},
+						},
+						Params: map[string]*sbv1.L7QueryMatcher{
+							"tool": {Glob: "deny-*"},
 						},
 					},
 				},
@@ -106,6 +116,13 @@ func TestNetworkPolicyRuleFromProto(t *testing.T) {
 	assert.Equal(t, "us-west-2", ep.SigningRegion)
 	assert.Equal(t, uint32(65536), ep.JsonRpcMaxBodyBytes)
 
+	// MCP options
+	require.NotNil(t, ep.Mcp)
+	require.NotNil(t, ep.Mcp.StrictToolNames)
+	assert.True(t, *ep.Mcp.StrictToolNames)
+	require.NotNil(t, ep.Mcp.AllowAllKnownMcpMethods)
+	assert.False(t, *ep.Mcp.AllowAllKnownMcpMethods)
+
 	// L7 rules
 	require.Len(t, ep.Rules, 1)
 	allow := ep.Rules[0].Allow
@@ -119,6 +136,8 @@ func TestNetworkPolicyRuleFromProto(t *testing.T) {
 	require.Contains(t, allow.Query, "page")
 	assert.Equal(t, "[0-9]*", allow.Query["page"].Glob)
 	assert.Equal(t, []string{"1", "2"}, allow.Query["page"].Any)
+	require.Contains(t, allow.Params, "name")
+	assert.Equal(t, "my-tool-*", allow.Params["name"].Glob)
 
 	// Deny rules
 	require.Len(t, ep.DenyRules, 1)
@@ -131,6 +150,8 @@ func TestNetworkPolicyRuleFromProto(t *testing.T) {
 	assert.Equal(t, []string{"*"}, deny.Fields)
 	require.Contains(t, deny.Query, "force")
 	assert.Equal(t, "true", deny.Query["force"].Glob)
+	require.Contains(t, deny.Params, "tool")
+	assert.Equal(t, "deny-*", deny.Params["tool"].Glob)
 
 	// GraphQL persisted queries
 	require.Contains(t, ep.GraphqlPersistedQueries, "abc123")
@@ -172,6 +193,10 @@ func TestNetworkPolicyRuleRoundTrip(t *testing.T) {
 				SigningService:              "bedrock",
 				SigningRegion:               "us-east-1",
 				JsonRpcMaxBodyBytes:         32768,
+				Mcp: &v1.McpOptions{
+					StrictToolNames:         boolPtr(true),
+					AllowAllKnownMcpMethods: boolPtr(false),
+				},
 				Rules: []v1.L7Rule{
 					{
 						Allow: &v1.L7Allow{
@@ -183,6 +208,9 @@ func TestNetworkPolicyRuleRoundTrip(t *testing.T) {
 							Query: map[string]v1.L7QueryMatcher{
 								"limit": {Glob: "[0-9]+"},
 							},
+							Params: map[string]v1.L7QueryMatcher{
+								"tool": {Glob: "allowed-*"},
+							},
 						},
 					},
 				},
@@ -192,6 +220,9 @@ func TestNetworkPolicyRuleRoundTrip(t *testing.T) {
 						Path:          "/graphql",
 						OperationType: "mutation",
 						OperationName: "DropDB",
+						Params: map[string]v1.L7QueryMatcher{
+							"tool": {Glob: "denied-*"},
+						},
 					},
 				},
 				GraphqlPersistedQueries: map[string]v1.GraphqlOperation{
@@ -232,15 +263,22 @@ func TestNetworkPolicyRuleRoundTrip(t *testing.T) {
 	assert.Equal(t, original.Endpoints[0].SigningRegion, roundTrip.Endpoints[0].SigningRegion)
 	assert.Equal(t, original.Endpoints[0].JsonRpcMaxBodyBytes, roundTrip.Endpoints[0].JsonRpcMaxBodyBytes)
 
+	// MCP round-trip
+	require.NotNil(t, roundTrip.Endpoints[0].Mcp)
+	assert.Equal(t, original.Endpoints[0].Mcp.StrictToolNames, roundTrip.Endpoints[0].Mcp.StrictToolNames)
+	assert.Equal(t, original.Endpoints[0].Mcp.AllowAllKnownMcpMethods, roundTrip.Endpoints[0].Mcp.AllowAllKnownMcpMethods)
+
 	// L7 rules round-trip
 	require.Len(t, roundTrip.Endpoints[0].Rules, 1)
 	assert.Equal(t, original.Endpoints[0].Rules[0].Allow.Method, roundTrip.Endpoints[0].Rules[0].Allow.Method)
 	assert.Equal(t, original.Endpoints[0].Rules[0].Allow.OperationName, roundTrip.Endpoints[0].Rules[0].Allow.OperationName)
 	assert.Equal(t, original.Endpoints[0].Rules[0].Allow.Query["limit"].Glob, roundTrip.Endpoints[0].Rules[0].Allow.Query["limit"].Glob)
+	assert.Equal(t, original.Endpoints[0].Rules[0].Allow.Params["tool"].Glob, roundTrip.Endpoints[0].Rules[0].Allow.Params["tool"].Glob)
 
 	// Deny rules round-trip
 	require.Len(t, roundTrip.Endpoints[0].DenyRules, 1)
 	assert.Equal(t, original.Endpoints[0].DenyRules[0].OperationName, roundTrip.Endpoints[0].DenyRules[0].OperationName)
+	assert.Equal(t, original.Endpoints[0].DenyRules[0].Params["tool"].Glob, roundTrip.Endpoints[0].DenyRules[0].Params["tool"].Glob)
 
 	// GraphQL persisted queries round-trip
 	require.Contains(t, roundTrip.Endpoints[0].GraphqlPersistedQueries, "hash1")
@@ -279,6 +317,22 @@ func TestNetworkPolicyRuleDeepCopy(t *testing.T) {
 	assert.Equal(t, "1.2.3.4", rule.Endpoints[0].AllowedIPs[0])
 	assert.Equal(t, uint32(80), rule.Endpoints[0].Ports[0])
 	assert.Equal(t, "f1", rule.Endpoints[0].Rules[0].Allow.Fields[0])
+
+	// MCP deep copy
+	mcpProto := &sbv1.NetworkPolicyRule{
+		Name: "mcp-test",
+		Endpoints: []*sbv1.NetworkEndpoint{
+			{
+				Mcp: &sbv1.McpOptions{
+					StrictToolNames: boolPtr(true),
+				},
+			},
+		},
+	}
+	mcpRule := NetworkPolicyRuleFromProto(mcpProto)
+	*mcpProto.Endpoints[0].Mcp.StrictToolNames = false
+	require.NotNil(t, mcpRule.Endpoints[0].Mcp.StrictToolNames)
+	assert.True(t, *mcpRule.Endpoints[0].Mcp.StrictToolNames)
 }
 
 func TestL7RuleFromProto_NilAllow(t *testing.T) {
@@ -286,3 +340,5 @@ func TestL7RuleFromProto_NilAllow(t *testing.T) {
 	result := l7RuleFromProto(proto)
 	assert.Nil(t, result.Allow)
 }
+
+func boolPtr(v bool) *bool { return &v }
