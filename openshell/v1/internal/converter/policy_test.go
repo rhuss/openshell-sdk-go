@@ -11,6 +11,7 @@ import (
 	sbv1 "github.com/rhuss/openshell-sdk-go/proto/sandboxv1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // --- PolicyLoadStatus ---
@@ -605,4 +606,99 @@ func TestDraftHistoryEntryFromProto(t *testing.T) {
 
 func TestDraftHistoryEntryFromProto_Nil(t *testing.T) {
 	assert.Nil(t, DraftHistoryEntryFromProto(nil))
+}
+
+// --- NetworkMiddleware ---
+
+func TestSandboxPolicyFromProto_WithMiddleware(t *testing.T) {
+	proto := &sbv1.SandboxPolicy{
+		Version: 3,
+		NetworkMiddlewares: map[string]*sbv1.NetworkMiddlewareConfig{
+			"sigv4-rewriter": {
+				Name:       "sigv4-rewriter",
+				Middleware: "aws-sigv4",
+				OnError:    "fail_closed",
+				Order:      10,
+				Config: func() *structpb.Struct {
+					s, _ := structpb.NewStruct(map[string]any{
+						"region":  "us-east-1",
+						"service": "bedrock",
+					})
+					return s
+				}(),
+				Endpoints: &sbv1.MiddlewareEndpointSelector{
+					Include: []string{"*.bedrock.amazonaws.com"},
+					Exclude: []string{"sts.amazonaws.com"},
+				},
+			},
+		},
+	}
+
+	policy := SandboxPolicyFromProto(proto)
+
+	require.NotNil(t, policy)
+	require.Contains(t, policy.NetworkMiddlewares, "sigv4-rewriter")
+	mw := policy.NetworkMiddlewares["sigv4-rewriter"]
+	assert.Equal(t, "sigv4-rewriter", mw.Name)
+	assert.Equal(t, "aws-sigv4", mw.Middleware)
+	assert.Equal(t, "fail_closed", mw.OnError)
+	assert.Equal(t, int32(10), mw.Order)
+	require.NotNil(t, mw.Config)
+	assert.Equal(t, "us-east-1", mw.Config["region"])
+	assert.Equal(t, "bedrock", mw.Config["service"])
+	require.NotNil(t, mw.Endpoints)
+	assert.Equal(t, []string{"*.bedrock.amazonaws.com"}, mw.Endpoints.Include)
+	assert.Equal(t, []string{"sts.amazonaws.com"}, mw.Endpoints.Exclude)
+}
+
+func TestSandboxPolicyMiddlewareRoundTrip(t *testing.T) {
+	original := &v1.SandboxPolicy{
+		Version: 5,
+		NetworkMiddlewares: map[string]v1.NetworkMiddlewareConfig{
+			"rate-limiter": {
+				Name:       "rate-limiter",
+				Middleware: "envoy-ratelimit",
+				OnError:    "fail_open",
+				Order:      20,
+				Config: map[string]any{
+					"requests_per_second": float64(100),
+				},
+				Endpoints: &v1.MiddlewareEndpointSelector{
+					Include: []string{"api.*"},
+				},
+			},
+		},
+	}
+
+	proto := SandboxPolicyToProto(original)
+	require.NotNil(t, proto)
+
+	roundTrip := SandboxPolicyFromProto(proto)
+	require.NotNil(t, roundTrip)
+
+	require.Contains(t, roundTrip.NetworkMiddlewares, "rate-limiter")
+	mw := roundTrip.NetworkMiddlewares["rate-limiter"]
+	assert.Equal(t, original.NetworkMiddlewares["rate-limiter"].Name, mw.Name)
+	assert.Equal(t, original.NetworkMiddlewares["rate-limiter"].Middleware, mw.Middleware)
+	assert.Equal(t, original.NetworkMiddlewares["rate-limiter"].OnError, mw.OnError)
+	assert.Equal(t, original.NetworkMiddlewares["rate-limiter"].Order, mw.Order)
+	assert.Equal(t, original.NetworkMiddlewares["rate-limiter"].Config["requests_per_second"], mw.Config["requests_per_second"])
+	assert.Equal(t, original.NetworkMiddlewares["rate-limiter"].Endpoints.Include, mw.Endpoints.Include)
+}
+
+func TestSandboxPolicyMiddlewareDeepCopy(t *testing.T) {
+	proto := &sbv1.SandboxPolicy{
+		NetworkMiddlewares: map[string]*sbv1.NetworkMiddlewareConfig{
+			"test": {
+				Endpoints: &sbv1.MiddlewareEndpointSelector{
+					Include: []string{"original.com"},
+				},
+			},
+		},
+	}
+
+	policy := SandboxPolicyFromProto(proto)
+	proto.NetworkMiddlewares["test"].Endpoints.Include[0] = "mutated.com"
+
+	assert.Equal(t, "original.com", policy.NetworkMiddlewares["test"].Endpoints.Include[0])
 }
