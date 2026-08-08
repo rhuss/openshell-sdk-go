@@ -225,9 +225,8 @@ func TestSandbox_WaitReady_ContextDeadlineExceeded(t *testing.T) {
 	_, err := sc.Create(context.Background(), "default", "test-sb", &types.SandboxSpec{}, nil)
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Nanosecond)
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
 	defer cancel()
-	time.Sleep(time.Millisecond)
 
 	_, err = sc.WaitReady(ctx, "default", "test-sb")
 	require.Error(t, err)
