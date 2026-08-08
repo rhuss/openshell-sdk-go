@@ -146,14 +146,8 @@ func (s *sandboxClient) WaitReady(ctx context.Context, workspace, name string, o
 		return nil, err
 	}
 
-	if sb.Status.Phase == SandboxReady {
-		return sb, nil
-	}
-	if sb.Status.Phase == SandboxError {
-		return nil, &StatusError{Code: ErrorInternal, Message: fmt.Sprintf("sandbox %q is in error state", name)}
-	}
-	if sb.Status.Phase == SandboxDeleting {
-		return nil, &StatusError{Code: ErrorInternal, Message: fmt.Sprintf("sandbox %q is being deleted", name)}
+	if result, termErr := checkTerminalPhase(sb, name); result != nil || termErr != nil {
+		return result, termErr
 	}
 
 	ticker := time.NewTicker(interval)
@@ -168,16 +162,23 @@ func (s *sandboxClient) WaitReady(ctx context.Context, workspace, name string, o
 			if err != nil {
 				return nil, err
 			}
-			if sb.Status.Phase == SandboxReady {
-				return sb, nil
-			}
-			if sb.Status.Phase == SandboxError {
-				return nil, &StatusError{Code: ErrorInternal, Message: fmt.Sprintf("sandbox %q is in error state", name)}
-			}
-			if sb.Status.Phase == SandboxDeleting {
-				return nil, &StatusError{Code: ErrorInternal, Message: fmt.Sprintf("sandbox %q is being deleted", name)}
+			if result, termErr := checkTerminalPhase(sb, name); result != nil || termErr != nil {
+				return result, termErr
 			}
 		}
+	}
+}
+
+func checkTerminalPhase(sb *Sandbox, name string) (*Sandbox, error) {
+	switch sb.Status.Phase {
+	case SandboxReady:
+		return sb, nil
+	case SandboxError:
+		return nil, &StatusError{Code: ErrorInternal, Message: fmt.Sprintf("sandbox %q is in error state", name)}
+	case SandboxDeleting:
+		return nil, &StatusError{Code: ErrorInternal, Message: fmt.Sprintf("sandbox %q is being deleted", name)}
+	default:
+		return nil, nil
 	}
 }
 
@@ -236,7 +237,6 @@ func (s *sandboxClient) Watch(ctx context.Context, workspace, name string, opts 
 				case <-w.done:
 					return
 				}
-				// StopOnTerminal: close watcher after delivering a terminal phase event
 				if watchOpts.StopOnTerminal && (sandbox.Status.Phase == SandboxReady || sandbox.Status.Phase == SandboxError) {
 					w.Stop()
 					return
@@ -246,6 +246,11 @@ func (s *sandboxClient) Watch(ctx context.Context, workspace, name string, opts 
 			ev, recvErr = stream.Recv()
 			if recvErr != nil {
 				if recvErr != io.EOF {
+					select {
+					case <-w.done:
+						return
+					default:
+					}
 					select {
 					case ch <- Event[*Sandbox]{Type: EventError, Err: converter.FromGRPCError(recvErr)}:
 					case <-w.done:

@@ -66,6 +66,26 @@ func TestNewConnectionHTTPWithInsecureAuth(t *testing.T) {
 	defer func() { _ = conn.Close() }()
 }
 
+func TestNewConnectionHTTPWithTLSParamsRejects(t *testing.T) {
+	_, err := NewConnection("http://127.0.0.1:1", &TLSParams{CAFile: "/some/ca.pem"}, nil)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "TLS parameters")
+}
+
+func TestNewConnectionHTTPWithEmptyTLSParamsAllowed(t *testing.T) {
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	defer func() { _ = lis.Close() }()
+
+	srv := grpc.NewServer()
+	go func() { _ = srv.Serve(lis) }()
+	defer srv.Stop()
+
+	conn, err := NewConnection("http://"+lis.Addr().String(), &TLSParams{}, nil)
+	require.NoError(t, err)
+	defer func() { _ = conn.Close() }()
+}
+
 type testTokenAuth struct {
 	token           string
 	requireSecurity bool
