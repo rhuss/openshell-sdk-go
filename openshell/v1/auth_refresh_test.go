@@ -337,9 +337,17 @@ func TestGetRequestMetadata_BackoffSkipsRefreshDuringWindow(t *testing.T) {
 	provider, err := RefreshableToken(src, WithLeeway(0))
 	require.NoError(t, err)
 
-	_, _ = provider.GetRequestMetadata(context.Background())
-	_, _ = provider.GetRequestMetadata(context.Background())
+	_, err = provider.GetRequestMetadata(context.Background())
+	require.NoError(t, err)
+	_, err = provider.GetRequestMetadata(context.Background())
+	require.NoError(t, err)
 	beforeCount := src.calls()
+	require.Equal(t, 2, beforeCount)
+
+	ra := provider.(*refreshableAuth)
+	ra.mu.Lock()
+	ra.nextRetry = time.Now().Add(time.Minute)
+	ra.mu.Unlock()
 
 	md, err := provider.GetRequestMetadata(context.Background())
 	require.NoError(t, err)

@@ -127,7 +127,11 @@ func (r *refreshableAuth) GetRequestMetadata(_ context.Context, _ ...string) (ma
 		return nil, err
 	}
 
-	r.tok = val.(*oauth2.Token)
+	tok, ok := val.(*oauth2.Token)
+	if !ok || tok == nil {
+		return nil, errors.New("openshell: token source returned nil token without error")
+	}
+	r.tok = tok
 	r.backoff = 0
 	r.nextRetry = time.Time{}
 	return map[string]string{"authorization": "Bearer " + r.tok.AccessToken}, nil
