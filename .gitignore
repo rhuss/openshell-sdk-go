@@ -40,3 +40,4 @@ Thumbs.db
 !**/.specify/memory/constitution.md
 docs/book/
 .playwright-mcp/
+.mcp.json

@@ -37,6 +37,14 @@ func TestFakeTCP_Forward_WithForwardOption(t *testing.T) {
 	assert.True(t, types.IsUnimplemented(err))
 }
 
+func TestFakeTCP_Forward_EmptySandboxName(t *testing.T) {
+	c := newFakeTCPClient(func() bool { return false })
+	_, err := c.Forward(context.Background(), "default", "", 8080)
+	require.Error(t, err)
+	assert.True(t, types.IsInvalidArgument(err))
+	assert.Contains(t, err.Error(), "sandbox name")
+}
+
 func TestFakeTCP_Forward_InvalidPort(t *testing.T) {
 	c := newFakeTCPClient(func() bool { return false })
 	_, err := c.Forward(context.Background(), "default", "sandbox-1", 0)
@@ -99,6 +107,128 @@ func TestFakeTCP_Listen_WithOptions(t *testing.T) {
 		v1.WithListenServiceID("svc-1"),
 	)
 	assert.Nil(t, ln)
+	require.Error(t, err)
+	assert.True(t, types.IsUnimplemented(err))
+}
+
+// --- RemoteListen tests ---
+
+func TestFakeTCP_RemoteListen_ReturnsUnimplemented(t *testing.T) {
+	c := newFakeTCPClient(func() bool { return false })
+	err := c.RemoteListen(context.Background(), "default", "my-sandbox", 8080, "localhost:8080")
+	require.Error(t, err)
+	assert.True(t, types.IsUnimplemented(err))
+}
+
+func TestFakeTCP_RemoteListen_ValidationParity(t *testing.T) {
+	tests := []struct {
+		name        string
+		closed      bool
+		sandboxName string
+		port        uint32
+		localTarget string
+		checkErr    func(error) bool
+		errName     string
+	}{
+		{
+			name:        "closed client",
+			closed:      true,
+			sandboxName: "my-sandbox",
+			port:        8080,
+			localTarget: "localhost:8080",
+			checkErr:    types.IsUnavailable,
+			errName:     "Unavailable",
+		},
+		{
+			name:        "empty sandbox name",
+			sandboxName: "",
+			port:        8080,
+			localTarget: "localhost:8080",
+			checkErr:    types.IsInvalidArgument,
+			errName:     "InvalidArgument",
+		},
+		{
+			name:        "port zero",
+			sandboxName: "my-sandbox",
+			port:        0,
+			localTarget: "localhost:8080",
+			checkErr:    types.IsInvalidArgument,
+			errName:     "InvalidArgument",
+		},
+		{
+			name:        "port too high",
+			sandboxName: "my-sandbox",
+			port:        65536,
+			localTarget: "localhost:8080",
+			checkErr:    types.IsInvalidArgument,
+			errName:     "InvalidArgument",
+		},
+		{
+			name:        "malformed target missing port",
+			sandboxName: "my-sandbox",
+			port:        8080,
+			localTarget: "localhost",
+			checkErr:    types.IsInvalidArgument,
+			errName:     "InvalidArgument",
+		},
+		{
+			name:        "malformed target empty",
+			sandboxName: "my-sandbox",
+			port:        8080,
+			localTarget: "",
+			checkErr:    types.IsInvalidArgument,
+			errName:     "InvalidArgument",
+		},
+		{
+			name:        "malformed target bare IPv6",
+			sandboxName: "my-sandbox",
+			port:        8080,
+			localTarget: "::1",
+			checkErr:    types.IsInvalidArgument,
+			errName:     "InvalidArgument",
+		},
+		{
+			name:        "boundary port 1",
+			sandboxName: "my-sandbox",
+			port:        1,
+			localTarget: "localhost:8080",
+			checkErr:    types.IsUnimplemented,
+			errName:     "Unimplemented",
+		},
+		{
+			name:        "boundary port 65535",
+			sandboxName: "my-sandbox",
+			port:        65535,
+			localTarget: "localhost:8080",
+			checkErr:    types.IsUnimplemented,
+			errName:     "Unimplemented",
+		},
+		{
+			name:        "ipv6 target",
+			sandboxName: "my-sandbox",
+			port:        8080,
+			localTarget: "[::1]:8080",
+			checkErr:    types.IsUnimplemented,
+			errName:     "Unimplemented",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := newFakeTCPClient(func() bool { return tt.closed })
+			err := c.RemoteListen(context.Background(), "default", tt.sandboxName, tt.port, tt.localTarget)
+			require.Error(t, err)
+			assert.True(t, tt.checkErr(err), "expected %s, got: %v", tt.errName, err)
+		})
+	}
+}
+
+func TestFakeTCP_RemoteListen_WithOptions(t *testing.T) {
+	c := newFakeTCPClient(func() bool { return false })
+	err := c.RemoteListen(context.Background(), "default", "my-sandbox", 8080, "localhost:8080",
+		v1.WithRemoteBindAddress("0.0.0.0"),
+		v1.WithRemoteListenServiceID("mcp-proxy"),
+	)
 	require.Error(t, err)
 	assert.True(t, types.IsUnimplemented(err))
 }
