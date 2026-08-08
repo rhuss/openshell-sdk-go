@@ -114,7 +114,7 @@ func TestNetworkPolicyRuleFromProto(t *testing.T) {
 	assert.Equal(t, "sigv4", ep.CredentialSigning)
 	assert.Equal(t, "bedrock", ep.SigningService)
 	assert.Equal(t, "us-west-2", ep.SigningRegion)
-	assert.Equal(t, uint32(65536), ep.JsonRpcMaxBodyBytes)
+	assert.Equal(t, uint32(65536), ep.JSONRPCMaxBodyBytes)
 
 	// MCP options
 	require.NotNil(t, ep.Mcp)
@@ -192,7 +192,7 @@ func TestNetworkPolicyRuleRoundTrip(t *testing.T) {
 				CredentialSigning:           "sigv4",
 				SigningService:              "bedrock",
 				SigningRegion:               "us-east-1",
-				JsonRpcMaxBodyBytes:         32768,
+				JSONRPCMaxBodyBytes:         32768,
 				Mcp: &v1.McpOptions{
 					StrictToolNames:         boolPtr(true),
 					AllowAllKnownMcpMethods: boolPtr(false),
@@ -261,7 +261,7 @@ func TestNetworkPolicyRuleRoundTrip(t *testing.T) {
 	assert.Equal(t, original.Endpoints[0].CredentialSigning, roundTrip.Endpoints[0].CredentialSigning)
 	assert.Equal(t, original.Endpoints[0].SigningService, roundTrip.Endpoints[0].SigningService)
 	assert.Equal(t, original.Endpoints[0].SigningRegion, roundTrip.Endpoints[0].SigningRegion)
-	assert.Equal(t, original.Endpoints[0].JsonRpcMaxBodyBytes, roundTrip.Endpoints[0].JsonRpcMaxBodyBytes)
+	assert.Equal(t, original.Endpoints[0].JSONRPCMaxBodyBytes, roundTrip.Endpoints[0].JSONRPCMaxBodyBytes)
 
 	// MCP round-trip
 	require.NotNil(t, roundTrip.Endpoints[0].Mcp)

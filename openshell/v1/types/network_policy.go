@@ -38,7 +38,7 @@ type PolicyNetworkEndpoint struct {
 	CredentialSigning           string
 	SigningService              string
 	SigningRegion               string
-	JsonRpcMaxBodyBytes         uint32
+	JSONRPCMaxBodyBytes         uint32
 	Mcp                         *McpOptions
 }
 

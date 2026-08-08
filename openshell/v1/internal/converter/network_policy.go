@@ -80,7 +80,7 @@ func policyNetworkEndpointFromProto(ep *sbv1.NetworkEndpoint) types.PolicyNetwor
 		CredentialSigning:           ep.GetCredentialSigning(),
 		SigningService:              ep.GetSigningService(),
 		SigningRegion:               ep.GetSigningRegion(),
-		JsonRpcMaxBodyBytes:         ep.GetJsonRpcMaxBodyBytes(),
+		JSONRPCMaxBodyBytes:         ep.GetJsonRpcMaxBodyBytes(),
 	}
 	if ports := ep.GetPorts(); len(ports) > 0 {
 		result.Ports = make([]uint32, len(ports))
@@ -135,7 +135,7 @@ func policyNetworkEndpointToProto(ep *types.PolicyNetworkEndpoint) *sbv1.Network
 		CredentialSigning:           ep.CredentialSigning,
 		SigningService:              ep.SigningService,
 		SigningRegion:               ep.SigningRegion,
-		JsonRpcMaxBodyBytes:         ep.JsonRpcMaxBodyBytes,
+		JsonRpcMaxBodyBytes:         ep.JSONRPCMaxBodyBytes,
 	}
 	if len(ep.Ports) > 0 {
 		result.Ports = make([]uint32, len(ep.Ports))
