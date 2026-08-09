@@ -127,6 +127,33 @@ func TestSandboxFromProto(t *testing.T) {
 	assert.Equal(t, "2024-01-01T00:00:00Z", s.Status.Conditions[0].LastTransitionTime)
 }
 
+func TestSandboxFromProto_TemplateResourcesDeepCopy(t *testing.T) {
+	proto := &pb.Sandbox{
+		Spec: &pb.SandboxSpec{
+			Template: &pb.SandboxTemplate{
+				Image: "img:v1",
+				Resources: func() *structpb.Struct {
+					s, _ := structpb.NewStruct(map[string]any{"cpu": "2"})
+					return s
+				}(),
+				DriverConfig: func() *structpb.Struct {
+					s, _ := structpb.NewStruct(map[string]any{"runtime": "kata"})
+					return s
+				}(),
+			},
+		},
+	}
+
+	s := SandboxFromProto(proto)
+	require.NotNil(t, s)
+
+	proto.Spec.Template.Resources.Fields["cpu"] = structpb.NewStringValue("MUTATED")
+	assert.Equal(t, "2", s.Spec.Template.Resources["cpu"], "Resources must be deep copied")
+
+	proto.Spec.Template.DriverConfig.Fields["runtime"] = structpb.NewStringValue("MUTATED")
+	assert.Equal(t, "kata", s.Spec.Template.DriverConfig["runtime"], "DriverConfig must be deep copied")
+}
+
 func TestSandboxFromProto_NilFields(t *testing.T) {
 	proto := &pb.Sandbox{}
 

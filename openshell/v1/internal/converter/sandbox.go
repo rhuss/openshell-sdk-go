@@ -182,12 +182,18 @@ func SandboxSpecToProto(spec *types.SandboxSpec) *pb.SandboxSpec {
 			UserNamespaces:   CopyBoolPtr(spec.Template.UserNamespaces),
 		}
 		if spec.Template.Resources != nil {
-			s, _ := structpb.NewStruct(spec.Template.Resources)
-			tmpl.Resources = s
+			// Non-JSON-compatible values (e.g., chan, func) are silently dropped.
+			// Round-trip data from structpb.AsMap is always re-serializable.
+			s, err := structpb.NewStruct(spec.Template.Resources)
+			if err == nil {
+				tmpl.Resources = s
+			}
 		}
 		if spec.Template.DriverConfig != nil {
-			s, _ := structpb.NewStruct(spec.Template.DriverConfig)
-			tmpl.DriverConfig = s
+			s, err := structpb.NewStruct(spec.Template.DriverConfig)
+			if err == nil {
+				tmpl.DriverConfig = s
+			}
 		}
 		result.Template = tmpl
 	}

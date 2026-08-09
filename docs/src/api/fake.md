@@ -68,7 +68,7 @@ client.AddProvider("default", &types.Provider{
 
 client.AddWorkspace(&types.Workspace{Name: "staging"})
 client.AddMember("staging", &types.WorkspaceMember{
-    PrincipalSubject: "user@example.com",
+    PrincipalSubject: "subject-123",
     Role:             types.WorkspaceRoleAdmin,
 })
 ```

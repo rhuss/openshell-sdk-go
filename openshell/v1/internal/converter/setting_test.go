@@ -143,6 +143,9 @@ func TestSettingValueToProto_BytesValue(t *testing.T) {
 
 	require.NotNil(t, pv)
 	assert.Equal(t, data, pv.GetBytesValue())
+
+	data[0] = 0xFF
+	assert.Equal(t, byte(0xCA), pv.GetBytesValue()[0], "deep copy must isolate proto from SDK")
 }
 
 func TestSettingValueToProto_Nil(t *testing.T) {
