@@ -28,6 +28,8 @@
 - [Policy](api/policy.md)
 - [Gateway](api/gateway.md)
 - [OIDC](api/oidc.md)
+- [Edge](api/edge.md)
+- [Fake](api/fake.md)
 
 # Guides
 
