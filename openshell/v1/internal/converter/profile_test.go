@@ -138,11 +138,27 @@ func TestNetworkBinaryToProto_Nil(t *testing.T) {
 
 func TestProfileCredentialFromProto(t *testing.T) {
 	proto := &pb.ProviderProfileCredential{
-		Name:        "API_KEY",
-		Description: "API key for auth",
-		Required:    true,
+		Name:         "API_KEY",
+		Description:  "API key for auth",
+		EnvVars:      []string{"ANTHROPIC_API_KEY", "API_KEY"},
+		Required:     true,
+		AuthStyle:    "header",
+		HeaderName:   "X-API-Key",
+		QueryParam:   "api_key",
+		PathTemplate: "/v1/{credential}/chat",
 		Refresh: &pb.ProviderCredentialRefresh{
 			Strategy: pb.ProviderCredentialRefreshStrategy_PROVIDER_CREDENTIAL_REFRESH_STRATEGY_OAUTH2_REFRESH_TOKEN,
+		},
+		TokenGrant: &pb.ProviderCredentialTokenGrant{
+			TokenEndpoint:       "https://auth.example.com/token",
+			Audience:            "https://api.example.com",
+			JwtSvidAudience:     "spiffe://example.com",
+			Scopes:              []string{"read", "write"},
+			CacheTtlSeconds:     300,
+			ClientAssertionType: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+			AudienceOverrides: []*pb.ProviderCredentialTokenGrantAudienceOverride{
+				{Host: "special.example.com", Port: 8443, Path: "/api", Audience: "https://special.example.com", Scopes: []string{"admin"}},
+			},
 		},
 	}
 
@@ -151,8 +167,51 @@ func TestProfileCredentialFromProto(t *testing.T) {
 	require.NotNil(t, cred)
 	assert.Equal(t, "API_KEY", cred.Name)
 	assert.Equal(t, "API key for auth", cred.Description)
+	assert.Equal(t, []string{"ANTHROPIC_API_KEY", "API_KEY"}, cred.EnvVars)
 	assert.True(t, cred.Required)
 	assert.True(t, cred.Secret, "credential with refresh config is secret")
+	assert.Equal(t, "header", cred.AuthStyle)
+	assert.Equal(t, "X-API-Key", cred.HeaderName)
+	assert.Equal(t, "api_key", cred.QueryParam)
+	assert.Equal(t, "/v1/{credential}/chat", cred.PathTemplate)
+
+	require.NotNil(t, cred.TokenGrant)
+	assert.Equal(t, "https://auth.example.com/token", cred.TokenGrant.TokenEndpoint)
+	assert.Equal(t, "https://api.example.com", cred.TokenGrant.Audience)
+	assert.Equal(t, "spiffe://example.com", cred.TokenGrant.JWTSVIDAudience)
+	assert.Equal(t, []string{"read", "write"}, cred.TokenGrant.Scopes)
+	assert.Equal(t, int64(300), cred.TokenGrant.CacheTTLSeconds)
+	assert.Equal(t, "urn:ietf:params:oauth:client-assertion-type:jwt-bearer", cred.TokenGrant.ClientAssertionType)
+	require.Len(t, cred.TokenGrant.AudienceOverrides, 1)
+	assert.Equal(t, "special.example.com", cred.TokenGrant.AudienceOverrides[0].Host)
+	assert.Equal(t, uint32(8443), cred.TokenGrant.AudienceOverrides[0].Port)
+	assert.Equal(t, "/api", cred.TokenGrant.AudienceOverrides[0].Path)
+	assert.Equal(t, "https://special.example.com", cred.TokenGrant.AudienceOverrides[0].Audience)
+	assert.Equal(t, []string{"admin"}, cred.TokenGrant.AudienceOverrides[0].Scopes)
+}
+
+func TestProfileCredentialFromProto_DeepCopy(t *testing.T) {
+	proto := &pb.ProviderProfileCredential{
+		Name:    "KEY",
+		EnvVars: []string{"ENV_A"},
+		TokenGrant: &pb.ProviderCredentialTokenGrant{
+			Scopes: []string{"read"},
+			AudienceOverrides: []*pb.ProviderCredentialTokenGrantAudienceOverride{
+				{Scopes: []string{"admin"}},
+			},
+		},
+	}
+
+	cred := ProfileCredentialFromProto(proto)
+
+	proto.EnvVars[0] = "MUTATED"
+	assert.Equal(t, "ENV_A", cred.EnvVars[0], "env_vars must be deep copied")
+
+	proto.TokenGrant.Scopes[0] = "MUTATED"
+	assert.Equal(t, "read", cred.TokenGrant.Scopes[0], "token grant scopes must be deep copied")
+
+	proto.TokenGrant.AudienceOverrides[0].Scopes[0] = "MUTATED"
+	assert.Equal(t, "admin", cred.TokenGrant.AudienceOverrides[0].Scopes[0], "audience override scopes must be deep copied")
 }
 
 func TestProfileCredentialFromProto_NotSecret(t *testing.T) {
@@ -167,11 +226,83 @@ func TestProfileCredentialFromProto_NotSecret(t *testing.T) {
 	assert.Equal(t, "ENDPOINT_URL", cred.Name)
 	assert.False(t, cred.Required)
 	assert.False(t, cred.Secret, "credential without refresh config is not secret")
+	assert.Nil(t, cred.TokenGrant)
 }
 
 func TestProfileCredentialFromProto_Nil(t *testing.T) {
 	cred := ProfileCredentialFromProto(nil)
 	assert.Nil(t, cred)
+}
+
+func TestProfileCredentialToProto(t *testing.T) {
+	cred := &v1.ProfileCredential{
+		Name:         "API_KEY",
+		Description:  "API key",
+		EnvVars:      []string{"ANTHROPIC_API_KEY"},
+		Required:     true,
+		Secret:       true,
+		AuthStyle:    "header",
+		HeaderName:   "X-API-Key",
+		QueryParam:   "api_key",
+		PathTemplate: "/v1/{credential}/chat",
+		TokenGrant: &v1.CredentialTokenGrant{
+			TokenEndpoint:       "https://auth.example.com/token",
+			Audience:            "https://api.example.com",
+			JWTSVIDAudience:     "spiffe://example.com",
+			Scopes:              []string{"read"},
+			CacheTTLSeconds:     300,
+			ClientAssertionType: "urn:custom",
+			AudienceOverrides: []v1.TokenGrantAudienceOverride{
+				{Host: "h", Port: 443, Path: "/p", Audience: "aud", Scopes: []string{"s"}},
+			},
+		},
+	}
+
+	proto := ProfileCredentialToProto(cred)
+
+	require.NotNil(t, proto)
+	assert.Equal(t, "API_KEY", proto.Name)
+	assert.Equal(t, "API key", proto.Description)
+	assert.Equal(t, []string{"ANTHROPIC_API_KEY"}, proto.EnvVars)
+	assert.True(t, proto.Required)
+	assert.Equal(t, "header", proto.AuthStyle)
+	assert.Equal(t, "X-API-Key", proto.HeaderName)
+	assert.Equal(t, "api_key", proto.QueryParam)
+	assert.Equal(t, "/v1/{credential}/chat", proto.PathTemplate)
+	assert.Nil(t, proto.Refresh, "Secret is not round-trippable to Refresh")
+
+	require.NotNil(t, proto.TokenGrant)
+	assert.Equal(t, "https://auth.example.com/token", proto.TokenGrant.TokenEndpoint)
+	assert.Equal(t, "https://api.example.com", proto.TokenGrant.Audience)
+	assert.Equal(t, "spiffe://example.com", proto.TokenGrant.JwtSvidAudience)
+	assert.Equal(t, []string{"read"}, proto.TokenGrant.Scopes)
+	assert.Equal(t, int64(300), proto.TokenGrant.CacheTtlSeconds)
+	assert.Equal(t, "urn:custom", proto.TokenGrant.ClientAssertionType)
+	require.Len(t, proto.TokenGrant.AudienceOverrides, 1)
+	assert.Equal(t, "h", proto.TokenGrant.AudienceOverrides[0].Host)
+}
+
+func TestProfileCredentialToProto_Nil(t *testing.T) {
+	proto := ProfileCredentialToProto(nil)
+	assert.Nil(t, proto)
+}
+
+func TestProfileCredentialToProto_DeepCopy(t *testing.T) {
+	cred := &v1.ProfileCredential{
+		Name:    "KEY",
+		EnvVars: []string{"ENV_A"},
+		TokenGrant: &v1.CredentialTokenGrant{
+			Scopes: []string{"read"},
+		},
+	}
+
+	proto := ProfileCredentialToProto(cred)
+
+	cred.EnvVars[0] = "MUTATED"
+	assert.Equal(t, "ENV_A", proto.EnvVars[0], "env_vars must be deep copied")
+
+	cred.TokenGrant.Scopes[0] = "MUTATED"
+	assert.Equal(t, "read", proto.TokenGrant.Scopes[0], "token grant scopes must be deep copied")
 }
 
 // --- ProfileDiagnostic ---
@@ -222,6 +353,9 @@ func TestProviderProfileFromProto(t *testing.T) {
 			Credentials: []string{"API_KEY"},
 		},
 		ResourceVersion: 7,
+		Annotations:     map[string]string{"env": "prod", "team": "ai"},
+		Source:           "builtin",
+		Scope:            "platform",
 	}
 
 	profile := ProviderProfileFromProto(proto)
@@ -233,6 +367,9 @@ func TestProviderProfileFromProto(t *testing.T) {
 	assert.Equal(t, v1.ProfileCategoryInference, profile.Category)
 	assert.True(t, profile.InferenceCapable)
 	assert.Equal(t, uint64(7), profile.ResourceVersion)
+	assert.Equal(t, map[string]string{"env": "prod", "team": "ai"}, profile.Annotations)
+	assert.Equal(t, "builtin", profile.Source)
+	assert.Equal(t, "platform", profile.Scope)
 
 	require.Len(t, profile.Credentials, 1)
 	assert.Equal(t, "API_KEY", profile.Credentials[0].Name)
@@ -246,6 +383,9 @@ func TestProviderProfileFromProto(t *testing.T) {
 	assert.Equal(t, "/usr/bin/claude", profile.Binaries[0].Path)
 
 	assert.Equal(t, []string{"API_KEY"}, profile.Discovery.Credentials)
+
+	proto.Annotations["env"] = "MUTATED"
+	assert.Equal(t, "prod", profile.Annotations["env"], "annotations must be deep copied")
 }
 
 func TestProviderProfileFromProto_NilDiscovery(t *testing.T) {
@@ -284,6 +424,9 @@ func TestProviderProfileToProto(t *testing.T) {
 			Credentials: []string{"API_KEY"},
 		},
 		ResourceVersion: 7,
+		Annotations:     map[string]string{"env": "prod"},
+		Source:           "user",
+		Scope:            "workspace",
 	}
 
 	proto := ProviderProfileToProto(profile)
@@ -295,6 +438,9 @@ func TestProviderProfileToProto(t *testing.T) {
 	assert.Equal(t, pb.ProviderProfileCategory_PROVIDER_PROFILE_CATEGORY_INFERENCE, proto.Category)
 	assert.True(t, proto.InferenceCapable)
 	assert.Equal(t, uint64(7), proto.ResourceVersion)
+	assert.Equal(t, map[string]string{"env": "prod"}, proto.Annotations)
+	assert.Equal(t, "user", proto.Source)
+	assert.Equal(t, "workspace", proto.Scope)
 
 	require.Len(t, proto.Credentials, 1)
 	assert.Equal(t, "API_KEY", proto.Credentials[0].Name)
@@ -307,6 +453,9 @@ func TestProviderProfileToProto(t *testing.T) {
 
 	require.NotNil(t, proto.Discovery)
 	assert.Equal(t, []string{"API_KEY"}, proto.Discovery.Credentials)
+
+	profile.Annotations["env"] = "MUTATED"
+	assert.Equal(t, "prod", proto.Annotations["env"], "annotations must be deep copied")
 }
 
 func TestProviderProfileToProto_Nil(t *testing.T) {
@@ -370,7 +519,28 @@ func TestProviderProfileRoundTrip(t *testing.T) {
 		Description: "Testing round trip",
 		Category:    v1.ProfileCategoryAgent,
 		Credentials: []v1.ProfileCredential{
-			{Name: "TOKEN", Description: "auth token", Required: true, Secret: false},
+			{
+				Name:         "TOKEN",
+				Description:  "auth token",
+				EnvVars:      []string{"MY_TOKEN"},
+				Required:     true,
+				Secret:       false,
+				AuthStyle:    "header",
+				HeaderName:   "Authorization",
+				QueryParam:   "token",
+				PathTemplate: "/api/{credential}",
+				TokenGrant: &v1.CredentialTokenGrant{
+					TokenEndpoint:       "https://auth.example.com/token",
+					Audience:            "https://api.example.com",
+					JWTSVIDAudience:     "spiffe://example.com",
+					Scopes:              []string{"read"},
+					CacheTTLSeconds:     600,
+					ClientAssertionType: "urn:custom",
+					AudienceOverrides: []v1.TokenGrantAudienceOverride{
+						{Host: "h", Port: 443, Path: "/p", Audience: "aud", Scopes: []string{"s"}},
+					},
+				},
+			},
 		},
 		Endpoints: []v1.NetworkEndpoint{
 			{Host: "agent.example.com", Port: 8080, Protocol: "websocket"},
@@ -383,6 +553,9 @@ func TestProviderProfileRoundTrip(t *testing.T) {
 			Credentials: []string{"TOKEN"},
 		},
 		ResourceVersion: 42,
+		Annotations:     map[string]string{"env": "staging"},
+		Source:           "interceptor/custom",
+		Scope:            "workspace",
 	}
 
 	proto := ProviderProfileToProto(original)
@@ -395,10 +568,28 @@ func TestProviderProfileRoundTrip(t *testing.T) {
 	assert.Equal(t, original.Category, back.Category)
 	assert.Equal(t, original.InferenceCapable, back.InferenceCapable)
 	assert.Equal(t, original.ResourceVersion, back.ResourceVersion)
+	assert.Equal(t, original.Annotations, back.Annotations)
+	assert.Equal(t, original.Source, back.Source)
+	assert.Equal(t, original.Scope, back.Scope)
 
 	require.Len(t, back.Credentials, 1)
-	assert.Equal(t, original.Credentials[0].Name, back.Credentials[0].Name)
-	assert.Equal(t, original.Credentials[0].Required, back.Credentials[0].Required)
+	c := back.Credentials[0]
+	assert.Equal(t, original.Credentials[0].Name, c.Name)
+	assert.Equal(t, original.Credentials[0].Required, c.Required)
+	assert.Equal(t, original.Credentials[0].EnvVars, c.EnvVars)
+	assert.Equal(t, original.Credentials[0].AuthStyle, c.AuthStyle)
+	assert.Equal(t, original.Credentials[0].HeaderName, c.HeaderName)
+	assert.Equal(t, original.Credentials[0].QueryParam, c.QueryParam)
+	assert.Equal(t, original.Credentials[0].PathTemplate, c.PathTemplate)
+	require.NotNil(t, c.TokenGrant)
+	assert.Equal(t, original.Credentials[0].TokenGrant.TokenEndpoint, c.TokenGrant.TokenEndpoint)
+	assert.Equal(t, original.Credentials[0].TokenGrant.Audience, c.TokenGrant.Audience)
+	assert.Equal(t, original.Credentials[0].TokenGrant.JWTSVIDAudience, c.TokenGrant.JWTSVIDAudience)
+	assert.Equal(t, original.Credentials[0].TokenGrant.Scopes, c.TokenGrant.Scopes)
+	assert.Equal(t, original.Credentials[0].TokenGrant.CacheTTLSeconds, c.TokenGrant.CacheTTLSeconds)
+	assert.Equal(t, original.Credentials[0].TokenGrant.ClientAssertionType, c.TokenGrant.ClientAssertionType)
+	require.Len(t, c.TokenGrant.AudienceOverrides, 1)
+	assert.Equal(t, original.Credentials[0].TokenGrant.AudienceOverrides[0], c.TokenGrant.AudienceOverrides[0])
 
 	require.Len(t, back.Endpoints, 1)
 	assert.Equal(t, original.Endpoints[0].Host, back.Endpoints[0].Host)

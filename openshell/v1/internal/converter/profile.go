@@ -107,31 +107,109 @@ func NetworkBinaryToProto(b *types.NetworkBinary) *sbv1.NetworkBinary {
 // --- ProfileCredential ---
 
 // ProfileCredentialFromProto converts a proto ProviderProfileCredential to an SDK ProfileCredential.
-// The SDK maps 4 fields from the 10-field proto: Name, Description, Required, and Secret.
 // Secret is derived from whether the proto has a Refresh configuration.
 func ProfileCredentialFromProto(c *pb.ProviderProfileCredential) *types.ProfileCredential {
 	if c == nil {
 		return nil
 	}
 	return &types.ProfileCredential{
-		Name:        c.GetName(),
-		Description: c.GetDescription(),
-		Required:    c.GetRequired(),
-		Secret:      c.GetRefresh() != nil,
+		Name:         c.GetName(),
+		Description:  c.GetDescription(),
+		EnvVars:      CopyStringSlice(c.GetEnvVars()),
+		Required:     c.GetRequired(),
+		Secret:       c.GetRefresh() != nil,
+		AuthStyle:    c.GetAuthStyle(),
+		HeaderName:   c.GetHeaderName(),
+		QueryParam:   c.GetQueryParam(),
+		PathTemplate: c.GetPathTemplate(),
+		TokenGrant:   tokenGrantFromProto(c.GetTokenGrant()),
 	}
 }
 
 // ProfileCredentialToProto converts an SDK ProfileCredential to a proto ProviderProfileCredential.
-// Only Name, Description, and Required are mapped. Secret is not round-trippable
-// because it is derived from the Refresh field in the proto.
+// Secret is not round-trippable because it is derived from the Refresh field in the proto.
 func ProfileCredentialToProto(c *types.ProfileCredential) *pb.ProviderProfileCredential {
 	if c == nil {
 		return nil
 	}
 	return &pb.ProviderProfileCredential{
-		Name:        c.Name,
-		Description: c.Description,
-		Required:    c.Required,
+		Name:         c.Name,
+		Description:  c.Description,
+		EnvVars:      CopyStringSlice(c.EnvVars),
+		Required:     c.Required,
+		AuthStyle:    c.AuthStyle,
+		HeaderName:   c.HeaderName,
+		QueryParam:   c.QueryParam,
+		PathTemplate: c.PathTemplate,
+		TokenGrant:   tokenGrantToProto(c.TokenGrant),
+	}
+}
+
+func tokenGrantFromProto(tg *pb.ProviderCredentialTokenGrant) *types.CredentialTokenGrant {
+	if tg == nil {
+		return nil
+	}
+	result := &types.CredentialTokenGrant{
+		TokenEndpoint:       tg.GetTokenEndpoint(),
+		Audience:            tg.GetAudience(),
+		JWTSVIDAudience:     tg.GetJwtSvidAudience(),
+		Scopes:              CopyStringSlice(tg.GetScopes()),
+		CacheTTLSeconds:     tg.GetCacheTtlSeconds(),
+		ClientAssertionType: tg.GetClientAssertionType(),
+	}
+	if overrides := tg.GetAudienceOverrides(); len(overrides) > 0 {
+		result.AudienceOverrides = make([]types.TokenGrantAudienceOverride, len(overrides))
+		for i, o := range overrides {
+			result.AudienceOverrides[i] = audienceOverrideFromProto(o)
+		}
+	}
+	return result
+}
+
+func tokenGrantToProto(tg *types.CredentialTokenGrant) *pb.ProviderCredentialTokenGrant {
+	if tg == nil {
+		return nil
+	}
+	result := &pb.ProviderCredentialTokenGrant{
+		TokenEndpoint:       tg.TokenEndpoint,
+		Audience:            tg.Audience,
+		JwtSvidAudience:     tg.JWTSVIDAudience,
+		Scopes:              CopyStringSlice(tg.Scopes),
+		CacheTtlSeconds:     tg.CacheTTLSeconds,
+		ClientAssertionType: tg.ClientAssertionType,
+	}
+	if len(tg.AudienceOverrides) > 0 {
+		result.AudienceOverrides = make([]*pb.ProviderCredentialTokenGrantAudienceOverride, len(tg.AudienceOverrides))
+		for i := range tg.AudienceOverrides {
+			result.AudienceOverrides[i] = audienceOverrideToProto(&tg.AudienceOverrides[i])
+		}
+	}
+	return result
+}
+
+func audienceOverrideFromProto(o *pb.ProviderCredentialTokenGrantAudienceOverride) types.TokenGrantAudienceOverride {
+	if o == nil {
+		return types.TokenGrantAudienceOverride{}
+	}
+	return types.TokenGrantAudienceOverride{
+		Host:     o.GetHost(),
+		Port:     o.GetPort(),
+		Path:     o.GetPath(),
+		Audience: o.GetAudience(),
+		Scopes:   CopyStringSlice(o.GetScopes()),
+	}
+}
+
+func audienceOverrideToProto(o *types.TokenGrantAudienceOverride) *pb.ProviderCredentialTokenGrantAudienceOverride {
+	if o == nil {
+		return nil
+	}
+	return &pb.ProviderCredentialTokenGrantAudienceOverride{
+		Host:     o.Host,
+		Port:     o.Port,
+		Path:     o.Path,
+		Audience: o.Audience,
+		Scopes:   CopyStringSlice(o.Scopes),
 	}
 }
 
@@ -166,6 +244,9 @@ func ProviderProfileFromProto(p *pb.ProviderProfile) *types.ProviderProfile {
 		Category:         ProfileCategoryFromProto(p.GetCategory()),
 		InferenceCapable: p.GetInferenceCapable(),
 		ResourceVersion:  p.GetResourceVersion(),
+		Annotations:      CopyStringMap(p.GetAnnotations()),
+		Source:           p.GetSource(),
+		Scope:            p.GetScope(),
 	}
 
 	// Credentials
@@ -221,6 +302,9 @@ func ProviderProfileToProto(p *types.ProviderProfile) *pb.ProviderProfile {
 		Category:         ProfileCategoryToProto(p.Category),
 		InferenceCapable: p.InferenceCapable,
 		ResourceVersion:  p.ResourceVersion,
+		Annotations:      CopyStringMap(p.Annotations),
+		Source:           p.Source,
+		Scope:            p.Scope,
 	}
 
 	// Credentials

@@ -30,14 +30,43 @@ type ProviderProfile struct {
 	InferenceCapable bool
 	Discovery        ProfileDiscovery
 	ResourceVersion  uint64
+	Annotations      map[string]string
+	Source           string
+	Scope            string
 }
 
 // ProfileCredential defines a single credential required by a provider profile.
 type ProfileCredential struct {
-	Name        string
-	Description string
-	Required    bool
-	Secret      bool
+	Name         string
+	Description  string
+	EnvVars      []string
+	Required     bool
+	Secret       bool
+	AuthStyle    string
+	HeaderName   string
+	QueryParam   string
+	PathTemplate string
+	TokenGrant   *CredentialTokenGrant
+}
+
+// CredentialTokenGrant configures dynamic credential acquisition via OAuth2 grant.
+type CredentialTokenGrant struct {
+	TokenEndpoint       string
+	Audience            string
+	JWTSVIDAudience     string
+	Scopes              []string
+	CacheTTLSeconds     int64
+	AudienceOverrides   []TokenGrantAudienceOverride
+	ClientAssertionType string
+}
+
+// TokenGrantAudienceOverride selects an endpoint-specific resource audience.
+type TokenGrantAudienceOverride struct {
+	Host     string
+	Port     uint32
+	Path     string
+	Audience string
+	Scopes   []string
 }
 
 // NetworkEndpoint describes a network endpoint provided by a profile.

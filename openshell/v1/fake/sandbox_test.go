@@ -52,6 +52,110 @@ func TestSandbox_Create_AlreadyExists(t *testing.T) {
 	assert.True(t, types.IsAlreadyExists(err))
 }
 
+func TestSandbox_Create_WithAnnotations(t *testing.T) {
+	sc := newTestSandboxClient()
+	ctx := context.Background()
+
+	sb, err := sc.Create(ctx, "default", "annotated", &types.SandboxSpec{}, nil,
+		types.CreateOptions{Annotations: map[string]string{"source": "cli", "user": "admin"}})
+	require.NoError(t, err)
+	assert.Equal(t, "cli", sb.Annotations["source"])
+	assert.Equal(t, "admin", sb.Annotations["user"])
+
+	got, err := sc.Get(ctx, "default", "annotated")
+	require.NoError(t, err)
+	assert.Equal(t, "cli", got.Annotations["source"])
+}
+
+func TestSandbox_Create_WithAnnotationsDeepCopy(t *testing.T) {
+	sc := newTestSandboxClient()
+	ctx := context.Background()
+
+	input := map[string]string{"key": "original"}
+	sb, err := sc.Create(ctx, "default", "dc-test", &types.SandboxSpec{}, nil,
+		types.CreateOptions{Annotations: input})
+	require.NoError(t, err)
+
+	input["key"] = "MUTATED"
+	assert.Equal(t, "original", sb.Annotations["key"], "annotations must be deep copied")
+}
+
+func TestSandbox_Create_NoAnnotations(t *testing.T) {
+	sc := newTestSandboxClient()
+	ctx := context.Background()
+
+	sb, err := sc.Create(ctx, "default", "no-ann", &types.SandboxSpec{}, nil)
+	require.NoError(t, err)
+	assert.Nil(t, sb.Annotations)
+}
+
+func TestCopyAnyMap(t *testing.T) {
+	t.Run("nil", func(t *testing.T) {
+		assert.Nil(t, copyAnyMap(nil))
+	})
+
+	t.Run("flat", func(t *testing.T) {
+		original := map[string]any{"cpu": "2", "memory": "4Gi"}
+		copied := copyAnyMap(original)
+		assert.Equal(t, original, copied)
+
+		original["cpu"] = "MUTATED"
+		assert.Equal(t, "2", copied["cpu"])
+	})
+
+	t.Run("nested map", func(t *testing.T) {
+		original := map[string]any{
+			"limits": map[string]any{"cpu": "4", "memory": "8Gi"},
+		}
+		copied := copyAnyMap(original)
+
+		nested := original["limits"].(map[string]any)
+		nested["cpu"] = "MUTATED"
+
+		copiedNested := copied["limits"].(map[string]any)
+		assert.Equal(t, "4", copiedNested["cpu"])
+	})
+
+	t.Run("nested slice", func(t *testing.T) {
+		original := map[string]any{
+			"ports": []any{float64(80), float64(443)},
+		}
+		copied := copyAnyMap(original)
+
+		original["ports"].([]any)[0] = float64(9999)
+		assert.Equal(t, float64(80), copied["ports"].([]any)[0])
+	})
+
+	t.Run("scalar types", func(t *testing.T) {
+		original := map[string]any{
+			"str": "hello", "num": float64(42), "flag": true, "null": nil,
+		}
+		copied := copyAnyMap(original)
+		assert.Equal(t, original, copied)
+	})
+}
+
+func TestCopySandboxTemplate_ResourcesDeepCopy(t *testing.T) {
+	tmpl := types.SandboxTemplate{
+		Image:     "img:v1",
+		Resources: map[string]any{"cpu": "2", "nested": map[string]any{"key": "val"}},
+		DriverConfig: map[string]any{"runtime": "kata"},
+	}
+
+	copied := copySandboxTemplate(tmpl)
+
+	tmpl.Resources["cpu"] = "MUTATED"
+	assert.Equal(t, "2", copied.Resources["cpu"])
+
+	tmpl.DriverConfig["runtime"] = "MUTATED"
+	assert.Equal(t, "kata", copied.DriverConfig["runtime"])
+
+	nested := tmpl.Resources["nested"].(map[string]any)
+	nested["key"] = "MUTATED"
+	copiedNested := copied.Resources["nested"].(map[string]any)
+	assert.Equal(t, "val", copiedNested["key"])
+}
+
 func TestSandbox_Create_NilSpec(t *testing.T) {
 	sc := newTestSandboxClient()
 	ctx := context.Background()

@@ -186,6 +186,7 @@ func ConfigUpdateToProto(cu *v1.ConfigUpdate) (*pb.UpdateConfigRequest, error) {
 		DeleteSetting:           cu.DeleteSetting,
 		Global:                  cu.Global,
 		ExpectedResourceVersion: cu.ExpectedResourceVersion,
+		Annotations:             CopyStringMap(cu.Annotations),
 	}
 
 	// Convert typed SDK SandboxPolicy to proto SandboxPolicy.
@@ -296,5 +297,6 @@ func ConfigUpdateResultFromProto(resp *pb.UpdateConfigResponse) *v1.ConfigUpdate
 		PolicyHash:       resp.GetPolicyHash(),
 		SettingsRevision: resp.GetSettingsRevision(),
 		Deleted:          resp.GetDeleted(),
+		Annotations:      CopyStringMap(resp.GetAnnotations()),
 	}
 }

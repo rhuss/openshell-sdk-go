@@ -195,6 +195,84 @@ func TestConverterCoversAllProtoFields_CredentialHandle(t *testing.T) {
 	assertAllFieldsCovered(t, (&dm.CredentialHandle{}).ProtoReflect().Descriptor(), handled, nil)
 }
 
+func TestConverterCoversAllProtoFields_SandboxPolicyRevision(t *testing.T) {
+	handled := fieldSet{
+		"version":       true,
+		"policy_hash":   true,
+		"status":        true,
+		"load_error":    true,
+		"created_at_ms": true,
+		"loaded_at_ms":  true,
+		"policy":        true,
+		"provenance":    true,
+	}
+
+	assertAllFieldsCovered(t, (&pb.SandboxPolicyRevision{}).ProtoReflect().Descriptor(), handled, nil)
+}
+
+func TestConverterCoversAllProtoFields_ProviderProfile(t *testing.T) {
+	handled := fieldSet{
+		"id":                true,
+		"display_name":      true,
+		"description":       true,
+		"category":          true,
+		"credentials":       true,
+		"endpoints":         true,
+		"binaries":          true,
+		"inference_capable": true,
+		"discovery":         true,
+		"resource_version":  true,
+		"annotations":       true,
+		"source":            true,
+		"scope":             true,
+	}
+
+	assertAllFieldsCovered(t, (&pb.ProviderProfile{}).ProtoReflect().Descriptor(), handled, nil)
+}
+
+func TestConverterCoversAllProtoFields_ProviderProfileCredential(t *testing.T) {
+	handled := fieldSet{
+		"name":          true,
+		"description":   true,
+		"env_vars":      true,
+		"required":      true,
+		"auth_style":    true,
+		"header_name":   true,
+		"query_param":   true,
+		"refresh":       true,
+		"path_template": true,
+		"token_grant":   true,
+	}
+
+	assertAllFieldsCovered(t, (&pb.ProviderProfileCredential{}).ProtoReflect().Descriptor(), handled, nil)
+}
+
+func TestConverterCoversAllProtoFields_ProviderCredentialTokenGrant(t *testing.T) {
+	handled := fieldSet{
+		"token_endpoint":        true,
+		"audience":              true,
+		"jwt_svid_audience":     true,
+		"scopes":                true,
+		"cache_ttl_seconds":     true,
+		"audience_overrides":    true,
+		"client_assertion_type": true,
+	}
+
+	assertAllFieldsCovered(t, (&pb.ProviderCredentialTokenGrant{}).ProtoReflect().Descriptor(), handled, nil)
+}
+
+func TestConverterCoversAllProtoFields_ProviderCredentialTokenGrantAudienceOverride(t *testing.T) {
+	handled := fieldSet{
+		"host":     true,
+		"port":     true,
+		"path":     true,
+		"audience": true,
+		"scopes":   true,
+	}
+
+	assertAllFieldsCovered(t, (&pb.ProviderCredentialTokenGrantAudienceOverride{}).ProtoReflect().Descriptor(), handled, nil)
+}
+
 func TestConverterCoversAllProtoFields_McpOptions(t *testing.T) {
 	handled := fieldSet{
 		"strict_tool_names":           true,

@@ -155,7 +155,35 @@ func copySandboxTemplate(t types.SandboxTemplate) types.SandboxTemplate {
 		v := *t.UserNamespaces
 		t.UserNamespaces = &v
 	}
+	t.Resources = copyAnyMap(t.Resources)
+	t.DriverConfig = copyAnyMap(t.DriverConfig)
 	return t
+}
+
+func copyAnyMap(m map[string]any) map[string]any {
+	if m == nil {
+		return nil
+	}
+	cp := make(map[string]any, len(m))
+	for k, v := range m {
+		cp[k] = copyAnyValue(v)
+	}
+	return cp
+}
+
+func copyAnyValue(v any) any {
+	switch val := v.(type) {
+	case map[string]any:
+		return copyAnyMap(val)
+	case []any:
+		s := make([]any, len(val))
+		for i, elem := range val {
+			s[i] = copyAnyValue(elem)
+		}
+		return s
+	default:
+		return v
+	}
 }
 
 func copySandboxStatus(s types.SandboxStatus) types.SandboxStatus {
@@ -211,7 +239,7 @@ func newFakeSandboxClient(
 }
 
 // Create creates a new sandbox with Provisioning phase.
-func (c *fakeSandboxClient) Create(_ context.Context, workspace, name string, spec *types.SandboxSpec, labels map[string]string) (*types.Sandbox, error) {
+func (c *fakeSandboxClient) Create(_ context.Context, workspace, name string, spec *types.SandboxSpec, labels map[string]string, opts ...types.CreateOptions) (*types.Sandbox, error) {
 	if c.closedFunc() {
 		return nil, &types.StatusError{Code: types.ErrorUnavailable, Message: "client is closed"}
 	}
@@ -220,11 +248,17 @@ func (c *fakeSandboxClient) Create(_ context.Context, workspace, name string, sp
 		spec = &types.SandboxSpec{}
 	}
 
+	var annotations map[string]string
+	if len(opts) > 0 {
+		annotations = copyStringMap(opts[0].Annotations)
+	}
+
 	sb := &types.Sandbox{
 		Name:            name,
 		Workspace:       workspace,
 		CreatedAt:       time.Now(),
 		Labels:          copyStringMap(labels),
+		Annotations:     annotations,
 		ResourceVersion: 1,
 		Spec:            copySandboxSpec(*spec),
 		Status: types.SandboxStatus{

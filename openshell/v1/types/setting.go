@@ -102,6 +102,8 @@ type ConfigUpdate struct {
 	MergeOperations []PolicyMergeOperation
 	// ExpectedResourceVersion is for optimistic concurrency (0 = skip check).
 	ExpectedResourceVersion uint64
+	// Annotations is caller-provided metadata for sandbox-scoped updates.
+	Annotations map[string]string
 }
 
 // ConfigUpdateResult holds the result of a configuration update operation.
@@ -115,4 +117,6 @@ type ConfigUpdateResult struct {
 	SettingsRevision uint64
 	// Deleted is true when a setting delete removed an existing key.
 	Deleted bool
+	// Annotations contains sandbox metadata annotations after the update.
+	Annotations map[string]string
 }

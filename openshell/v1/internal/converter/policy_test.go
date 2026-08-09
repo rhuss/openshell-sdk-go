@@ -438,12 +438,13 @@ func TestProcessPolicyNil(t *testing.T) {
 
 func TestSandboxPolicyRevisionFromProto(t *testing.T) {
 	proto := &pb.SandboxPolicyRevision{
-		Version:    3,
-		PolicyHash: "sha256:abc123",
-		Status:     pb.PolicyStatus_POLICY_STATUS_LOADED,
-		LoadError:  "",
+		Version:     3,
+		PolicyHash:  "sha256:abc123",
+		Status:      pb.PolicyStatus_POLICY_STATUS_LOADED,
+		LoadError:   "",
 		CreatedAtMs: 1700000000000,
 		LoadedAtMs:  1700000001000,
+		Provenance:  map[string]string{"source": "api", "user": "admin"},
 	}
 
 	rev := SandboxPolicyRevisionFromProto(proto)
@@ -455,6 +456,10 @@ func TestSandboxPolicyRevisionFromProto(t *testing.T) {
 	assert.Empty(t, rev.LoadError)
 	assert.False(t, rev.CreatedAt.IsZero())
 	assert.False(t, rev.LoadedAt.IsZero())
+	assert.Equal(t, map[string]string{"source": "api", "user": "admin"}, rev.Provenance)
+
+	proto.Provenance["source"] = "MUTATED"
+	assert.Equal(t, "api", rev.Provenance["source"], "provenance must be deep copied")
 }
 
 func TestSandboxPolicyRevisionFromProto_Nil(t *testing.T) {
