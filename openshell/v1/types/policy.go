@@ -176,6 +176,8 @@ type SandboxPolicyRevision struct {
 	LoadedAt time.Time
 	// Policy is the typed security policy for this revision. Nil when not requested or absent.
 	Policy *SandboxPolicy
+	// Provenance is immutable metadata supplied with this policy revision.
+	Provenance map[string]string
 }
 
 // PolicyStatusResult contains the status of a sandbox's policy.

@@ -7,6 +7,7 @@ import (
 	"github.com/rhuss/openshell-sdk-go/openshell/v1/types"
 	dm "github.com/rhuss/openshell-sdk-go/proto/datamodelv1"
 	pb "github.com/rhuss/openshell-sdk-go/proto/openshellv1"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // SandboxFromProto converts a proto Sandbox to an SDK Sandbox.
@@ -50,7 +51,7 @@ func sandboxSpecFromProto(spec *pb.SandboxSpec) types.SandboxSpec {
 	}
 
 	if tmpl := spec.GetTemplate(); tmpl != nil {
-		result.Template = &types.SandboxTemplate{
+		t := &types.SandboxTemplate{
 			Image:            tmpl.GetImage(),
 			RuntimeClassName: tmpl.GetRuntimeClassName(),
 			AgentSocket:      tmpl.GetAgentSocket(),
@@ -59,6 +60,13 @@ func sandboxSpecFromProto(spec *pb.SandboxSpec) types.SandboxSpec {
 			Environment:      CopyStringMap(tmpl.GetEnvironment()),
 			UserNamespaces:   CopyBoolPtr(tmpl.UserNamespaces),
 		}
+		if res := tmpl.GetResources(); res != nil {
+			t.Resources = res.AsMap()
+		}
+		if dc := tmpl.GetDriverConfig(); dc != nil {
+			t.DriverConfig = dc.AsMap()
+		}
+		result.Template = t
 	}
 
 	if rr := spec.GetResourceRequirements(); rr != nil {
@@ -164,7 +172,7 @@ func SandboxSpecToProto(spec *types.SandboxSpec) *pb.SandboxSpec {
 	}
 
 	if spec.Template != nil {
-		result.Template = &pb.SandboxTemplate{
+		tmpl := &pb.SandboxTemplate{
 			Image:            spec.Template.Image,
 			RuntimeClassName: spec.Template.RuntimeClassName,
 			AgentSocket:      spec.Template.AgentSocket,
@@ -173,6 +181,15 @@ func SandboxSpecToProto(spec *types.SandboxSpec) *pb.SandboxSpec {
 			Environment:      CopyStringMap(spec.Template.Environment),
 			UserNamespaces:   CopyBoolPtr(spec.Template.UserNamespaces),
 		}
+		if spec.Template.Resources != nil {
+			s, _ := structpb.NewStruct(spec.Template.Resources)
+			tmpl.Resources = s
+		}
+		if spec.Template.DriverConfig != nil {
+			s, _ := structpb.NewStruct(spec.Template.DriverConfig)
+			tmpl.DriverConfig = s
+		}
+		result.Template = tmpl
 	}
 
 	if spec.GPUCount != nil {

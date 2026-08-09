@@ -39,6 +39,8 @@ type SandboxTemplate struct {
 	Annotations       map[string]string
 	Environment       map[string]string
 	UserNamespaces    *bool
+	Resources         map[string]any
+	DriverConfig      map[string]any
 }
 
 // SandboxStatus holds the observed state of a sandbox.

@@ -274,6 +274,7 @@ func SandboxPolicyRevisionFromProto(r *pb.SandboxPolicyRevision) *types.SandboxP
 		CreatedAt:  TimeFromMillis(r.GetCreatedAtMs()),
 		LoadedAt:   TimeFromMillis(r.GetLoadedAtMs()),
 		Policy:     SandboxPolicyFromProto(r.GetPolicy()),
+		Provenance: CopyStringMap(r.GetProvenance()),
 	}
 }
 

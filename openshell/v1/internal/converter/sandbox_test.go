@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestSandboxFromProto(t *testing.T) {
@@ -40,6 +41,14 @@ func TestSandboxFromProto(t *testing.T) {
 				Annotations:      map[string]string{"note": "hello"},
 				Environment:      map[string]string{"TMPL_VAR": "val"},
 				UserNamespaces:   &userNS,
+				Resources: func() *structpb.Struct {
+					s, _ := structpb.NewStruct(map[string]any{"cpu": "2", "memory": "4Gi"})
+					return s
+				}(),
+				DriverConfig: func() *structpb.Struct {
+					s, _ := structpb.NewStruct(map[string]any{"runtime": "kata", "nested": map[string]any{"key": "val"}})
+					return s
+				}(),
 			},
 			Providers: []string{"claude", "github"},
 			ResourceRequirements: &pb.ResourceRequirements{
@@ -97,6 +106,11 @@ func TestSandboxFromProto(t *testing.T) {
 	assert.Equal(t, map[string]string{"TMPL_VAR": "val"}, s.Spec.Template.Environment)
 	require.NotNil(t, s.Spec.Template.UserNamespaces)
 	assert.True(t, *s.Spec.Template.UserNamespaces)
+	assert.Equal(t, map[string]any{"cpu": "2", "memory": "4Gi"}, s.Spec.Template.Resources)
+	assert.Equal(t, "kata", s.Spec.Template.DriverConfig["runtime"])
+	nested, ok := s.Spec.Template.DriverConfig["nested"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "val", nested["key"])
 
 	// Status
 	assert.Equal(t, "sb-compute-1", s.Status.SandboxName)
@@ -348,7 +362,9 @@ func TestSandboxSpecToProto(t *testing.T) {
 		LogLevel:    "debug",
 		Environment: map[string]string{"X": "Y"},
 		Template: &v1.SandboxTemplate{
-			Image: "img:spec",
+			Image:        "img:spec",
+			Resources:    map[string]any{"cpu": "4"},
+			DriverConfig: map[string]any{"runtime": "kata"},
 		},
 		Providers: []string{"prov"},
 		GPUCount:  &gpuCount,
@@ -370,6 +386,10 @@ func TestSandboxSpecToProto(t *testing.T) {
 	assert.Equal(t, uint32(3), p.ResourceRequirements.Gpu.GetCount())
 	require.NotNil(t, p.Template)
 	assert.Equal(t, "img:spec", p.Template.Image)
+	require.NotNil(t, p.Template.Resources)
+	assert.Equal(t, "4", p.Template.Resources.Fields["cpu"].GetStringValue())
+	require.NotNil(t, p.Template.DriverConfig)
+	assert.Equal(t, "kata", p.Template.DriverConfig.Fields["runtime"].GetStringValue())
 
 	// Policy conversion
 	require.NotNil(t, p.Policy)
