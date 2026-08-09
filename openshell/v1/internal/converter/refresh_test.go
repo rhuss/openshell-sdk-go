@@ -25,6 +25,7 @@ func TestRefreshStrategyFromProto(t *testing.T) {
 		{pb.ProviderCredentialRefreshStrategy_PROVIDER_CREDENTIAL_REFRESH_STRATEGY_OAUTH2_REFRESH_TOKEN, v1.RefreshStrategyOAuth2RefreshToken},
 		{pb.ProviderCredentialRefreshStrategy_PROVIDER_CREDENTIAL_REFRESH_STRATEGY_OAUTH2_CLIENT_CREDENTIALS, v1.RefreshStrategyOAuth2ClientCredentials},
 		{pb.ProviderCredentialRefreshStrategy_PROVIDER_CREDENTIAL_REFRESH_STRATEGY_GOOGLE_SERVICE_ACCOUNT_JWT, v1.RefreshStrategyGoogleServiceAccountJWT},
+		{pb.ProviderCredentialRefreshStrategy_PROVIDER_CREDENTIAL_REFRESH_STRATEGY_AWS_STS_ASSUME_ROLE, v1.RefreshStrategyAWSStsAssumeRole},
 		{pb.ProviderCredentialRefreshStrategy_PROVIDER_CREDENTIAL_REFRESH_STRATEGY_UNSPECIFIED, v1.RefreshStrategy("")},
 	}
 	for _, tt := range tests {
@@ -44,6 +45,7 @@ func TestRefreshStrategyToProto(t *testing.T) {
 		{v1.RefreshStrategyOAuth2RefreshToken, pb.ProviderCredentialRefreshStrategy_PROVIDER_CREDENTIAL_REFRESH_STRATEGY_OAUTH2_REFRESH_TOKEN},
 		{v1.RefreshStrategyOAuth2ClientCredentials, pb.ProviderCredentialRefreshStrategy_PROVIDER_CREDENTIAL_REFRESH_STRATEGY_OAUTH2_CLIENT_CREDENTIALS},
 		{v1.RefreshStrategyGoogleServiceAccountJWT, pb.ProviderCredentialRefreshStrategy_PROVIDER_CREDENTIAL_REFRESH_STRATEGY_GOOGLE_SERVICE_ACCOUNT_JWT},
+		{v1.RefreshStrategyAWSStsAssumeRole, pb.ProviderCredentialRefreshStrategy_PROVIDER_CREDENTIAL_REFRESH_STRATEGY_AWS_STS_ASSUME_ROLE},
 		{v1.RefreshStrategy(""), pb.ProviderCredentialRefreshStrategy_PROVIDER_CREDENTIAL_REFRESH_STRATEGY_UNSPECIFIED},
 		{v1.RefreshStrategy("Unknown"), pb.ProviderCredentialRefreshStrategy_PROVIDER_CREDENTIAL_REFRESH_STRATEGY_UNSPECIFIED},
 	}

@@ -23,6 +23,8 @@ func RefreshStrategyFromProto(s pb.ProviderCredentialRefreshStrategy) types.Refr
 		return types.RefreshStrategyOAuth2ClientCredentials
 	case pb.ProviderCredentialRefreshStrategy_PROVIDER_CREDENTIAL_REFRESH_STRATEGY_GOOGLE_SERVICE_ACCOUNT_JWT:
 		return types.RefreshStrategyGoogleServiceAccountJWT
+	case pb.ProviderCredentialRefreshStrategy_PROVIDER_CREDENTIAL_REFRESH_STRATEGY_AWS_STS_ASSUME_ROLE:
+		return types.RefreshStrategyAWSStsAssumeRole
 	default:
 		return types.RefreshStrategy("")
 	}
@@ -41,6 +43,8 @@ func RefreshStrategyToProto(s types.RefreshStrategy) pb.ProviderCredentialRefres
 		return pb.ProviderCredentialRefreshStrategy_PROVIDER_CREDENTIAL_REFRESH_STRATEGY_OAUTH2_CLIENT_CREDENTIALS
 	case types.RefreshStrategyGoogleServiceAccountJWT:
 		return pb.ProviderCredentialRefreshStrategy_PROVIDER_CREDENTIAL_REFRESH_STRATEGY_GOOGLE_SERVICE_ACCOUNT_JWT
+	case types.RefreshStrategyAWSStsAssumeRole:
+		return pb.ProviderCredentialRefreshStrategy_PROVIDER_CREDENTIAL_REFRESH_STRATEGY_AWS_STS_ASSUME_ROLE
 	default:
 		return pb.ProviderCredentialRefreshStrategy_PROVIDER_CREDENTIAL_REFRESH_STRATEGY_UNSPECIFIED
 	}
