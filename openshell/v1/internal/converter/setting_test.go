@@ -419,6 +419,7 @@ func TestConfigUpdateToProto(t *testing.T) {
 		DeleteSetting:           false,
 		Global:                  false,
 		ExpectedResourceVersion: 7,
+		Annotations:             map[string]string{"source": "cli", "user": "admin"},
 	}
 
 	req, err := ConfigUpdateToProto(cu)
@@ -434,6 +435,10 @@ func TestConfigUpdateToProto(t *testing.T) {
 	assert.Equal(t, uint64(7), req.ExpectedResourceVersion)
 	assert.Nil(t, req.Policy)
 	assert.Empty(t, req.MergeOperations)
+	assert.Equal(t, map[string]string{"source": "cli", "user": "admin"}, req.Annotations)
+
+	cu.Annotations["source"] = "MUTATED"
+	assert.Equal(t, "cli", req.Annotations["source"], "annotations must be deep copied")
 }
 
 func TestConfigUpdateToProto_WithPolicy(t *testing.T) {
@@ -529,6 +534,7 @@ func TestConfigUpdateResultFromProto(t *testing.T) {
 		PolicyHash:       "sha256:updated",
 		SettingsRevision: 55,
 		Deleted:          true,
+		Annotations:      map[string]string{"sandbox_id": "sb-123"},
 	}
 
 	result := ConfigUpdateResultFromProto(resp)
@@ -538,6 +544,10 @@ func TestConfigUpdateResultFromProto(t *testing.T) {
 	assert.Equal(t, "sha256:updated", result.PolicyHash)
 	assert.Equal(t, uint64(55), result.SettingsRevision)
 	assert.True(t, result.Deleted)
+	assert.Equal(t, map[string]string{"sandbox_id": "sb-123"}, result.Annotations)
+
+	resp.Annotations["sandbox_id"] = "MUTATED"
+	assert.Equal(t, "sb-123", result.Annotations["sandbox_id"], "annotations must be deep copied")
 }
 
 func TestConfigUpdateResultFromProto_DefaultValues(t *testing.T) {

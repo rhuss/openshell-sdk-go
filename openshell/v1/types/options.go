@@ -6,7 +6,9 @@ package types
 import "time"
 
 // CreateOptions configures resource creation.
-type CreateOptions struct{}
+type CreateOptions struct {
+	Annotations map[string]string
+}
 
 // GetOptions configures resource retrieval.
 type GetOptions struct{}

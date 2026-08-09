@@ -25,13 +25,17 @@ func newSandboxClient(conn grpc.ClientConnInterface) *sandboxClient {
 	return &sandboxClient{client: pb.NewOpenShellClient(conn)}
 }
 
-func (s *sandboxClient) Create(ctx context.Context, workspace, name string, spec *SandboxSpec, labels map[string]string) (*Sandbox, error) {
-	resp, err := s.client.CreateSandbox(ctx, &pb.CreateSandboxRequest{
+func (s *sandboxClient) Create(ctx context.Context, workspace, name string, spec *SandboxSpec, labels map[string]string, opts ...CreateOptions) (*Sandbox, error) {
+	req := &pb.CreateSandboxRequest{
 		Name:      name,
 		Spec:      converter.SandboxSpecToProto(spec),
 		Labels:    labels,
 		Workspace: workspace,
-	})
+	}
+	if len(opts) > 0 {
+		req.Annotations = converter.CopyStringMap(opts[0].Annotations)
+	}
+	resp, err := s.client.CreateSandbox(ctx, req)
 	if err != nil {
 		return nil, converter.FromGRPCError(err)
 	}
