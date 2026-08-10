@@ -173,6 +173,87 @@ gateway unless it explicitly strips the field.
 This is not a code fix but an API design clarification to raise with the
 upstream team during the next SDK PR review.
 
+## PR #47 Findings (Reverse Port Forwarding)
+
+From the multi-agent review of PR #47, these findings improve the SDK
+code that will be contributed upstream.
+
+### Must Fix (bug)
+
+#### Fake Forward missing sandboxName validation
+
+**File:** `fake/tcp.go` (Forward method)
+**Severity:** Critical (flagged by 4 independent agents)
+
+Fake `Forward` was missing `sandboxName` validation that the real client
+has. Real client rejects empty sandboxName with `ErrorInvalidArgument`,
+but the fake skipped from closedFunc check to port validation. This
+violates the fake-real parity invariant.
+
+**Applied in:** `bd0909b1` (downstream)
+
+### Should Fix (robustness)
+
+#### Real RemoteListen discards context parameter
+
+**File:** `tcp_client.go` (RemoteListen)
+**Severity:** Important
+
+The stub used `_ context.Context`, hiding the requirement for context in
+the future implementation. Forward and Listen both name their context
+parameter. When RemoteListen gets a real implementation, the developer
+copying the stub signature would miss wiring up context.
+
+**Applied in:** `bd0909b1` (downstream)
+
+#### remoteListenConfig.bindAddress default disagrees with documentation
+
+**File:** `tcp.go` (remoteListenConfig struct)
+**Severity:** Minor, security-relevant
+
+The struct's zero-value for `bindAddress` is empty string, but
+`WithRemoteBindAddress` documents the default as `"127.0.0.1"`. When the
+real implementation lands, an empty bind address could default to
+`0.0.0.0` server-side, exposing the forwarded port on all interfaces.
+
+**Fix:** When implementing RemoteListen, initialize config with
+`bindAddress: "127.0.0.1"`, matching the `listenConfig` pattern.
+
+#### tcpForwardConn.Close() drops readLoop errors
+
+**File:** `tcp_client.go` (Close method, pre-existing)
+**Severity:** Notable
+
+If CloseSend succeeds but the readLoop encountered a transport error,
+that error is silently dropped. The caller of Close() gets nil even
+though the connection had an error.
+
+**Fix:** After `<-c.done`, return `c.err` if CloseSend returned nil.
+
+### Design Considerations (for real implementation)
+
+#### RemoteListen return type
+
+**File:** `tcp.go` (TCPInterface)
+
+`RemoteListen` returns bare `error`, providing no ready-signal. Unlike
+`Listen` which returns `net.Listener` (caller knows the listener is
+ready when the call returns), `RemoteListen` gives no way to know when
+the remote side is accepting connections. Consider returning a richer
+type (e.g., `RemoteListener` with `Ready() <-chan struct{}` and
+`Close()`).
+
+#### Closed-client detection in real TCP client
+
+**File:** `tcp_client.go`
+
+The real TCP client has no explicit closed-state check in any method
+(Forward, Listen, RemoteListen). It relies on gRPC transport errors to
+surface closed connections. The fake client uses `closedFunc()`. This
+asymmetry means error messages differ between real and fake when the
+client is closed. Consider whether the real client should check its
+connection state before making gRPC calls.
+
 ## Downstream Commits
 
 All code fixes were applied in the downstream repo and will be included
@@ -183,3 +264,4 @@ when the SDK code is contributed upstream:
 | `6fc1eda6` | Coverage tests (contextError, WaitReady DeadlineExceeded/Deleting) |
 | `e0039c78` | Deterministic deadline in fake sandbox test |
 | `c2fa08db` | All six cc-review fixes (helper, race, rename, TLS, tests, comment) |
+| `bd0909b1` | PR #47 fixes (fake Forward parity, context param, message assertions, IPv6 case) |
